@@ -19,7 +19,7 @@ a different way of reading and writing the session cookie.
 | ---- | ------- | ------------------ |
 | `client.ts` | Client Components | Runs in the browser. Reads cookies via `document.cookie`. |
 | `server.ts` | Server Components, Server Actions, route handlers | Runs on the server. Reads cookies through `next/headers`. **Must be created per request** — never cached in a module-level variable, or one user's session leaks into another's request. |
-| `middleware.ts` | `src/middleware.ts` only | Middleware can both read *and write* cookies, so this is where the session is refreshed before it expires. |
+| `proxy.ts` | `src/proxy.ts` only | Can both read *and write* cookies, so this is where the session is refreshed before it expires. Named `proxy.ts`, not `middleware.ts` — Next.js 16 renamed the convention; see [D-009](../../docs/decisions.md#d-009-nextjs-16-renamed-middlewarets-to-proxyts). |
 
 ## `services/` — business logic layer
 

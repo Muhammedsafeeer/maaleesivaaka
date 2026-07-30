@@ -39,7 +39,7 @@ next begins.
 | 1 | Next.js 16 scaffold, Tailwind v4, shadcn/ui, folder skeleton | ✅ Complete |
 | 2 | Git repository, `.gitignore`, environment file structure | ✅ Complete |
 | 3 | Supabase project creation and dashboard walkthrough | ✅ Complete |
-| 4 | Supabase ↔ Next.js connection (browser / server / middleware clients) | ⬜ Not started |
+| 4 | Supabase ↔ Next.js connection (browser / server / middleware clients) | ✅ Complete |
 | 5 | Database schema, migrations, indexes, constraints | ⬜ Not started |
 | 6 | Authentication (login, logout, sessions, protected routes) | ⬜ Not started |
 | 7 | Role-based access control + Row Level Security policies | ⬜ Not started |

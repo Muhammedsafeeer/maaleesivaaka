@@ -304,3 +304,41 @@ there — but it is explicitly a pointer, not a second copy.
 
 - Documentation changes are made in `/docs`.
 - Overrides are recorded here, dated, rather than by rewriting the original document.
+
+---
+
+## D-009: Next.js 16 renamed `middleware.ts` to `proxy.ts`
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+`agents.md` (project structure) and `project-structure.md` both list `middleware.ts` at
+the project root. Next.js 16.2.12 — the version pinned in this project since Phase 1 —
+deprecates that file convention: `next build` emits "The 'middleware' file convention is
+deprecated. Please use 'proxy' instead," linking to
+`nextjs.org/docs/messages/middleware-to-proxy`. The exported function must be named to
+match (`proxy`, not `middleware`) or the file isn't picked up.
+
+### Decision
+
+The Next.js entry point is `src/proxy.ts`, exporting `proxy()`, not `src/middleware.ts`
+exporting `middleware()`. The Supabase session-refresh helper it calls is renamed to
+match: `src/lib/supabase/proxy.ts` (was `middleware.ts`), still exporting
+`updateSession()`.
+
+### Reasoning
+
+This is a framework rename, not a design choice with tradeoffs — building on a
+convention the installed Next.js version already flags as deprecated would be adding
+debt on day one for no benefit. Both original `/docs` files keep saying `middleware.ts`;
+this entry is the record of why the repository doesn't match that filename.
+
+### Consequences
+
+- `src/proxy.ts` is the file middleware-adjacent logic (auth gating, redirects) lives in
+  going forward — Phase 6/7 role-based redirects extend `proxy()`, not a `middleware()`.
+- `src/lib/README.md`'s Phase-1 table is updated to say `proxy.ts` instead of
+  `middleware.ts`.
+- If a future `/docs` update or contributor greps for `middleware.ts` expecting to find
+  the entry point, this ADR is the pointer to where it actually lives.
