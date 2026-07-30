@@ -41,7 +41,7 @@ next begins.
 | 3 | Supabase project creation and dashboard walkthrough | ✅ Complete |
 | 4 | Supabase ↔ Next.js connection (browser / server / middleware clients) | ✅ Complete |
 | 5 | Database schema, migrations, indexes, constraints | ✅ Complete |
-| 6 | Authentication (login, logout, sessions, protected routes) | ⬜ Not started |
+| 6 | Authentication (login, logout, sessions, protected routes) | ✅ Complete |
 | 7 | Role-based access control + Row Level Security policies | ⬜ Not started |
 | 8 | Admin panel — dashboard, groups, students, programs | ⬜ Not started |
 | 9 | Supabase Storage — student and group photos | ⬜ Not started |

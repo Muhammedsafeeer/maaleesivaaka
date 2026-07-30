@@ -6,7 +6,7 @@ Everything that is not UI and not a route.
 lib/
 ├── supabase/      Data access layer — the ONLY place a Supabase client is constructed
 ├── services/      Business logic layer — the ONLY place business rules live
-├── validations/   Zod schemas shared by client and server
+├── validations/   Zod schemas shared ACROSS features (rare — most schemas are per-feature)
 └── utils/         Pure, dependency-free helpers
 ```
 
@@ -25,11 +25,16 @@ a different way of reading and writing the session cookie.
 
 See [`services/README.md`](services/README.md). This is the heart of the application.
 
-## `validations/` — Zod schemas
+## `validations/` — Zod schemas shared across features
 
-One schema per entity, imported by **both** the client form and the Server Action.
-`docs/agents.md` requires validation in both places; sharing the schema means they can
-never disagree.
+`features/README.md` puts most schemas in `features/<x>/validation/`, next to the
+feature that owns them (e.g. `features/auth/validation/login.schema.ts`) — that's the
+default. This folder is only for a schema two or more features genuinely need to share;
+until one exists, it stays empty.
+
+Whichever folder a schema lives in, the rule is the same: one schema per entity,
+imported by **both** the client form and the Server Action. `docs/agents.md` requires
+validation in both places; sharing the schema means they can never disagree.
 
 Client validation is a convenience for the user. **Server validation is the security
 boundary** — a Server Action is a network endpoint and can be called directly.
