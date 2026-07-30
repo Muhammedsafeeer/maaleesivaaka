@@ -40,7 +40,7 @@ next begins.
 | 2 | Git repository, `.gitignore`, environment file structure | ✅ Complete |
 | 3 | Supabase project creation and dashboard walkthrough | ✅ Complete |
 | 4 | Supabase ↔ Next.js connection (browser / server / middleware clients) | ✅ Complete |
-| 5 | Database schema, migrations, indexes, constraints | ⬜ Not started |
+| 5 | Database schema, migrations, indexes, constraints | ✅ Complete |
 | 6 | Authentication (login, logout, sessions, protected routes) | ⬜ Not started |
 | 7 | Role-based access control + Row Level Security policies | ⬜ Not started |
 | 8 | Admin panel — dashboard, groups, students, programs | ⬜ Not started |
@@ -96,8 +96,8 @@ forbid. See [`docs/decisions.md`](docs/decisions.md).
 
 ## Getting started
 
-Steps 2–5 apply from Phase 4 onward — Supabase is not connected yet. Until then,
-`pnpm install && pnpm dev` is enough.
+The steps below are all functional as of Phase 5 — Supabase is connected and the schema
+is live.
 
 ```bash
 # 1. Install dependencies
