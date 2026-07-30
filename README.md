@@ -37,7 +37,7 @@ next begins.
 | ----- | ----- | ------ |
 | 0 | Planning, decision log, root documentation | ✅ Complete |
 | 1 | Next.js 16 scaffold, Tailwind v4, shadcn/ui, folder skeleton | ✅ Complete |
-| 2 | Git repository, `.gitignore`, environment file structure | ⬜ Not started |
+| 2 | Git repository, `.gitignore`, environment file structure | ✅ Complete |
 | 3 | Supabase project creation and dashboard walkthrough | ⬜ Not started |
 | 4 | Supabase ↔ Next.js connection (browser / server / middleware clients) | ⬜ Not started |
 | 5 | Database schema, migrations, indexes, constraints | ⬜ Not started |
