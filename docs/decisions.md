@@ -480,3 +480,69 @@ someone compares how `students` is handled at the table level versus the file le
   concern), the fix is: flip `student-photos.public` to `false`, add a `SELECT` policy
   scoped `to authenticated`, and switch the admin/judge UI from plain `<img src>` URLs
   to `supabase.storage.from('student-photos').createSignedUrl(path, expiresIn)`.
+
+---
+
+## D-013: `storage.objects` needs an explicit SELECT policy even though both buckets are public
+
+**Date:** 2026-07-30 · **Status:** Accepted (bug fix, found live post-Phase-9)
+
+### Context
+
+Every photo upload failed with `new row violates row-level security policy`
+immediately after Phase 9 shipped, despite a genuinely authenticated admin session
+with a JWT that checked out correctly on every axis (role, aud, sub) and an `is_admin()`
+call that independently returned `true` via `rpc('is_admin')`. D-012's migration
+justified having **no** SELECT policy on `storage.objects` with: *"both buckets are
+public, so SELECT is already open to everyone — Supabase serves public-bucket objects
+without consulting storage.objects RLS at all."* That statement is true, but only for
+one specific access path.
+
+### Decision
+
+Add explicit `SELECT ... TO authenticated` policies on `storage.objects` for both
+buckets (`20260730130453_storage_select_policies.sql`), unconditional (not gated by
+`is_admin()`) — any authenticated session performing a write needs this, not just admin.
+
+### Reasoning
+
+Root-caused via direct reproduction, not guesswork: `supabase db query --linked`
+(no Docker needed — a real alternative to the CLI's docker-dependent `db push`
+verification step, worth remembering) let a raw `INSERT INTO storage.objects (...)
+RETURNING id` be run under a simulated `authenticated` + admin JWT. That statement
+failed with the exact same RLS error as the real bug — confirming the problem was
+genuinely in Postgres's RLS evaluation, not something specific to the Storage
+microservice, the browser client, or the JWT. Adding a temporary `SELECT` policy and
+re-running the identical statement made it succeed immediately.
+
+The actual mechanics: "public bucket" reads bypass RLS only through the dedicated
+`/storage/v1/object/public/...` serving endpoint. Storage's own upload implementation
+does an `INSERT ... RETURNING` internally, to hand the created object's metadata back
+to the caller — a normal table read, executed as the `authenticated` role, going
+through ordinary RLS, not the public-serving bypass. With zero SELECT policies granted
+to `authenticated`, that implicit read-back had nothing granting it, so the *entire
+INSERT* rolled back — even though its own `WITH CHECK` (`bucket_id = ... AND
+is_admin()`) evaluated correctly to `true` in isolation. A CHECK passing is not
+sufficient for an `INSERT ... RETURNING` to succeed if the RETURNING read itself has no
+RLS grant.
+
+A false lead pursued along the way, since ruled out and reverted
+(`20260730131044_revert_is_admin_to_security_invoker.sql`): making `is_admin()` and
+the other three Phase 7 helper functions `SECURITY DEFINER`, on the theory that a
+`SECURITY INVOKER` function's *nested* RLS-governed query (`is_admin()` reads
+`profiles`, which has its own RLS) might not see the same auth context as the outer
+call. Plausible-sounding, but empirically not the cause — the bug reproduced
+identically with `SECURITY DEFINER` in place, and was resolved by the SELECT policies
+alone. Reverted rather than kept "just in case": an unnecessary `SECURITY DEFINER` is a
+real, ongoing security-review cost for zero benefit.
+
+### Consequences
+
+- **Any future bucket needs its own SELECT policy for every role that writes to it**,
+  regardless of whether the bucket is public or private. "Public" only ever describes
+  the dedicated public-serving read path — it says nothing about what an authenticated
+  write's own implicit read-back can see.
+- `supabase db query --linked` (raw SQL against the linked project, no Docker) is now
+  the preferred tool for reproducing an RLS bug precisely — far more reliable than
+  reasoning about Storage-vs-PostgREST evaluation differences from the client-side
+  error message alone.

@@ -366,7 +366,16 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
+      is_judge_assigned_to_program: {
+        Args: { p_program_id: string }
+        Returns: boolean
+      }
+      is_program_published: { Args: { p_program_id: string }; Returns: boolean }
+      is_student_assigned_to_program: {
+        Args: { p_program_id: string; p_student_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       gender: "male" | "female"

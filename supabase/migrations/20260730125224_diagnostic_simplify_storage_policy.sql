@@ -1,0 +1,6 @@
+-- Intentionally empty. Created while live-debugging the Phase 9 upload bug, then
+-- superseded when the diagnosis moved to `supabase db query` (a direct SQL session)
+-- instead of a migration file. Left as a genuine no-op rather than deleted: it was
+-- already applied to the remote project's migration history before being emptied out,
+-- and removing the file entirely would create a mismatch between local and remote
+-- migration state. The real fix is 20260730130453_storage_select_policies.sql.
