@@ -10,8 +10,14 @@ features/
 ├── programs/
 ├── judges/
 ├── groups/
-└── leaderboard/
+├── leaderboard/
+└── scoring/
 ```
+
+`scoring/` (Phase 12) isn't in the original plan above — the judge's own score-submission
+UI belongs to neither `programs` (admin-only) nor `judges` (admin managing judge
+accounts), same "add it when the gap shows up" pattern as `assignment.service.ts` in
+Phase 10.
 
 Each feature owns the same internal shape, created as needed:
 

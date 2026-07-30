@@ -24,7 +24,7 @@ A component never calls a service directly, and a service never renders anything
 | `storage.service.ts` | Photo uploads — runs in the browser, not the server (see file header) | 9 |
 | `assignment.service.ts` | Student↔program roster (`program_students`) — added here; the original table only planned services through Phase 8, missing this the same way the Phase 1 folder tree missed a dedicated "assign" route | 10 |
 | `judge.service.ts` | Judge accounts and program assignment | 11 |
-| `scoring.service.ts` | **Averaging and ranking** | 13 |
+| `scoring.service.ts` | Score submission (Phase 12: `listAssignedPrograms`, `listScorableStudents`, `submitScores`); **averaging and ranking** added as a pure core alongside it | 12, 13 |
 | `result.service.ts` | Writing and publishing results | 13 |
 | `leaderboard.service.ts` | Reading the `group_leaderboard` view | 14 |
 

@@ -1,34 +1,68 @@
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/services/auth.service";
-import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/features/auth/actions/logout.action";
+import { listAssignedPrograms } from "@/lib/services/scoring.service";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { EmptyState } from "@/components/tables/EmptyState";
+import { JudgeProgramCard } from "@/features/scoring/components/JudgeProgramCard";
 
 export const metadata: Metadata = {
-  title: "Judge",
+  title: "Judge Dashboard",
 };
 
-/**
- * Throwaway verification page, same as src/app/page.tsx was in Phase 1 — proves the
- * auth flow works end to end (login -> redirect -> land here -> logout). Phase 12
- * replaces this with the real judge dashboard.
- */
-export default async function JudgeHomePage() {
-  const user = await getCurrentUser();
+function isComplete(totalStudents: number, scoredCount: number) {
+  return totalStudents > 0 && scoredCount === totalStudents;
+}
+
+export default async function JudgeDashboardPage() {
+  const programs = await listAssignedPrograms();
+
+  const completed = programs.filter((p) => isComplete(p.totalStudents, p.scoredCount));
+  const pending = programs.filter((p) => !isComplete(p.totalStudents, p.scoredCount));
 
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-      <div>
-        <h1 className="font-heading text-xl font-medium">Judge dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Signed in as {user?.name} ({user?.email}). The real dashboard arrives in
-          Phase 12.
-        </p>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Assigned Programs" value={programs.length} />
+        <StatCard label="Pending" value={pending.length} />
+        <StatCard label="Completed" value={completed.length} />
       </div>
-      <form action={logoutAction}>
-        <Button type="submit" variant="outline">
-          Sign out
-        </Button>
-      </form>
+
+      {programs.length === 0 ? (
+        <EmptyState
+          title="No programs assigned yet"
+          description="An admin will assign you to programs before you can score them."
+        />
+      ) : (
+        <>
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium">Pending</h2>
+            {pending.length === 0 ? (
+              <EmptyState title="Nothing pending" description="You're all caught up." />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pending.map((program) => (
+                  <JudgeProgramCard key={program.id} program={program} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium">Completed</h2>
+            {completed.length === 0 ? (
+              <EmptyState
+                title="Nothing completed yet"
+                description="Programs you've fully scored will show up here."
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {completed.map((program) => (
+                  <JudgeProgramCard key={program.id} program={program} />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -99,3 +99,15 @@ export async function assertAdmin(): Promise<AuthorizationResult> {
 
   return { ok: true };
 }
+
+/** Judge-side mirror of assertAdmin() — same reasoning, first used by Phase 12's
+ * scoring Server Action. Real enforcement is judge_scores' RLS policies (Phase 7). */
+export async function assertJudge(): Promise<AuthorizationResult> {
+  const user = await getCurrentUser();
+
+  if (!user || user.role !== "judge") {
+    return { ok: false, error: "You must be a judge to do that." };
+  }
+
+  return { ok: true };
+}
