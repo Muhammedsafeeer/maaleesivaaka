@@ -342,3 +342,61 @@ this entry is the record of why the repository doesn't match that filename.
   `middleware.ts`.
 - If a future `/docs` update or contributor greps for `middleware.ts` expecting to find
   the entry point, this ADR is the pointer to where it actually lives.
+
+---
+
+## D-010: Anonymous audience visibility scope for programs and students
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+`project.md` lists "Current Program" as something the public can view, separate from
+"Latest Results." No document specifies whether that means full program metadata is
+public at every lifecycle stage, or whether the audience learns a program existed only
+once `published`. Separately, the `group_leaderboard` view (D-002) needs the anonymous
+`anon` role to have *some* read access to `students` for its join to work, even though
+the view never displays a student's identity — and no document says whether the public
+should be able to see individual student names/photos at all.
+
+### Decision
+
+Two RLS choices, confirmed with the user at Phase 7 design time:
+
+1. **`programs`** — anon can read every column, at every `status`, not just `published`.
+2. **`students`** — anon gets a table-wide `SELECT` policy (`using (true)`) but is
+   restricted at the *column* level to `id` and `group_id` only, via
+   `revoke select on students from anon; grant select (id, group_id) on students to anon;`.
+   No name, photo, roll number, class, or gender is exposed to an unauthenticated
+   request, for any student, regardless of program status.
+
+### Reasoning
+
+D-003's actual concern is specifically about *results* being seen before an admin has
+reviewed them — not about the event schedule. Hiding all program metadata until
+`published` would make a live "what's happening now" display impossible, which is a
+documented feature. Program name/category/stage_type/status carry no student-identifying
+information, so there's little to protect by hiding them.
+
+Student PII is a different risk profile. RLS is table-wide, not scoped to "only while
+this student is currently performing" — granting `name`/`photo_url` to `anon` would make
+the entire school roster's names and photos permanently queryable by anyone holding the
+publishable anon key, not just visible during that student's moment on stage. The
+column-level grant (rather than a view, or a row-level filter) is the correct tool here:
+RLS decides which *rows* are visible, but `students` needs every row visible for the
+leaderboard math to be correct across the whole festival, so the restriction has to be
+per-*column* instead.
+
+### Consequences
+
+- A public "now performing: `<name>`" display is **not possible** with the current
+  grant. If that's wanted later, it needs a separate, narrower decision — e.g. a purpose
+  -built view exposing only the name of students in the currently `ongoing` program,
+  made when Phase 16's audience UI is actually being designed — not a blanket widening
+  of this grant.
+- `group_leaderboard` works correctly for `anon` today only because `main_groups` is
+  fully public (D-002 always intended house names/photos to be public) and `students`
+  is visible enough at the row level (`id`, `group_id`) for the join, even though no
+  student-identifying column is ever readable.
+- Verified live via the anon key: `select=id,group_id` succeeds; `select=name` and
+  `select=*` both fail with `42501 permission denied for table students`.
