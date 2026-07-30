@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/tables/EmptyState";
-import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
+import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -31,34 +32,14 @@ export default async function AdminDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Leaderboard</CardTitle>
+          <CardAction>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/admin/leaderboard">View full leaderboard →</Link>
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
-          {stats.topGroups.length === 0 ? (
-            <EmptyState
-              title="No results yet"
-              description="The leaderboard fills in once judges start submitting scores."
-            />
-          ) : (
-            <ol className="flex flex-col gap-2">
-              {stats.topGroups.map((group) => (
-                <li
-                  key={group.id}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="text-sm font-mono tabular-nums text-muted-foreground">
-                      #{group.rank}
-                    </span>
-                    <PhotoThumbnail url={group.photo_url} alt={`${group.name} photo`} />
-                    <span className="font-medium">{group.name}</span>
-                  </span>
-                  <span className="text-sm tabular-nums text-muted-foreground">
-                    {group.total_points} pts
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
+          <LeaderboardList rows={stats.topGroups} />
         </CardContent>
       </Card>
     </div>
