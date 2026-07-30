@@ -45,7 +45,7 @@ next begins.
 | 7 | Role-based access control + Row Level Security policies | ✅ Complete |
 | 8 | Admin panel — dashboard, groups, students, programs | ✅ Complete |
 | 9 | Supabase Storage — student and group photos | ✅ Complete |
-| 10 | Student assignment (category-matched) | ⬜ Not started |
+| 10 | Student assignment (category-matched) | ✅ Complete |
 | 11 | Judge management and assignment | ⬜ Not started |
 | 12 | Judge scoring interface | ⬜ Not started |
 | 13 | Result calculation engine | ⬜ Not started |

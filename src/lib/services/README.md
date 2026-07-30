@@ -21,6 +21,8 @@ A component never calls a service directly, and a service never renders anything
 | `group.service.ts` | Main group CRUD | 8 |
 | `student.service.ts` | Student CRUD, search, filtering | 8 |
 | `program.service.ts` | Program CRUD, status transitions | 8 |
+| `storage.service.ts` | Photo uploads — runs in the browser, not the server (see file header) | 9 |
+| `assignment.service.ts` | Student↔program roster (`program_students`) — added here; the original table only planned services through Phase 8, missing this the same way the Phase 1 folder tree missed a dedicated "assign" route | 10 |
 | `judge.service.ts` | Judge accounts and program assignment | 11 |
 | `scoring.service.ts` | **Averaging and ranking** | 13 |
 | `result.service.ts` | Writing and publishing results | 13 |

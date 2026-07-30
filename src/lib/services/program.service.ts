@@ -29,6 +29,17 @@ export async function listPrograms(filters: ProgramFilters = {}): Promise<Progra
   return data;
 }
 
+export async function getProgram(id: string): Promise<Program | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("programs").select("*").eq("id", id).single();
+
+  if (error) {
+    return null;
+  }
+
+  return data;
+}
+
 export type ProgramInput = {
   name: string;
   stage_type: StageType;

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -42,7 +43,11 @@ export function ProgramsTable({ programs }: { programs: Program[] }) {
       <TableBody>
         {programs.map((program) => (
           <TableRow key={program.id}>
-            <TableCell className="font-medium">{program.name}</TableCell>
+            <TableCell className="font-medium">
+              <Link href={`/admin/programs/${program.id}`} className="hover:underline">
+                {program.name}
+              </Link>
+            </TableCell>
             <TableCell>{stageTypeLabels[program.stage_type]}</TableCell>
             <TableCell>
               <Badge variant="outline">{categoryLabels[program.category]}</Badge>
