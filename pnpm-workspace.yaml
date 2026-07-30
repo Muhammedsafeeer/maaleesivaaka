@@ -1,0 +1,13 @@
+# pnpm blocks dependency post-install scripts by default (supply-chain protection).
+# Only packages listed here are permitted to run them. Both entries below are
+# required by the toolchain and are reviewed additions, not defaults:
+#
+#   sharp         - Next.js image optimisation. Used to resize and re-encode the
+#                   student and group photos served from Supabase Storage.
+#   unrs-resolver - native module resolver used by eslint-config-next. Without its
+#                   build step, `pnpm lint` cannot resolve import paths.
+#
+# Do not add to this list without understanding what the package's install script does.
+allowBuilds:
+  sharp: true
+  unrs-resolver: true

@@ -1,0 +1,41 @@
+# `src/lib` — Infrastructure and business logic
+
+Everything that is not UI and not a route.
+
+```
+lib/
+├── supabase/      Data access layer — the ONLY place a Supabase client is constructed
+├── services/      Business logic layer — the ONLY place business rules live
+├── validations/   Zod schemas shared by client and server
+└── utils/         Pure, dependency-free helpers
+```
+
+## `supabase/` — data access layer
+
+Three clients, because the App Router runs code in three different places and each needs
+a different way of reading and writing the session cookie.
+
+| File | Used by | Why it is separate |
+| ---- | ------- | ------------------ |
+| `client.ts` | Client Components | Runs in the browser. Reads cookies via `document.cookie`. |
+| `server.ts` | Server Components, Server Actions, route handlers | Runs on the server. Reads cookies through `next/headers`. **Must be created per request** — never cached in a module-level variable, or one user's session leaks into another's request. |
+| `middleware.ts` | `src/middleware.ts` only | Middleware can both read *and write* cookies, so this is where the session is refreshed before it expires. |
+
+## `services/` — business logic layer
+
+See [`services/README.md`](services/README.md). This is the heart of the application.
+
+## `validations/` — Zod schemas
+
+One schema per entity, imported by **both** the client form and the Server Action.
+`docs/agents.md` requires validation in both places; sharing the schema means they can
+never disagree.
+
+Client validation is a convenience for the user. **Server validation is the security
+boundary** — a Server Action is a network endpoint and can be called directly.
+
+## `utils/` — pure helpers
+
+Formatting, string manipulation, date display. No Supabase import, no network call, no
+business rule. If it needs to know that first place is worth five points, it is a service,
+not a utility.
