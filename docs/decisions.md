@@ -20,6 +20,7 @@ Format: context → decision → consequences. Newest decisions are appended at 
 | [D-008](#d-008-docs-stays-canonical-the-repository-root-does-not-duplicate-it) | `/docs` stays canonical; root does not duplicate it | 2026-07-29 | Accepted |
 | [D-014](#d-014-result-finalization-uses-three-narrow-security-definer-functions) | Result finalization uses three narrow `SECURITY DEFINER` functions | 2026-07-30 | Accepted |
 | [D-015](#d-015-is_admin-made-security-definer-to-break-a-real-recursive-rls-cycle) | `is_admin()` made `SECURITY DEFINER` to break a real recursive RLS cycle | 2026-07-30 | Accepted (bug fix, found live post-Phase-13) |
+| [D-016](#d-016-realtime-via-routerrefresh-tanstack-query-and-zustand-stay-uninstalled) | Realtime via `router.refresh()`; TanStack Query and Zustand stay uninstalled | 2026-07-30 | Accepted |
 
 ---
 
@@ -717,3 +718,45 @@ same standard this project already holds itself to for RLS bugs.
   before Phase 14 for other spots doing the same silent-empty-on-error pattern.
 - Reinforces the D-014 verification lesson: a check that only exercises a `SECURITY
   DEFINER` RPC proves nothing about the plain RLS-governed path a real feature uses.
+
+---
+
+## D-016: Realtime via `router.refresh()`; TanStack Query and Zustand stay uninstalled
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+D-005 deferred the TanStack Query / Zustand decision specifically to this phase,
+explicitly conditioning it on "each only if a real need appears" — Phase 15 is where
+that condition actually gets evaluated, not just deferred further. `project.md` §2
+lists both in the frontend stack.
+
+### Decision
+
+Neither library is installed. A Supabase Realtime subscription (`postgres_changes` on
+the `results` table, per `src/hooks/README.md`'s already-planned `useRealtimeLeaderboard`
+hook) calls `router.refresh()` on any change. Next.js re-runs the Server Component fetch;
+no client-side copy of the leaderboard (or anything else) is ever kept.
+
+### Reasoning
+
+`router.refresh()` fully satisfies `project.md` §8's "no manual refresh required" for
+every case Phase 15 needs — a `postgres_changes` event just needs to trigger a re-fetch,
+which is exactly what a Server Component re-render already does well. Introducing a
+client-side cache to solve a problem `router.refresh()` already solves would be the
+exact mistake `agents.md`'s "never duplicate server data in multiple places" warns
+against, for a need that doesn't exist yet.
+
+### Consequences
+
+- The pattern established here (subscribe → `router.refresh()`) is expected to extend
+  to Phase 16's audience dashboard and any other live-updating admin/judge surface,
+  unless a genuine need for finer-grained client state (e.g. optimistic UI, avoiding a
+  full-page data re-fetch flash on a TV display) surfaces later. If that need appears,
+  D-005's original framing still applies: add the library additively, scoped to the
+  component that needs it — not as a blanket architectural change.
+- This is the second time a Phase 1 stack item has been evaluated against a real need
+  and found unnecessary so far (Storage's browser-direct-upload path in Phase 9 is the
+  other precedent for "smallest tool that solves the problem" winning over the
+  documented default).

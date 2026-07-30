@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
+import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 
@@ -15,6 +16,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RealtimeLeaderboardListener />
       <div>
         <h1 className="font-heading text-xl font-medium">Dashboard</h1>
         <p className="text-sm text-muted-foreground">An overview of the festival.</p>

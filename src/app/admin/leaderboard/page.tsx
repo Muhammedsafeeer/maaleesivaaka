@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { listGroupLeaderboard } from "@/lib/services/leaderboard.service";
 import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
+import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -11,6 +12,7 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RealtimeLeaderboardListener />
       <div>
         <h1 className="font-heading text-xl font-medium">Leaderboard</h1>
         <p className="text-sm text-muted-foreground">

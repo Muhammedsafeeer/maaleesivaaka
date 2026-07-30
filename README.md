@@ -50,7 +50,7 @@ next begins.
 | 12 | Judge scoring interface | ✅ Complete |
 | 13 | Result calculation engine | ✅ Complete |
 | 14 | Main group leaderboard | ✅ Complete |
-| 15 | Supabase Realtime subscriptions | ⬜ Not started |
+| 15 | Supabase Realtime subscriptions | ✅ Complete |
 | 16 | Public audience dashboard (TV / projector / mobile) | ⬜ Not started |
 | 17 | UI states, animation, responsive polish | ⬜ Not started |
 | 18 | Testing | ⬜ Not started |
