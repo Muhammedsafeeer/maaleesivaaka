@@ -47,7 +47,7 @@ next begins.
 | 9 | Supabase Storage — student and group photos | ✅ Complete |
 | 10 | Student assignment (category-matched) | ✅ Complete |
 | 11 | Judge management and assignment | ✅ Complete |
-| 12 | Judge scoring interface | ⬜ Not started |
+| 12 | Judge scoring interface | ✅ Complete |
 | 13 | Result calculation engine | ⬜ Not started |
 | 14 | Main group leaderboard | ⬜ Not started |
 | 15 | Supabase Realtime subscriptions | ⬜ Not started |
