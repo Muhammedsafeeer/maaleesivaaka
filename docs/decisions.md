@@ -18,6 +18,8 @@ Format: context → decision → consequences. Newest decisions are appended at 
 | [D-006](#d-006-the-service-role-key-is-used-in-exactly-one-place) | Service role key used in exactly one place | 2026-07-29 | Accepted |
 | [D-007](#d-007-category-matching-is-enforced-by-the-database) | Category matching enforced by the database | 2026-07-29 | Accepted |
 | [D-008](#d-008-docs-stays-canonical-the-repository-root-does-not-duplicate-it) | `/docs` stays canonical; root does not duplicate it | 2026-07-29 | Accepted |
+| [D-014](#d-014-result-finalization-uses-three-narrow-security-definer-functions) | Result finalization uses three narrow `SECURITY DEFINER` functions | 2026-07-30 | Accepted |
+| [D-015](#d-015-is_admin-made-security-definer-to-break-a-real-recursive-rls-cycle) | `is_admin()` made `SECURITY DEFINER` to break a real recursive RLS cycle | 2026-07-30 | Accepted (bug fix, found live post-Phase-13) |
 
 ---
 
@@ -546,3 +548,172 @@ real, ongoing security-review cost for zero benefit.
   the preferred tool for reproducing an RLS bug precisely — far more reliable than
   reasoning about Storage-vs-PostgREST evaluation differences from the client-side
   error message alone.
+
+---
+
+## D-014: Result finalization uses three narrow `SECURITY DEFINER` functions
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+D-003 requires results to compute **automatically** the moment every assigned judge has
+scored every assigned student — not on an admin's manual trigger. The natural place for
+that check is right after a judge's own score submission, since that is the event that
+can complete a program.
+
+But a judge's own RLS-scoped session cannot answer the question "has every judge
+finished?": `judge_scores` and `program_judges` policies (Phase 7) deliberately restrict
+judges to their own rows only — a judge is not supposed to see a colleague's scores or
+even how many colleagues are assigned. The same session also has no write access to
+`results` or `programs` (both are admin-only for writes). Automatic, judge-triggered
+finalization is therefore impossible under the existing RLS as a plain authenticated
+query — it needs *some* elevated path, deliberately narrow.
+
+This is a different situation from the `SECURITY DEFINER` detour reverted in
+[D-013](#d-013-storageobjects-needs-an-explicit-select-policy-even-though-both-buckets-are-public):
+that one was a guess at fixing an unrelated bug, empirically wrong, and reverted. This
+one is the only technical path to an already-accepted requirement (D-003), not a guess.
+
+### Decision
+
+Three single-purpose `SECURITY DEFINER` SQL functions, each re-checking authorization
+internally (bypassing RLS means the usual policy check no longer runs automatically, so
+each function does it by hand via the existing `is_admin()` / `is_judge_assigned_to_program()`
+helpers — `auth.uid()` still resolves to the real caller inside a `SECURITY DEFINER`
+function; only the *table-privilege* role changes, not the session identity):
+
+- `is_program_fully_scored(p_program_id)` — boolean count check
+  (`judge_scores` rows = assigned judges × assigned students, both > 0). No
+  authorization gate needed; leaks no row data, same privacy profile as
+  `is_program_published()`.
+- `get_program_scores(p_program_id)` — returns raw `(student_id, score)` rows for every
+  judge, for the average/rank calculation. Gated to `is_admin() or
+  is_judge_assigned_to_program(p_program_id)`.
+- `finalize_program_results(p_program_id, p_results jsonb)` — upserts the
+  **already-ranked** rows (computed in TypeScript, not here) into `results`, then flips
+  `programs.status` from `scoring` to `completed`. Same authorization gate.
+
+The actual averaging and `RANK()`-semantics ranking stays a pure TypeScript function in
+`scoring.service.ts`, per [D-004](#d-004-tied-scores-share-a-position-and-each-receive-full-points)'s
+explicit requirement that this logic be unit-testable with no Supabase import. These SQL
+functions only do the parts TypeScript structurally cannot: read across every judge's
+rows, and write to tables the calling judge has no RLS grant on.
+
+### Reasoning
+
+Narrower alternatives were considered and rejected:
+
+- **Push the whole calculation into SQL** (one big `SECURITY DEFINER` function that
+  reads, ranks, and writes) — rejected because it would duplicate/override D-004's
+  already-accepted decision that ranking must be pure, testable TypeScript.
+- **Admin-triggered instead of automatic** (a "Calculate Results" button, using the
+  admin's own already-sufficient RLS access, no `SECURITY DEFINER` needed at all) —
+  rejected because D-003 says "automatically," and the user re-confirmed D-003 as
+  written earlier this phase rather than superseding it.
+- **Expand the Phase 11 service-role key usage to a third route handler** — rejected to
+  keep [D-006](#d-006-the-service-role-key-is-used-in-exactly-one-place)'s "confined
+  usage" property intact; `SECURITY DEFINER` is the Postgres-native mechanism for a
+  narrow privilege escalation and doesn't touch the Supabase Admin API surface at all.
+
+### Consequences
+
+- An **admin-side "Recalculate Results" fallback** exists on the program detail page
+  (Phase 13) in case the automatic post-submission trigger silently fails for any
+  reason (network error, etc.) — otherwise a program could get permanently stuck at
+  "fully scored but still `scoring`" with nothing left to re-trigger it, since nothing
+  else calls these functions once every judge is done.
+- Each `SECURITY DEFINER` function's authorization check is hand-written and must be
+  kept in sync with the tables it touches — unlike ordinary RLS, adding a new sensitive
+  column or table later will not automatically be covered by these functions' existing
+  checks.
+- `finalize_program_results` is idempotent (`upsert` on the `results` unique
+  constraint, status transition guarded by `where status = 'scoring'`) — safe to call
+  more than once for the same program, which the Recalculate fallback above relies on.
+
+### Verification note: an incomplete first check, corrected by D-015
+
+While verifying this phase, `supabase db query --linked` reproduced `54001: stack depth
+limit exceeded` inside `is_admin()` on a plain `select from profiles` under a simulated
+judge session. A first round of live verification — a real judge session against the
+real PostgREST/RPC endpoints — completed the `finalize_program_results` pipeline
+cleanly, which was (wrongly) read as proof the crash was a harness artifact.
+
+It wasn't. That first live check only exercised the three new `SECURITY DEFINER`
+functions above, which bypass RLS on the tables they touch by design — it never
+exercised a plain, RLS-governed `select` on `programs` or `program_judges`, which is
+exactly what the judge dashboard's `listAssignedPrograms()` does. A follow-up check
+against two other real judge accounts, reading `programs` and `program_judges`
+directly, reproduced the identical stack-depth crash through the real API — confirming
+the recursion was real all along, just not exercised by the first (incomplete) test.
+See [D-015](#d-015-is_admin-made-security-definer-to-break-a-real-recursive-rls-cycle)
+for the fix.
+
+**Lesson for next time:** a live check that only exercises `SECURITY DEFINER` RPCs says
+nothing about whether the plain RLS-governed path works — they bypass exactly the
+mechanism that was actually broken. Test the specific code path the feature actually
+uses, not a nearby one that happens to be reachable.
+
+---
+
+## D-015: `is_admin()` made `SECURITY DEFINER` to break a real recursive RLS cycle
+
+**Date:** 2026-07-30 · **Status:** Accepted (bug fix, found live post-Phase-13)
+
+### Context
+
+The user reported that judges other than the one used in Phase 12's original testing
+saw no assigned programs at all on `/judge`, despite being correctly assigned via
+`program_judges`. `listAssignedPrograms()` (`scoring.service.ts`) does a plain `select
+*` on `programs` and silently returns `[]` on any error — masking the real failure as
+"nothing assigned" instead of surfacing it.
+
+Root-caused with real judge sessions (minted via the Admin API's `generateLink` +
+`verifyOtp`, no passwords needed or exposed) against the actual PostgREST API — not
+just the `db query --linked` harness, whose reproductions had already been prematurely
+dismissed once this phase (see the verification note under D-014). Querying `programs`
+or `program_judges` as a real, correctly-assigned judge reproducibly failed with
+`54001: stack depth limit exceeded`.
+
+The cause: `is_admin()` (`SECURITY INVOKER`, since D-013's revert) reads `profiles`.
+`profiles`' own "admin has full access to profiles" policy (D-011) calls `is_admin()`
+to decide row visibility. That's genuinely self-referential. `programs` and
+`program_judges` both carry an "admin has full access via `is_admin()`" policy too, and
+`is_judge_assigned_to_program()` (itself `SECURITY INVOKER`) reads `program_judges` as
+part of evaluating `programs`' judge policy — compounding the same cycle across tables.
+A single-table `profiles` self-read alone happened not to blow the stack; the
+cross-table evaluation needed for `programs` did.
+
+### Decision
+
+`alter function is_admin() security definer;` — the other three Phase 7 helper
+functions (`is_judge_assigned_to_program`, `is_student_assigned_to_program`,
+`is_program_published`) stay `SECURITY INVOKER`; only `is_admin()` has this specific
+self-referential shape (it's the only helper whose target table's own RLS calls it
+back).
+
+### Reasoning
+
+This is the standard, documented Postgres/Supabase fix for a helper function whose
+target table's RLS policy references that same function: `SECURITY DEFINER` runs the
+function as its owning role, which is not subject to `profiles`' RLS at all, so the
+self-referential policy never gets re-evaluated. It resolves the recursion at its one
+true source rather than working around it at every call site.
+
+This is explicitly **not** a repeat of the Phase 9 `SECURITY DEFINER` episode
+([D-013](#d-013-storageobjects-needs-an-explicit-select-policy-even-though-both-buckets-are-public)):
+that one was a guess at an unrelated Storage bug, empirically wrong, and reverted. This
+one is root-caused via direct reproduction with real sessions against the real API,
+same standard this project already holds itself to for RLS bugs.
+
+### Consequences
+
+- Every "admin has full access via `is_admin()`" policy across all 8 tables now
+  resolves without recursion risk, not just the two tables that happened to surface the
+  symptom (`programs`, `program_judges`) — the fix is general, not table-specific.
+- **`listAssignedPrograms()` and any other function that silently returns `[]`/`null`
+  on a Supabase error should be revisited** — this bug was invisible in the UI
+  precisely because the error was swallowed rather than surfaced. Worth auditing
+  before Phase 14 for other spots doing the same silent-empty-on-error pattern.
+- Reinforces the D-014 verification lesson: a check that only exercises a `SECURITY
+  DEFINER` RPC proves nothing about the plain RLS-governed path a real feature uses.

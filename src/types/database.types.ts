@@ -366,8 +366,23 @@ export type Database = {
       }
     }
     Functions: {
+      finalize_program_results: {
+        Args: { p_program_id: string; p_results: Json }
+        Returns: undefined
+      }
+      get_program_scores: {
+        Args: { p_program_id: string }
+        Returns: {
+          score: number
+          student_id: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_judge_assigned_to_program: {
+        Args: { p_program_id: string }
+        Returns: boolean
+      }
+      is_program_fully_scored: {
         Args: { p_program_id: string }
         Returns: boolean
       }

@@ -14,6 +14,8 @@ import { RosterTable } from "@/features/programs/components/RosterTable";
 import { AssignStudentDialog } from "@/features/programs/components/AssignStudentDialog";
 import { JudgeRosterTable } from "@/features/programs/components/JudgeRosterTable";
 import { AssignJudgeDialog } from "@/features/programs/components/AssignJudgeDialog";
+import { ResultsPanel } from "@/features/programs/components/ResultsPanel";
+import { listResults } from "@/lib/services/result.service";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
@@ -40,12 +42,13 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     notFound();
   }
 
-  const [assignedStudents, assignableStudents, assignedJudges, assignableJudges] =
+  const [assignedStudents, assignableStudents, assignedJudges, assignableJudges, results] =
     await Promise.all([
       listAssignedStudents(id),
       listAssignableStudents(id),
       listAssignedJudges(id),
       listAssignableJudges(id),
+      listResults(id),
     ]);
 
   return (
@@ -93,6 +96,8 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
 
         <JudgeRosterTable programId={id} judges={assignedJudges} />
       </div>
+
+      <ResultsPanel programId={id} status={program.status} results={results} />
     </div>
   );
 }

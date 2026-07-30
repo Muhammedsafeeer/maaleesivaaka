@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Student } from "@/types/student";
 import type { Program } from "@/types/program";
+import { POSITION_POINTS, POINTS_FOR_UNPLACED, type ScoringPosition } from "@/constants/scoring";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -36,7 +37,15 @@ export async function listAssignedPrograms(): Promise<AssignedProgramSummary[]> 
     .select("*")
     .order("name", { ascending: true });
 
-  if (error || programs.length === 0) {
+  if (error) {
+    // D-015: a query error here previously looked identical to "nothing assigned" —
+    // logged so a real failure (e.g. a future RLS regression) is diagnosable from
+    // server logs instead of looking like an empty dashboard.
+    console.error("listAssignedPrograms failed:", error.message);
+    return [];
+  }
+
+  if (programs.length === 0) {
     return [];
   }
 
@@ -91,6 +100,7 @@ export async function listScorableStudents(programId: string): Promise<ScorableS
     .order("created_at", { ascending: true });
 
   if (error) {
+    console.error("listScorableStudents failed:", error.message);
     return [];
   }
 
@@ -164,4 +174,41 @@ export async function submitScores(
   }
 
   return { success: true, data: null };
+}
+
+export type StudentAverage = { student_id: string; average_score: number };
+export type RankedResult = {
+  student_id: string;
+  average_score: number;
+  position: number;
+  points: number;
+};
+
+/**
+ * D-004: pure function — averages in, ranked results out, no Supabase import — so tie
+ * behaviour is unit-testable in isolation. `RANK()` semantics, not `DENSE_RANK()`: tied
+ * students share a position and each get that position's full points; the following
+ * position is skipped (docs/decisions.md D-004's worked example: 95/95/88/80 →
+ * 1st/1st/3rd/4th, 2nd skipped).
+ */
+export function rankResults(averages: StudentAverage[]): RankedResult[] {
+  const sorted = [...averages].sort((a, b) => b.average_score - a.average_score);
+
+  const results: RankedResult[] = [];
+  let position = 0;
+  let previousScore: number | null = null;
+  let rank = 0;
+
+  for (const entry of sorted) {
+    rank += 1;
+    if (entry.average_score !== previousScore) {
+      position = rank;
+      previousScore = entry.average_score;
+    }
+
+    const points = POSITION_POINTS[position as ScoringPosition] ?? POINTS_FOR_UNPLACED;
+    results.push({ student_id: entry.student_id, average_score: entry.average_score, position, points });
+  }
+
+  return results;
 }

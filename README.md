@@ -48,7 +48,7 @@ next begins.
 | 10 | Student assignment (category-matched) | ✅ Complete |
 | 11 | Judge management and assignment | ✅ Complete |
 | 12 | Judge scoring interface | ✅ Complete |
-| 13 | Result calculation engine | ⬜ Not started |
+| 13 | Result calculation engine | ✅ Complete |
 | 14 | Main group leaderboard | ⬜ Not started |
 | 15 | Supabase Realtime subscriptions | ⬜ Not started |
 | 16 | Public audience dashboard (TV / projector / mobile) | ⬜ Not started |
