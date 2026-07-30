@@ -400,3 +400,42 @@ per-*column* instead.
   student-identifying column is ever readable.
 - Verified live via the anon key: `select=id,group_id` succeeds; `select=name` and
   `select=*` both fail with `42501 permission denied for table students`.
+
+---
+
+## D-011: Admin needs SELECT + UPDATE on `profiles`, not the FOR ALL pattern
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+Phase 7 gave every other table a single `FOR ALL` admin policy gated by `is_admin()`.
+`profiles` was missed — it only had Phase 6's self-read policy (`auth.uid() = id`). This
+surfaced building Phase 8's admin dashboard: an admin's own "how many judges exist"
+query saw only their own row and silently returned the wrong count instead of erroring.
+
+### Decision
+
+Two new policies on `profiles`, not the `FOR ALL` pattern: `admin can read all profiles`
+(`SELECT`) and `admin can update all profiles` (`UPDATE`). No `INSERT` or `DELETE` grant.
+
+### Reasoning
+
+D-006 confines account creation to exactly one path: the Phase 11 route handler, which
+uses the service role key to create the `auth.users` row and the `profiles` row
+together. Granting admin a direct `INSERT` via RLS wouldn't be exploitable (the foreign
+key to `auth.users` still prevents an orphaned row), but it would open a second,
+uncontrolled path to the same operation — exactly what D-006 exists to avoid. Deletion
+is excluded for the same reason in reverse: deleting a judge should remove the
+`auth.users` row through the Admin API, which cascades to `profiles` automatically, not
+delete the profile in isolation and leave a login with no role.
+
+### Consequences
+
+- `profiles` is the one table in this schema where "admin has full access" is
+  deliberately *not* implemented as a single `FOR ALL` policy — a future reader
+  comparing it to the other seven tables should find this entry, not conclude it's an
+  oversight.
+- Judge account creation and deletion (Phase 11) must go through the Admin API /
+  service-role route handler; a plain authenticated `INSERT`/`DELETE` on `profiles`
+  will be rejected by RLS regardless of the caller's role.

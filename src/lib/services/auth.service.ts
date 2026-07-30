@@ -75,3 +75,27 @@ export async function requireRole(role: Role): Promise<CurrentUser> {
 
   return user;
 }
+
+export type AuthorizationResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * For Server Actions, not pages — a redirect() (like requireRole) would be jarring UX
+ * mid-dialog-submit, so this returns a typed result instead. services/README.md: "Verify
+ * permissions inside every mutation. Do not assume the caller already checked; a Server
+ * Action is a public endpoint" — the admin/judge layouts already gate the *page*, but
+ * the action itself is a separate, directly-callable entry point.
+ *
+ * This is a UX nicety, not the real security boundary: every admin-only table's RLS
+ * policy (Phase 7, is_admin()) enforces the same rule at the database regardless of
+ * whether this check runs. A caller who somehow skipped this would still get rejected
+ * by Postgres, just with a less friendly error.
+ */
+export async function assertAdmin(): Promise<AuthorizationResult> {
+  const user = await getCurrentUser();
+
+  if (!user || user.role !== "admin") {
+    return { ok: false, error: "You must be an admin to do that." };
+  }
+
+  return { ok: true };
+}

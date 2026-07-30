@@ -1,34 +1,64 @@
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/services/auth.service";
-import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/features/auth/actions/logout.action";
+import { getDashboardStats } from "@/lib/services/dashboard.service";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/tables/EmptyState";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Dashboard",
 };
 
-/**
- * Throwaway verification page, same as src/app/page.tsx was in Phase 1 — proves the
- * auth flow works end to end (login -> redirect -> land here -> logout). Phase 8
- * replaces this with the real admin dashboard.
- */
-export default async function AdminHomePage() {
-  const user = await getCurrentUser();
+export default async function AdminDashboardPage() {
+  const stats = await getDashboardStats();
 
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+    <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-heading text-xl font-medium">Admin dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Signed in as {user?.name} ({user?.email}). The real dashboard arrives in
-          Phase 8.
-        </p>
+        <h1 className="font-heading text-xl font-medium">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">An overview of the festival.</p>
       </div>
-      <form action={logoutAction}>
-        <Button type="submit" variant="outline">
-          Sign out
-        </Button>
-      </form>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard label="Students" value={stats.totalStudents} />
+        <StatCard label="Programs" value={stats.totalPrograms} />
+        <StatCard label="Groups" value={stats.totalGroups} />
+        <StatCard label="Judges" value={stats.totalJudges} />
+        <StatCard label="Completed" value={stats.completedPrograms} />
+        <StatCard label="Pending" value={stats.pendingPrograms} />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Leaderboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.topGroups.length === 0 ? (
+            <EmptyState
+              title="No results yet"
+              description="The leaderboard fills in once judges start submitting scores."
+            />
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {stats.topGroups.map((group) => (
+                <li
+                  key={group.id}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="text-sm font-mono tabular-nums text-muted-foreground">
+                      #{group.rank}
+                    </span>
+                    <span className="font-medium">{group.name}</span>
+                  </span>
+                  <span className="text-sm tabular-nums text-muted-foreground">
+                    {group.total_points} pts
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
