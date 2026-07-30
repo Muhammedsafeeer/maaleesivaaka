@@ -51,7 +51,7 @@ next begins.
 | 13 | Result calculation engine | ✅ Complete |
 | 14 | Main group leaderboard | ✅ Complete |
 | 15 | Supabase Realtime subscriptions | ✅ Complete |
-| 16 | Public audience dashboard (TV / projector / mobile) | ⬜ Not started |
+| 16 | Public audience dashboard (TV / projector / mobile) | ✅ Complete |
 | 17 | UI states, animation, responsive polish | ⬜ Not started |
 | 18 | Testing | ⬜ Not started |
 | 19 | Vercel deployment | ⬜ Not started |

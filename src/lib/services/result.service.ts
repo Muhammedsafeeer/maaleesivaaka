@@ -82,6 +82,58 @@ export async function listResults(programId: string) {
   return data;
 }
 
+export type PublicResultRow = {
+  id: string;
+  position: number;
+  points: number;
+  programName: string;
+  programCategory: string;
+  groupName: string;
+  groupPhotoUrl: string | null;
+};
+
+/**
+ * D-017: audience-facing "Latest Results" — group (house) name only, deliberately no
+ * student_id or student name anywhere in the return type, so a future call site can't
+ * accidentally render one that was never fetched. RLS already restricts `results` to
+ * published programs for an anonymous caller (D-003), so no explicit status filter is
+ * needed here — the same query run by an admin session would also see unpublished rows,
+ * which is why this is a distinct function from listResults() rather than a shared one.
+ */
+export async function listLatestPublishedResults(limit = 10): Promise<PublicResultRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, updated_at, programs(name, category), students(main_groups(name, photo_url))",
+    )
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("listLatestPublishedResults failed:", error.message);
+    return [];
+  }
+
+  return data.flatMap((row) => {
+    const group = row.students?.main_groups;
+    if (!row.programs || !group) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        position: row.position,
+        points: row.points,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        groupName: group.name,
+        groupPhotoUrl: group.photo_url,
+      },
+    ];
+  });
+}
+
 /** D-003's manual gate: admin reviews the calculated results, then publishes. */
 export async function publishProgram(programId: string): Promise<ServiceResult<null>> {
   const supabase = await createClient();

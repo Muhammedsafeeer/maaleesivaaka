@@ -21,6 +21,7 @@ Format: context → decision → consequences. Newest decisions are appended at 
 | [D-014](#d-014-result-finalization-uses-three-narrow-security-definer-functions) | Result finalization uses three narrow `SECURITY DEFINER` functions | 2026-07-30 | Accepted |
 | [D-015](#d-015-is_admin-made-security-definer-to-break-a-real-recursive-rls-cycle) | `is_admin()` made `SECURITY DEFINER` to break a real recursive RLS cycle | 2026-07-30 | Accepted (bug fix, found live post-Phase-13) |
 | [D-016](#d-016-realtime-via-routerrefresh-tanstack-query-and-zustand-stay-uninstalled) | Realtime via `router.refresh()`; TanStack Query and Zustand stay uninstalled | 2026-07-30 | Accepted |
+| [D-017](#d-017-audience-dashboard-shows-group-names-only-never-individual-student-names) | Audience dashboard shows group names only, never individual student names | 2026-07-30 | Accepted |
 
 ---
 
@@ -760,3 +761,45 @@ against, for a need that doesn't exist yet.
   and found unnecessary so far (Storage's browser-direct-upload path in Phase 9 is the
   other precedent for "smallest tool that solves the problem" winning over the
   documented default).
+
+---
+
+## D-017: Audience dashboard shows group names only, never individual student names
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+D-010 deliberately restricted `students` to `id, group_id` for `anon` — no name, photo,
+roll number, class, or gender — and explicitly flagged that a public "now performing"
+or "who won" display would need "a separate, narrower decision... made when Phase 16's
+audience UI is actually being designed." This is that decision.
+
+### Decision
+
+The audience dashboard never displays an individual student's name or photo, at any
+lifecycle stage. "Current Program" shows only program metadata (name, category, stage
+type). "Latest Results" shows position + **group (house) name** + points — e.g.
+"Mappila Pattu — 1st: Red House" — never which student performed. No change to the
+`students` grant from D-010.
+
+### Reasoning
+
+Confirmed with the user rather than assumed. The alternative (a narrow view exposing
+only currently-relevant students) was raised and explained, including its real
+consequence — RLS is table-wide, not "only while this student is on stage," so even a
+tightly-scoped view is still real, permanent, publicly-queryable PII about named
+children, for a marginal UX gain over "which house won." Group/house pride is also
+arguably the actual point of the house-competition format `project.md` describes, not
+individual recognition.
+
+### Consequences
+
+- No migration needed — D-010's existing grant already covers everything Phase 16
+  requires (`students.id, group_id` for the join to `main_groups`, nothing more).
+- `result.service.ts`'s new audience-facing read (`listLatestPublishedResults`) returns
+  a type with **no student_id or student name field at all**, so a future call site
+  can't accidentally render one that was never fetched.
+- If a "now performing" per-student display is ever wanted later, it needs its own
+  fresh decision (a purpose-built view scoped to, e.g., only students in the currently
+  `ongoing` program) — this ADR does not preclude that, it just declines it for now.
