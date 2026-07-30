@@ -10,3 +10,4 @@
 export * from "./roles";
 export * from "./programs";
 export * from "./scoring";
+export * from "./storage";

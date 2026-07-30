@@ -439,3 +439,44 @@ delete the profile in isolation and leave a login with no role.
 - Judge account creation and deletion (Phase 11) must go through the Admin API /
   service-role route handler; a plain authenticated `INSERT`/`DELETE` on `profiles`
   will be rejected by RLS regardless of the caller's role.
+
+---
+
+## D-012: Both Storage buckets are public, including student photos
+
+**Date:** 2026-07-30 · **Status:** Accepted
+
+### Context
+
+D-010 (Phase 7) restricted anonymous audience access to `students` at the table level
+to `id`/`group_id` only — no name, photo, roll number, class, or gender. Phase 9 needed
+to decide whether student *photo files* should follow the same restriction. The
+consistent extension would be a private `student-photos` bucket, readable only by
+authenticated admin/judge sessions via short-lived signed URLs, mirroring the table-
+level column restriction.
+
+### Decision
+
+Both `group-photos` and `student-photos` buckets are **public**. This was raised
+explicitly as a tradeoff against the private-bucket option and the user chose the
+simpler public option for both.
+
+### Reasoning
+
+This is a deliberate simplification the user chose after the tradeoff was explained,
+not an oversight or a default the assistant picked unprompted. Recorded here so it
+reads as an accepted decision rather than an inconsistency with D-010 the next time
+someone compares how `students` is handled at the table level versus the file level.
+
+### Consequences
+
+- Anyone holding a student photo's object URL can view it indefinitely — network
+  inspection while an admin/judge session is active is enough to obtain one; no
+  authentication is required to fetch it afterward.
+- Writes (upload/replace/delete) are still admin-only, enforced by `storage.objects`
+  RLS policies using the same `is_admin()` helper as every table policy — this
+  decision only concerns *read* access, not who can change photos.
+- If this needs revisiting later (e.g. before a public rollout, or if a school raises a
+  concern), the fix is: flip `student-photos.public` to `false`, add a `SELECT` policy
+  scoped `to authenticated`, and switch the admin/judge UI from plain `<img src>` URLs
+  to `supabase.storage.from('student-photos').createSignedUrl(path, expiresIn)`.

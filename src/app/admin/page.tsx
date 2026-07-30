@@ -3,6 +3,7 @@ import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/tables/EmptyState";
+import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -48,6 +49,7 @@ export default async function AdminDashboardPage() {
                     <span className="text-sm font-mono tabular-nums text-muted-foreground">
                       #{group.rank}
                     </span>
+                    <PhotoThumbnail url={group.photo_url} alt={`${group.name} photo`} />
                     <span className="font-medium">{group.name}</span>
                   </span>
                   <span className="text-sm tabular-nums text-muted-foreground">

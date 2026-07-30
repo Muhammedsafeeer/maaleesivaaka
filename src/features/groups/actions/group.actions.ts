@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { groupSchema, type GroupInput } from "@/features/groups/validation/group.schema";
-import { createGroup, updateGroup, deleteGroup } from "@/lib/services/group.service";
+import {
+  createGroup,
+  updateGroup,
+  deleteGroup,
+  updateGroupPhoto,
+} from "@/lib/services/group.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 
 export type GroupActionResult = { error: string } | { error?: undefined };
@@ -50,5 +55,22 @@ export async function deleteGroupAction(id: string): Promise<GroupActionResult> 
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/groups");
+  return {};
+}
+
+/** Called by the photo upload widget right after a file finishes uploading to
+ * Storage — persists the resulting URL (or null, on remove) onto the row. */
+export async function updateGroupPhotoAction(
+  id: string,
+  photoUrl: string | null,
+): Promise<GroupActionResult> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { error: auth.error };
+
+  const result = await updateGroupPhoto(id, photoUrl);
+  if (!result.success) return { error: result.error };
+
+  revalidatePath("/admin/groups");
+  revalidatePath("/admin");
   return {};
 }

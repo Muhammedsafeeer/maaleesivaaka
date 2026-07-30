@@ -15,8 +15,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/forms/SubmitButton";
+import { PhotoUpload } from "@/components/forms/PhotoUpload";
 import { groupSchema, type GroupInput } from "@/features/groups/validation/group.schema";
-import { createGroupAction, updateGroupAction } from "@/features/groups/actions/group.actions";
+import {
+  createGroupAction,
+  updateGroupAction,
+  updateGroupPhotoAction,
+} from "@/features/groups/actions/group.actions";
 import type { Group } from "@/types/group";
 
 type GroupFormDialogProps = {
@@ -88,6 +93,23 @@ export function GroupFormDialog({ open, onOpenChange, group }: GroupFormDialogPr
               </p>
             ) : null}
           </div>
+
+          {isEditing ? (
+            <div className="flex flex-col gap-2">
+              <Label>Photo</Label>
+              <PhotoUpload
+                bucket="group-photos"
+                entityId={group.id}
+                currentUrl={group.photo_url}
+                onPersist={(url) => updateGroupPhotoAction(group.id, url)}
+                alt={`${group.name} photo`}
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You can add a photo after creating the group.
+            </p>
+          )}
 
           <DialogFooter>
             <SubmitButton isPending={isPending} pendingText="Saving…">

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/forms/SubmitButton";
+import { PhotoUpload } from "@/components/forms/PhotoUpload";
 import { CATEGORIES, GENDERS } from "@/constants/programs";
 import {
   studentSchema,
@@ -30,6 +31,7 @@ import {
 import {
   createStudentAction,
   updateStudentAction,
+  updateStudentPhotoAction,
 } from "@/features/students/actions/student.actions";
 import type { Student } from "@/types/student";
 import type { Group } from "@/types/group";
@@ -243,6 +245,23 @@ export function StudentFormDialog({
               </p>
             ) : null}
           </div>
+
+          {isEditing ? (
+            <div className="flex flex-col gap-2">
+              <Label>Photo</Label>
+              <PhotoUpload
+                bucket="student-photos"
+                entityId={student.id}
+                currentUrl={student.photo_url}
+                onPersist={(url) => updateStudentPhotoAction(student.id, url)}
+                alt={`${student.name} photo`}
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You can add a photo after creating the student.
+            </p>
+          )}
 
           <DialogFooter>
             <SubmitButton isPending={isPending} pendingText="Saving…">

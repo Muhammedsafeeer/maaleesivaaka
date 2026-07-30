@@ -6,6 +6,7 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
+  updateStudentPhoto,
 } from "@/lib/services/student.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 
@@ -53,6 +54,22 @@ export async function deleteStudentAction(id: string): Promise<StudentActionResu
   if (!auth.ok) return { error: auth.error };
 
   const result = await deleteStudent(id);
+  if (!result.success) return { error: result.error };
+
+  revalidatePath("/admin/students");
+  return {};
+}
+
+/** Called by the photo upload widget right after a file finishes uploading to
+ * Storage — persists the resulting URL (or null, on remove) onto the row. */
+export async function updateStudentPhotoAction(
+  id: string,
+  photoUrl: string | null,
+): Promise<StudentActionResult> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { error: auth.error };
+
+  const result = await updateStudentPhoto(id, photoUrl);
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/students");

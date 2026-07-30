@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/tables/EmptyState";
+import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import { StudentRowActions } from "@/features/students/components/StudentRowActions";
 import { CATEGORIES, GENDERS } from "@/constants/programs";
 import type { StudentWithGroup } from "@/types/student";
@@ -36,6 +37,9 @@ export function StudentsTable({
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-px">
+            <span className="sr-only">Photo</span>
+          </TableHead>
           <TableHead>Roll no.</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Class</TableHead>
@@ -50,6 +54,9 @@ export function StudentsTable({
       <TableBody>
         {students.map((student) => (
           <TableRow key={student.id}>
+            <TableCell>
+              <PhotoThumbnail url={student.photo_url} alt={`${student.name} photo`} />
+            </TableCell>
             <TableCell className="tabular-nums">{student.roll_number}</TableCell>
             <TableCell className="font-medium">{student.name}</TableCell>
             <TableCell>{student.class}</TableCell>
