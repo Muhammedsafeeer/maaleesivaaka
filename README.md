@@ -46,7 +46,7 @@ next begins.
 | 8 | Admin panel — dashboard, groups, students, programs | ✅ Complete |
 | 9 | Supabase Storage — student and group photos | ✅ Complete |
 | 10 | Student assignment (category-matched) | ✅ Complete |
-| 11 | Judge management and assignment | ⬜ Not started |
+| 11 | Judge management and assignment | ✅ Complete |
 | 12 | Judge scoring interface | ⬜ Not started |
 | 13 | Result calculation engine | ⬜ Not started |
 | 14 | Main group leaderboard | ⬜ Not started |

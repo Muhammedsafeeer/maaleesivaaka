@@ -8,3 +8,9 @@ export const assignStudentSchema = z.object({
 });
 
 export type AssignStudentInput = z.infer<typeof assignStudentSchema>;
+
+export const assignJudgeSchema = z.object({
+  judge_id: z.uuid("Select a judge."),
+});
+
+export type AssignJudgeInput = z.infer<typeof assignJudgeSchema>;

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Student } from "@/types/student";
+import type { Profile } from "@/types/profile";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -116,6 +117,101 @@ export async function unassignStudent(
 
   if (error) {
     return { success: false, error: "Could not remove the student. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+/** Judges currently assigned to a program (program_judges), joined for display. */
+export async function listAssignedJudges(programId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("program_judges")
+    .select("profiles(*)")
+    .eq("program_id", programId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    return [];
+  }
+
+  return data.flatMap((row) => (row.profiles ? [row.profiles] : []));
+}
+
+/**
+ * Judges eligible to be added: any judge not already assigned. Unlike students, there's
+ * no category match to enforce — docs/project.md's "Judge Assignment" just says "assign
+ * one or more judges to programs."
+ */
+export async function listAssignableJudges(programId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+
+  const { data: assigned } = await supabase
+    .from("program_judges")
+    .select("judge_id")
+    .eq("program_id", programId);
+
+  const assignedIds = new Set((assigned ?? []).map((row) => row.judge_id));
+
+  const { data: candidates, error: candidatesError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("role", "judge")
+    .order("name", { ascending: true });
+
+  if (candidatesError) {
+    return [];
+  }
+
+  return candidates.filter((judge) => !assignedIds.has(judge.id));
+}
+
+export async function assignJudge(
+  programId: string,
+  judgeId: string,
+): Promise<ServiceResult<null>> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("program_judges")
+    .insert({ program_id: programId, judge_id: judgeId });
+
+  if (error) {
+    return { success: false, error: "Could not assign the judge. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+export async function unassignJudge(
+  programId: string,
+  judgeId: string,
+): Promise<ServiceResult<null>> {
+  const supabase = await createClient();
+
+  // Same reasoning as unassignStudent: no FK ties judge_scores to program_judges, so a
+  // judge who already scored this program could silently become "unassigned but still
+  // scored" without this check.
+  const { count: scoreCount } = await supabase
+    .from("judge_scores")
+    .select("*", { count: "exact", head: true })
+    .eq("program_id", programId)
+    .eq("judge_id", judgeId);
+
+  if (scoreCount && scoreCount > 0) {
+    return {
+      success: false,
+      error: "This judge already has scores recorded for this program and can't be removed.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("program_judges")
+    .delete()
+    .eq("program_id", programId)
+    .eq("judge_id", judgeId);
+
+  if (error) {
+    return { success: false, error: "Could not remove the judge. Please try again." };
   }
 
   return { success: true, data: null };

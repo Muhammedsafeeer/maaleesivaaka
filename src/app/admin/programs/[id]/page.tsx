@@ -5,11 +5,15 @@ import { getProgram } from "@/lib/services/program.service";
 import {
   listAssignedStudents,
   listAssignableStudents,
+  listAssignedJudges,
+  listAssignableJudges,
 } from "@/lib/services/assignment.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RosterTable } from "@/features/programs/components/RosterTable";
 import { AssignStudentDialog } from "@/features/programs/components/AssignStudentDialog";
+import { JudgeRosterTable } from "@/features/programs/components/JudgeRosterTable";
+import { AssignJudgeDialog } from "@/features/programs/components/AssignJudgeDialog";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
@@ -36,10 +40,13 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     notFound();
   }
 
-  const [assignedStudents, assignableStudents] = await Promise.all([
-    listAssignedStudents(id),
-    listAssignableStudents(id),
-  ]);
+  const [assignedStudents, assignableStudents, assignedJudges, assignableJudges] =
+    await Promise.all([
+      listAssignedStudents(id),
+      listAssignableStudents(id),
+      listAssignedJudges(id),
+      listAssignableJudges(id),
+    ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,6 +77,21 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
         </div>
 
         <RosterTable programId={id} students={assignedStudents} />
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-medium">Judges</h2>
+            <p className="text-sm text-muted-foreground">
+              {assignedJudges.length} {assignedJudges.length === 1 ? "judge" : "judges"}{" "}
+              assigned.
+            </p>
+          </div>
+          <AssignJudgeDialog programId={id} assignableJudges={assignableJudges} />
+        </div>
+
+        <JudgeRosterTable programId={id} judges={assignedJudges} />
       </div>
     </div>
   );
