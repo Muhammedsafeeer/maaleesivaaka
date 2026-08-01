@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
+<<<<<<< HEAD
 export type ScoringCriterion = {
   id: string;
   name: string;
@@ -9,6 +10,12 @@ export type ScoringCriterion = {
 
 /** A program's named scoring types, in the order the admin arranged them. Empty means
  * the program uses a single implicit 0-10 score (constants/scoring.ts's fallback). */
+=======
+export type ScoringCriterion = { id: string; name: string };
+
+/** A program's configured scoring types, in display order. Empty means the program
+ * uses a single implicit 0–10 score (see constants/scoring.ts). */
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
 export async function listScoringCriteria(programId: string): Promise<ScoringCriterion[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -18,13 +25,17 @@ export async function listScoringCriteria(programId: string): Promise<ScoringCri
     .order("sort_order", { ascending: true });
 
   if (error) {
+<<<<<<< HEAD
     console.error("listScoringCriteria failed:", error.message);
+=======
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
     return [];
   }
 
   return data;
 }
 
+<<<<<<< HEAD
 /**
  * Whether any judge has already submitted a score for this program. This, not program
  * status, is the real invariant behind locking scoring types: fixture.service.ts's
@@ -37,14 +48,30 @@ export async function listScoringCriteria(programId: string): Promise<ScoringCri
 export async function hasSubmittedScores(programId: string): Promise<boolean> {
   const supabase = await createClient();
   const { count } = await supabase
+=======
+/** Whether any judge has submitted a score for this program yet — the lock that
+ * program.actions.ts checks before letting the admin touch this program's roster of
+ * scoring types, and that replaceScoringCriteria re-checks itself below. */
+export async function hasSubmittedScores(programId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
     .from("judge_scores")
     .select("id", { count: "exact", head: true })
     .eq("program_id", programId);
 
+<<<<<<< HEAD
+=======
+  if (error) {
+    return true;
+  }
+
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
   return (count ?? 0) > 0;
 }
 
 /**
+<<<<<<< HEAD
  * Replaces a program's whole scoring-type list at once (delete-all-then-insert-in-order)
  * — matches the ProgramFormDialog UX of editing the full list and saving, rather than
  * diffing individual add/remove operations.
@@ -52,10 +79,16 @@ export async function hasSubmittedScores(programId: string): Promise<boolean> {
  * Locked once any judge has scored this program (see hasSubmittedScores). The dialog
  * already disables this section in the UI once that's true — this is the re-check for
  * a direct Server Action call, same pattern as submitScores' program status check.
+=======
+ * Replaces a program's full set of scoring types with `names`, in order. Refuses once
+ * a judge has scored the program — changing the rubric out from under scores that were
+ * computed against the old one would silently corrupt them.
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
  */
 export async function replaceScoringCriteria(
   programId: string,
   names: string[],
+<<<<<<< HEAD
 ): Promise<ServiceResult<ScoringCriterion[]>> {
   const supabase = await createClient();
 
@@ -76,12 +109,25 @@ export async function replaceScoringCriteria(
     };
   }
 
+=======
+): Promise<ServiceResult<null>> {
+  if (await hasSubmittedScores(programId)) {
+    return {
+      success: false,
+      error: "Scoring types can't be changed after scores have been submitted.",
+    };
+  }
+
+  const supabase = await createClient();
+
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
   const { error: deleteError } = await supabase
     .from("scoring_criteria")
     .delete()
     .eq("program_id", programId);
 
   if (deleteError) {
+<<<<<<< HEAD
     return { success: false, error: "Could not save scoring types. Please try again." };
   }
 
@@ -105,4 +151,26 @@ export async function replaceScoringCriteria(
   }
 
   return { success: true, data };
+=======
+    return { success: false, error: "Could not update scoring types. Please try again." };
+  }
+
+  if (names.length === 0) {
+    return { success: true, data: null };
+  }
+
+  const { error: insertError } = await supabase.from("scoring_criteria").insert(
+    names.map((name, index) => ({
+      program_id: programId,
+      name,
+      sort_order: index,
+    })),
+  );
+
+  if (insertError) {
+    return { success: false, error: "Could not update scoring types. Please try again." };
+  }
+
+  return { success: true, data: null };
+>>>>>>> e9a82d3 (feat: implement scoreSettings and scoringCriteria services for program rubric management)
 }
