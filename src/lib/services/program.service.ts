@@ -40,11 +40,11 @@ export async function getProgram(id: string): Promise<Program | null> {
   return data;
 }
 
+/** No `status` here — Phase 17 made status fully system-managed (see program.schema.ts). */
 export type ProgramInput = {
   name: string;
   stage_type: StageType;
   category: Category;
-  status: ProgramStatus;
 };
 
 export async function createProgram(input: ProgramInput): Promise<ServiceResult<Program>> {

@@ -22,13 +22,15 @@ const stageTypeLabels = Object.fromEntries(STAGE_TYPES.map((s) => [s.value, s.la
  * itself. D-017: house names only, never an individual student's name or photo.
  */
 export default async function AudiencePage() {
-  const [ongoingPrograms, leaderboard, latestResults] = await Promise.all([
-    listPrograms({ status: "ongoing" }),
+  const [currentPrograms, leaderboard, latestResults] = await Promise.all([
+    // Starting a program on the Fixture page goes straight to 'scoring' — that's the
+    // only "on stage" status a program can have (the 'ongoing' status was removed).
+    listPrograms({ status: "scoring" }),
     listGroupLeaderboard(),
     listLatestPublishedResults(),
   ]);
 
-  const currentProgram = ongoingPrograms[0] ?? null;
+  const currentProgram = currentPrograms[0] ?? null;
 
   return (
     <div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 p-4 sm:p-6">

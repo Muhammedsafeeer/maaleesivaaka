@@ -1,32 +1,31 @@
 import { z } from "zod";
-import {
-  CATEGORIES,
-  STAGE_TYPES,
-  PROGRAM_STATUSES,
-  type Category,
-  type StageType,
-  type ProgramStatus,
-} from "@/constants/programs";
+import { CATEGORIES, STAGE_TYPES, type Category, type StageType } from "@/constants/programs";
 
 const categoryValues = CATEGORIES.map((c) => c.value) as [Category, ...Category[]];
 const stageTypeValues = STAGE_TYPES.map((s) => s.value) as [StageType, ...StageType[]];
-const statusValues = PROGRAM_STATUSES.map((s) => s.value) as [
-  ProgramStatus,
-  ...ProgramStatus[],
-];
 
 /**
  * Shared by the create/edit dialog's zodResolver and the Server Action's
- * re-validation. `status` is required here (no .default()) — a Zod default makes the
- * resolver's input/output types diverge, which breaks react-hook-form's Resolver
- * typing. The create dialog doesn't render a status field, but its form still submits
- * "draft" for it via useForm's defaultValues (see ProgramFormDialog's emptyDefaults).
+ * re-validation. No `status` field here on purpose (Phase 17): status is fully
+ * system-managed by the fixture/scoring pipeline (draft -> upcoming on serial-number
+ * assignment -> scoring on fixture start -> completed on full scoring -> published on
+ * admin publish) — a free-form status editor here could skip stages or clobber
+ * whatever the pipeline just set.
  */
 export const programSchema = z.object({
   name: z.string().min(1, "Name is required.").max(200),
   stage_type: z.enum(stageTypeValues, { error: "Select a stage type." }),
   category: z.enum(categoryValues, { error: "Select a category." }),
-  status: z.enum(statusValues, { error: "Select a status." }),
+  /** Named scoring types (e.g. "Voice", "Performance"), each judged 0-10 — empty means
+   * a single implicit 0-10 score (constants/scoring.ts). Wrapped in `{ name }` objects,
+   * not a plain string[], so the form's useFieldArray has a stable key per row. */
+  criteriaNames: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Scoring type name can't be empty.").max(60),
+      }),
+    )
+    .max(10, "Up to 10 scoring types."),
 });
 
 export type ProgramInput = z.infer<typeof programSchema>;

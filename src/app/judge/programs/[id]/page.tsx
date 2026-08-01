@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProgram } from "@/lib/services/program.service";
 import { listScorableStudents } from "@/lib/services/scoring.service";
+import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
@@ -38,7 +39,10 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
     notFound();
   }
 
-  const students = await listScorableStudents(id);
+  const [students, criteria] = await Promise.all([
+    listScorableStudents(id),
+    listScoringCriteria(id),
+  ]);
   const canEdit = program.status === "scoring";
 
   return (
@@ -70,7 +74,12 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
           description="An admin hasn't assigned any students to this program."
         />
       ) : (
-        <ScoringForm programId={id} students={students} canEdit={canEdit} />
+        <ScoringForm
+          programId={id}
+          students={students}
+          criteria={criteria}
+          canEdit={canEdit}
+        />
       )}
     </div>
   );

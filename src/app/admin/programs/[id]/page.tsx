@@ -16,6 +16,7 @@ import { JudgeRosterTable } from "@/features/programs/components/JudgeRosterTabl
 import { AssignJudgeDialog } from "@/features/programs/components/AssignJudgeDialog";
 import { ResultsPanel } from "@/features/programs/components/ResultsPanel";
 import { listResults } from "@/lib/services/result.service";
+import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
@@ -42,14 +43,21 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     notFound();
   }
 
-  const [assignedStudents, assignableStudents, assignedJudges, assignableJudges, results] =
-    await Promise.all([
-      listAssignedStudents(id),
-      listAssignableStudents(id),
-      listAssignedJudges(id),
-      listAssignableJudges(id),
-      listResults(id),
-    ]);
+  const [
+    assignedStudents,
+    assignableStudents,
+    assignedJudges,
+    assignableJudges,
+    results,
+    criteria,
+  ] = await Promise.all([
+    listAssignedStudents(id),
+    listAssignableStudents(id),
+    listAssignedJudges(id),
+    listAssignableJudges(id),
+    listResults(id),
+    listScoringCriteria(id),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,7 +105,12 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
         <JudgeRosterTable programId={id} judges={assignedJudges} />
       </div>
 
-      <ResultsPanel programId={id} status={program.status} results={results} />
+      <ResultsPanel
+        programId={id}
+        status={program.status}
+        results={results}
+        criteria={criteria}
+      />
     </div>
   );
 }

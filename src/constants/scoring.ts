@@ -3,25 +3,34 @@
  *
  * Source: docs/project.md §Score Submission, §Group Leaderboard
  *         docs/decisions.md D-004 (tie handling)
- *
- * `project.md` notes these point values "should be configurable later". When the admin
- * settings module arrives, these become defaults seeded into a settings table rather than
- * literals — which is precisely why they are named here instead of scattered as magic
- * numbers through the scoring service.
  */
 
-/** Judges submit a single total score in this inclusive range. */
-export const SCORE_MIN = 0;
-export const SCORE_MAX = 100;
+/**
+ * Each scoring type (criterion) a judge fills in is bounded to this inclusive range —
+ * see supabase/migrations/20260801000000_program_scoring_criteria.sql. A program's
+ * total is the sum across however many criteria it has (or a single implicit one if
+ * none are configured), so there's no fixed total max anymore; use
+ * getMaxTotalScore() for that.
+ */
+export const CRITERION_SCORE_MIN = 0;
+export const CRITERION_SCORE_MAX = 10;
+
+/** A program with zero configured scoring types still gets one implicit 0–10 score. */
+export function getMaxTotalScore(criteriaCount: number): number {
+  return (criteriaCount || 1) * CRITERION_SCORE_MAX;
+}
 
 /**
- * Points awarded to a student's main group for a podium finish.
+ * Default points awarded to a student's main group for a podium finish — seeded into
+ * the `score_settings` table (see the 20260731140000 migration) and used as a fallback
+ * if that row is ever missing. The admin's Settings page is the actual source of truth
+ * at runtime; see scoreSettings.service.ts.
  *
  * Per decisions.md D-004, tied students each receive the FULL points for their shared
  * position, so a program's total payout is not fixed — a three-way tie for first awards
  * 15 points from a single program. That is intended.
  */
-export const POSITION_POINTS = {
+export const DEFAULT_POSITION_POINTS = {
   1: 5,
   2: 3,
   3: 1,
@@ -30,10 +39,10 @@ export const POSITION_POINTS = {
 /** Positions outside the podium contribute nothing to the group leaderboard. */
 export const POINTS_FOR_UNPLACED = 0;
 
-/** Positions that earn points. Derived, so it can never drift from POSITION_POINTS. */
-export const SCORING_POSITIONS = Object.keys(POSITION_POINTS).map(Number);
+/** Positions that earn points. Derived, so it can never drift from DEFAULT_POSITION_POINTS. */
+export const SCORING_POSITIONS = Object.keys(DEFAULT_POSITION_POINTS).map(Number);
 
-export type ScoringPosition = keyof typeof POSITION_POINTS;
+export type ScoringPosition = keyof typeof DEFAULT_POSITION_POINTS;
 
 /**
  * Note: the position → points *lookup* is a business rule and belongs in

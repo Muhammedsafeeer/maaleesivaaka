@@ -36,26 +36,22 @@ export const GENDERS = [
 export type Gender = (typeof GENDERS)[number]["value"];
 
 /**
- * Program status lifecycle — PROVISIONAL.
+ * Program status lifecycle.
  *
- * No document in /docs enumerates these values, yet the audience view needs a "current
- * program" and the anonymous RLS policy needs a "published" concept
- * (docs/decisions.md D-003, and docs/decisions.md open items).
- *
- * This is the proposed set, to be CONFIRMED when the `programs` table is designed in
- * Phase 5. Do not build UI that depends on these until they are confirmed.
+ * Confirmed at Phase 5 design time (docs/decisions.md D-003) and simplified at Phase 17:
+ * 'ongoing' was dropped (see the 20260731120000 migration) — starting a program from the
+ * Fixture page has always gone straight to 'scoring', so 'ongoing' was never reachable
+ * and only cluttered the admin's manual status-override control.
  *
  *   draft     - created, not yet scheduled
  *   upcoming  - scheduled, not yet started
- *   ongoing   - currently being performed
- *   scoring   - performance done, judges are submitting
+ *   scoring   - on stage / with judges now; performance and scoring are one admin-facing step
  *   completed - all assigned judges scored; results calculated but NOT public
  *   published - admin released the results; anonymous audience can now read them
  */
 export const PROGRAM_STATUSES = [
   { value: "draft", label: "Draft" },
   { value: "upcoming", label: "Upcoming" },
-  { value: "ongoing", label: "Ongoing" },
   { value: "scoring", label: "Scoring" },
   { value: "completed", label: "Completed" },
   { value: "published", label: "Published" },

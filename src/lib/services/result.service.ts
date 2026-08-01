@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { rankResults, type StudentAverage } from "@/lib/services/scoring.service";
+import { getScoreSettings } from "@/lib/services/scoreSettings.service";
 import type { Database } from "@/types/database.types";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
@@ -38,11 +39,28 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
   }
 
   const totalsByStudent = new Map<string, { sum: number; count: number }>();
+  // Per student, per criterion — only populated for programs with configured scoring
+  // types (D-004's pure rankResults() stays total-only; this rides along separately).
+  const criteriaByStudent = new Map<string, Map<string, { sum: number; count: number }>>();
+
   for (const row of scores) {
     const entry = totalsByStudent.get(row.student_id) ?? { sum: 0, count: 0 };
     entry.sum += row.score;
     entry.count += 1;
     totalsByStudent.set(row.student_id, entry);
+
+    const criteriaScores =
+      (row.criteria_scores as { criterion_id: string; score: number }[] | null) ?? [];
+    if (criteriaScores.length > 0) {
+      const acc = criteriaByStudent.get(row.student_id) ?? new Map();
+      for (const cs of criteriaScores) {
+        const c = acc.get(cs.criterion_id) ?? { sum: 0, count: 0 };
+        c.sum += cs.score;
+        c.count += 1;
+        acc.set(cs.criterion_id, c);
+      }
+      criteriaByStudent.set(row.student_id, acc);
+    }
   }
 
   const averages: StudentAverage[] = Array.from(totalsByStudent.entries()).map(
@@ -52,11 +70,27 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
     }),
   );
 
-  const ranked = rankResults(averages);
+  const settings = await getScoreSettings();
+  const ranked = rankResults(averages, {
+    1: settings.firstPlacePoints,
+    2: settings.secondPlacePoints,
+    3: settings.thirdPlacePoints,
+  });
+
+  const rankedWithBreakdown = ranked.map((result) => {
+    const acc = criteriaByStudent.get(result.student_id);
+    const criteria_averages = acc
+      ? Array.from(acc.entries()).map(([criterion_id, { sum, count }]) => ({
+          criterion_id,
+          average: Math.round((sum / count) * 100) / 100,
+        }))
+      : [];
+    return { ...result, criteria_averages };
+  });
 
   const { error: finalizeError } = await supabase.rpc("finalize_program_results", {
     p_program_id: programId,
-    p_results: ranked,
+    p_results: rankedWithBreakdown,
   });
 
   if (finalizeError) {

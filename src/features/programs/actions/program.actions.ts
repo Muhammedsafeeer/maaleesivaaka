@@ -7,6 +7,12 @@ import {
   updateProgram,
   deleteProgram,
 } from "@/lib/services/program.service";
+import {
+  listScoringCriteria,
+  replaceScoringCriteria,
+  hasSubmittedScores,
+  type ScoringCriterion,
+} from "@/lib/services/scoringCriteria.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 
 export type ProgramActionResult = { error: string } | { error?: undefined };
@@ -22,8 +28,20 @@ export async function createProgramAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await createProgram(parsed.data);
+  const { criteriaNames, ...programInput } = parsed.data;
+  const result = await createProgram(programInput);
   if (!result.success) return { error: result.error };
+
+  // Best-effort secondary step, same shape as finalizeIfComplete after a score
+  // submission — the program itself already saved, which is the primary thing the
+  // admin asked for.
+  const criteriaResult = await replaceScoringCriteria(
+    result.data.id,
+    criteriaNames.map((c) => c.name),
+  );
+  if (!criteriaResult.success) {
+    console.error("replaceScoringCriteria failed after program creation:", criteriaResult.error);
+  }
 
   revalidatePath("/admin/programs");
   return {};
@@ -41,11 +59,42 @@ export async function updateProgramAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await updateProgram(id, parsed.data);
+  const { criteriaNames, ...programInput } = parsed.data;
+  const result = await updateProgram(id, programInput);
   if (!result.success) return { error: result.error };
+
+  // Only attempt this once no judge has scored the program yet — the dialog already
+  // renders the section read-only past that point and resubmits the same unchanged
+  // list, so skipping here (rather than calling replaceScoringCriteria and hitting its
+  // lock guard) avoids turning an unrelated edit, like the name, into a false error.
+  // Keyed off actual scores, not status: fixture.service.ts's overrideProgramStatus can
+  // revert status to draft/upcoming without touching judge_scores.
+  if (!(await hasSubmittedScores(id))) {
+    const criteriaResult = await replaceScoringCriteria(
+      id,
+      criteriaNames.map((c) => c.name),
+    );
+    if (!criteriaResult.success) {
+      return { error: criteriaResult.error };
+    }
+  }
 
   revalidatePath("/admin/programs");
   return {};
+}
+
+export async function getScoringCriteriaAction(
+  programId: string,
+): Promise<{ data: ScoringCriterion[]; locked: boolean }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { data: [], locked: true };
+
+  const [data, locked] = await Promise.all([
+    listScoringCriteria(programId),
+    hasSubmittedScores(programId),
+  ]);
+
+  return { data, locked };
 }
 
 export async function deleteProgramAction(id: string): Promise<ProgramActionResult> {

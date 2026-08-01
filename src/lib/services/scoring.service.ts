@@ -1,7 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
+import { verifyAdminPassword } from "@/lib/services/auth.service";
 import type { Student } from "@/types/student";
 import type { Program } from "@/types/program";
-import { POSITION_POINTS, POINTS_FOR_UNPLACED, type ScoringPosition } from "@/constants/scoring";
+import {
+  DEFAULT_POSITION_POINTS,
+  POINTS_FOR_UNPLACED,
+  type ScoringPosition,
+} from "@/constants/scoring";
+
+/** Sentinel error returned by submitScores when a submission would change an
+ * already-saved score and no (or no valid) admin override was supplied — scoring.actions.ts
+ * matches on this to tell the client to show the override prompt instead of a plain toast. */
+export const ADMIN_OVERRIDE_REQUIRED = "ADMIN_OVERRIDE_REQUIRED";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -79,7 +89,12 @@ export async function listAssignedPrograms(): Promise<AssignedProgramSummary[]> 
   }));
 }
 
-export type ScorableStudent = Student & { score: number | null };
+export type CriterionScore = { criterion_id: string; score: number };
+
+export type ScorableStudent = Student & {
+  score: number | null;
+  criteriaScores: CriterionScore[];
+};
 
 /** Students assigned to a program, each with this judge's own existing score (null if
  * not yet scored). RLS already scopes both queries to rows this judge may see. */
@@ -108,29 +123,48 @@ export async function listScorableStudents(programId: string): Promise<ScorableS
 
   const { data: scores } = await supabase
     .from("judge_scores")
-    .select("student_id, score")
+    .select("student_id, score, criteria_scores")
     .eq("program_id", programId)
     .eq("judge_id", user.id);
 
-  const scoreByStudent = new Map((scores ?? []).map((row) => [row.student_id, row.score]));
+  const scoreByStudent = new Map((scores ?? []).map((row) => [row.student_id, row]));
 
-  return students.map((student) => ({
-    ...student,
-    score: scoreByStudent.get(student.id) ?? null,
-  }));
+  return students.map((student) => {
+    const row = scoreByStudent.get(student.id);
+    return {
+      ...student,
+      score: row?.score ?? null,
+      criteriaScores: (row?.criteria_scores as CriterionScore[] | null) ?? [],
+    };
+  });
 }
 
-export type ScoreInput = { student_id: string; score: number };
+export type ScoreInput = {
+  student_id: string;
+  score: number;
+  /** Present for programs with configured scoring types; submitScores recomputes
+   * `score` from these rather than trusting the client's sum. */
+  criteria_scores?: CriterionScore[];
+};
+
+export type AdminOverride = { password: string };
 
 /**
  * Bulk upsert on the (program_id, student_id, judge_id) unique constraint (Phase 5) —
  * one statement, atomic, matches the RLS insert/update policies exactly (Phase 7).
  * Partial submissions are expected: a judge may score a few students, save, and finish
  * the rest later, so `scores` only needs to contain the rows actually being set.
+ *
+ * Changing a score that was already saved (as opposed to setting one for the first
+ * time) requires a verified `adminOverride`, even while the program is still
+ * 'scoring' — a judge shouldn't be able to unilaterally revise a submitted score
+ * without an admin present to authorize it. Determined from the DB's current state,
+ * not a client-sent flag, so a stale or hand-crafted request can't skip the check.
  */
 export async function submitScores(
   programId: string,
   scores: ScoreInput[],
+  adminOverride?: AdminOverride,
 ): Promise<ServiceResult<null>> {
   const supabase = await createClient();
   const {
@@ -158,12 +192,85 @@ export async function submitScores(
     return { success: false, error: "Scoring isn't open for this program right now." };
   }
 
-  const rows = scores.map((s) => ({
-    program_id: programId,
-    student_id: s.student_id,
-    judge_id: user.id,
-    score: s.score,
-  }));
+  // Defense in depth (mirrors the status re-check above): don't trust a
+  // client-computed total. When the program has scoring types, recompute `score` as
+  // the sum of the submitted criteria and require the submitted criterion ids to
+  // exactly match the program's current set — catches both a stale client (rubric
+  // changed since the page loaded) and a hand-crafted request.
+  const { data: criteria } = await supabase
+    .from("scoring_criteria")
+    .select("id")
+    .eq("program_id", programId);
+
+  const validCriterionIds = new Set((criteria ?? []).map((c) => c.id));
+
+  const rows: {
+    program_id: string;
+    student_id: string;
+    judge_id: string;
+    score: number;
+    criteria_scores: CriterionScore[];
+  }[] = [];
+
+  for (const s of scores) {
+    if (validCriterionIds.size > 0) {
+      const submitted = s.criteria_scores ?? [];
+      const submittedIds = submitted.map((cs) => cs.criterion_id);
+      const idsMatch =
+        submittedIds.length === validCriterionIds.size &&
+        submittedIds.every((id) => validCriterionIds.has(id));
+
+      if (!idsMatch) {
+        return {
+          success: false,
+          error: "Scoring types have changed — please refresh and try again.",
+        };
+      }
+
+      rows.push({
+        program_id: programId,
+        student_id: s.student_id,
+        judge_id: user.id,
+        score: submitted.reduce((sum, cs) => sum + cs.score, 0),
+        criteria_scores: submitted,
+      });
+    } else {
+      rows.push({
+        program_id: programId,
+        student_id: s.student_id,
+        judge_id: user.id,
+        score: s.score,
+        criteria_scores: [],
+      });
+    }
+  }
+
+  // Re-editing a score this judge already saved for a student requires a verified
+  // admin. "Already saved" is read fresh from the DB here, not inferred from anything
+  // the client sent, so it can't be bypassed by a stale page or a hand-crafted call.
+  const { data: existingRows } = await supabase
+    .from("judge_scores")
+    .select("student_id, score")
+    .eq("program_id", programId)
+    .eq("judge_id", user.id)
+    .in(
+      "student_id",
+      rows.map((r) => r.student_id),
+    );
+
+  const existingScoreByStudent = new Map((existingRows ?? []).map((r) => [r.student_id, r.score]));
+
+  const changesExistingScore = rows.some((row) => {
+    const existing = existingScoreByStudent.get(row.student_id);
+    return existing !== undefined && existing !== row.score;
+  });
+
+  if (changesExistingScore) {
+    const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
+    if (!authorized) {
+      return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
+    }
+  }
 
   const { error } = await supabase
     .from("judge_scores")
@@ -190,8 +297,14 @@ export type RankedResult = {
  * students share a position and each get that position's full points; the following
  * position is skipped (docs/decisions.md D-004's worked example: 95/95/88/80 →
  * 1st/1st/3rd/4th, 2nd skipped).
+ *
+ * `pointsByPosition` defaults to DEFAULT_POSITION_POINTS so existing callers and tests
+ * are unaffected; result.service.ts passes the admin's current score_settings instead.
  */
-export function rankResults(averages: StudentAverage[]): RankedResult[] {
+export function rankResults(
+  averages: StudentAverage[],
+  pointsByPosition: Record<ScoringPosition, number> = DEFAULT_POSITION_POINTS,
+): RankedResult[] {
   const sorted = [...averages].sort((a, b) => b.average_score - a.average_score);
 
   const results: RankedResult[] = [];
@@ -206,7 +319,7 @@ export function rankResults(averages: StudentAverage[]): RankedResult[] {
       previousScore = entry.average_score;
     }
 
-    const points = POSITION_POINTS[position as ScoringPosition] ?? POINTS_FOR_UNPLACED;
+    const points = pointsByPosition[position as ScoringPosition] ?? POINTS_FOR_UNPLACED;
     results.push({ student_id: entry.student_id, average_score: entry.average_score, position, points });
   }
 

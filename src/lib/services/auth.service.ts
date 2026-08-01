@@ -1,6 +1,8 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 import type { Profile } from "@/types/profile";
 import { LOGIN_ROUTE, type Role } from "@/constants/roles";
 
@@ -110,4 +112,72 @@ export async function assertJudge(): Promise<AuthorizationResult> {
   }
 
   return { ok: true };
+}
+
+/**
+ * Admin emails to try a password against for verifyAdminPassword() below. Uses the
+ * service role key — a judge's own RLS-scoped session can only read its own profiles
+ * row, not other admins' emails — but only to read `role`/`email`, never anything
+ * sensitive, and the key itself never leaves this server-only module.
+ */
+async function listAdminEmails(): Promise<string[]> {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return [];
+  }
+
+  try {
+    const client = createSupabaseClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    const { data } = await client.from("profiles").select("email").eq("role", "admin");
+    return (data ?? []).map((row) => row.email);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Verifies a password belongs to *some* admin, WITHOUT touching the caller's own
+ * session — used by scoring.service.ts to gate a judge re-editing an already-submitted
+ * score. Only a password is asked for (not which admin), so this tries it against each
+ * admin account in turn.
+ *
+ * Each attempt uses a fresh, standalone client (raw @supabase/supabase-js, not
+ * lib/supabase/server's cookie-bound one) with persistSession/autoRefreshToken off, so
+ * signing in here never writes cookies or otherwise touches the judge's actual
+ * signed-in session. Deliberately does NOT call signOut() afterwards: persistSession
+ * false means nothing was ever stored locally to clean up, and signOut()'s default
+ * 'global' scope would revoke that admin's refresh token everywhere — including a
+ * session they're actively using elsewhere — for no benefit. Every Supabase call is
+ * wrapped so a transient failure (network hiccup, rate limit) resolves to "not
+ * verified" instead of throwing out of a Server Action.
+ */
+export async function verifyAdminPassword(password: string): Promise<boolean> {
+  if (!password) {
+    return false;
+  }
+
+  const adminEmails = await listAdminEmails();
+
+  for (const email of adminEmails) {
+    try {
+      const client = createSupabaseClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } },
+      );
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (!error && data.user) {
+        return true;
+      }
+    } catch {
+      // Keep trying the remaining admins rather than letting one bad attempt fail
+      // the whole check.
+    }
+  }
+
+  return false;
 }

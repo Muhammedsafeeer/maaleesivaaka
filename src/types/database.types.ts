@@ -41,6 +41,7 @@ export type Database = {
     Tables: {
       judge_scores: {
         Row: {
+          criteria_scores: Json
           id: string
           judge_id: string
           program_id: string
@@ -50,6 +51,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          criteria_scores?: Json
           id?: string
           judge_id: string
           program_id: string
@@ -59,6 +61,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          criteria_scores?: Json
           id?: string
           judge_id?: string
           program_id?: string
@@ -226,6 +229,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          serial_number: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           status: Database["public"]["Enums"]["program_status"]
           updated_at: string
@@ -235,6 +239,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          serial_number?: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           status?: Database["public"]["Enums"]["program_status"]
           updated_at?: string
@@ -244,6 +249,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          serial_number?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           status?: Database["public"]["Enums"]["program_status"]
           updated_at?: string
@@ -254,6 +260,7 @@ export type Database = {
         Row: {
           average_score: number
           created_at: string
+          criteria_averages: Json
           id: string
           points: number
           position: number
@@ -264,6 +271,7 @@ export type Database = {
         Insert: {
           average_score: number
           created_at?: string
+          criteria_averages?: Json
           id?: string
           points?: number
           position: number
@@ -274,6 +282,7 @@ export type Database = {
         Update: {
           average_score?: number
           created_at?: string
+          criteria_averages?: Json
           id?: string
           points?: number
           position?: number
@@ -297,6 +306,68 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scoring_criteria: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          program_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          program_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          program_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoring_criteria_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      score_settings: {
+        Row: {
+          created_at: string
+          first_place_points: number
+          id: number
+          second_place_points: number
+          third_place_points: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          first_place_points?: number
+          id?: number
+          second_place_points?: number
+          third_place_points?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          first_place_points?: number
+          id?: number
+          second_place_points?: number
+          third_place_points?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       students: {
         Row: {
@@ -373,6 +444,7 @@ export type Database = {
       get_program_scores: {
         Args: { p_program_id: string }
         Returns: {
+          criteria_scores: Json
           score: number
           student_id: string
         }[]
@@ -398,7 +470,6 @@ export type Database = {
       program_status:
         | "draft"
         | "upcoming"
-        | "ongoing"
         | "scoring"
         | "completed"
         | "published"
@@ -539,7 +610,6 @@ export const Constants = {
       program_status: [
         "draft",
         "upcoming",
-        "ongoing",
         "scoring",
         "completed",
         "published",

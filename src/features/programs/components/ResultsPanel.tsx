@@ -18,18 +18,22 @@ import {
   publishProgramAction,
 } from "@/features/programs/actions/result.actions";
 import type { listResults } from "@/lib/services/result.service";
+import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
 import type { ProgramStatus } from "@/constants/programs";
 
 type ResultRow = Awaited<ReturnType<typeof listResults>>[number];
+type CriterionAverage = { criterion_id: string; average: number };
 
 export function ResultsPanel({
   programId,
   status,
   results,
+  criteria,
 }: {
   programId: string;
   status: ProgramStatus;
   results: ResultRow[];
+  criteria: ScoringCriterion[];
 }) {
   const [isRecalculating, startRecalculate] = useTransition();
   const [isPublishing, startPublish] = useTransition();
@@ -99,28 +103,45 @@ export function ResultsPanel({
             <TableRow>
               <TableHead>Position</TableHead>
               <TableHead>Student</TableHead>
+              {criteria.map((criterion) => (
+                <TableHead key={criterion.id} className="text-right">
+                  {criterion.name}
+                </TableHead>
+              ))}
               <TableHead>Average</TableHead>
               <TableHead>Points</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {results.map((result) => (
-              <TableRow key={result.id}>
-                <TableCell>
-                  <Badge variant={result.position <= 3 ? "default" : "outline"}>
-                    {result.position}
-                  </Badge>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {result.students?.name ?? "—"}{" "}
-                  <span className="text-muted-foreground">
-                    ({result.students?.roll_number ?? "—"})
-                  </span>
-                </TableCell>
-                <TableCell className="tabular-nums">{result.average_score}</TableCell>
-                <TableCell className="tabular-nums">{result.points}</TableCell>
-              </TableRow>
-            ))}
+            {results.map((result) => {
+              const criteriaAverages = (result.criteria_averages as CriterionAverage[] | null) ?? [];
+              const averageByCriterion = new Map(
+                criteriaAverages.map((c) => [c.criterion_id, c.average]),
+              );
+
+              return (
+                <TableRow key={result.id}>
+                  <TableCell>
+                    <Badge variant={result.position <= 3 ? "default" : "outline"}>
+                      {result.position}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {result.students?.name ?? "—"}{" "}
+                    <span className="text-muted-foreground">
+                      ({result.students?.roll_number ?? "—"})
+                    </span>
+                  </TableCell>
+                  {criteria.map((criterion) => (
+                    <TableCell key={criterion.id} className="text-right tabular-nums">
+                      {averageByCriterion.get(criterion.id) ?? "—"}
+                    </TableCell>
+                  ))}
+                  <TableCell className="tabular-nums">{result.average_score}</TableCell>
+                  <TableCell className="tabular-nums">{result.points}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}

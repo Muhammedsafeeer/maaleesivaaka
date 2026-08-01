@@ -39,7 +39,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     supabase
       .from("programs")
       .select("*", { count: "exact", head: true })
-      .in("status", ["draft", "upcoming", "ongoing", "scoring"]),
+      .in("status", ["draft", "upcoming", "scoring"]),
     listGroupLeaderboard(5),
   ]);
 

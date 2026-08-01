@@ -2,15 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { submitScoresSchema, type SubmitScoresInput } from "@/features/scoring/validation/score.schema";
-import { submitScores } from "@/lib/services/scoring.service";
+import { submitScores, ADMIN_OVERRIDE_REQUIRED, type AdminOverride } from "@/lib/services/scoring.service";
 import { finalizeIfComplete } from "@/lib/services/result.service";
 import { assertJudge } from "@/lib/services/auth.service";
 
-export type ScoringActionResult = { error: string } | { error?: undefined };
+export type ScoringActionResult =
+  | { error: string; requiresAdminOverride?: boolean }
+  | { error?: undefined };
 
 export async function submitScoresAction(
   programId: string,
   input: SubmitScoresInput,
+  adminOverride?: AdminOverride,
 ): Promise<ScoringActionResult> {
   const auth = await assertJudge();
   if (!auth.ok) return { error: auth.error };
@@ -20,8 +23,18 @@ export async function submitScoresAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await submitScores(programId, parsed.data.scores);
-  if (!result.success) return { error: result.error };
+  const result = await submitScores(programId, parsed.data.scores, adminOverride);
+  if (!result.success) {
+    if (result.error === ADMIN_OVERRIDE_REQUIRED) {
+      return {
+        error: adminOverride
+          ? "Incorrect admin password."
+          : "This changes an already-submitted score — an admin must authorize the change.",
+        requiresAdminOverride: true,
+      };
+    }
+    return { error: result.error };
+  }
 
   // D-003: check whether this submission was the one that completed the program, and
   // if so calculate + write results. Best-effort — the score itself already saved
