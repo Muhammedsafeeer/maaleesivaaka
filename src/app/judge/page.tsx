@@ -3,6 +3,8 @@ import { listAssignedPrograms } from "@/lib/services/scoring.service";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { JudgeProgramCard } from "@/features/scoring/components/JudgeProgramCard";
+import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
+import { RealtimeProgramJudgesListener } from "@/components/dashboard/RealtimeProgramJudgesListener";
 
 export const metadata: Metadata = {
   title: "Judge Dashboard",
@@ -20,6 +22,9 @@ export default async function JudgeDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RealtimeProgramsListener />
+      <RealtimeProgramJudgesListener />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Assigned Programs" value={programs.length} />
         <StatCard label="Pending" value={pending.length} />

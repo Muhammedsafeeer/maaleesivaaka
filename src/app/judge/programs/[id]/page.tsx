@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { ScoringForm } from "@/features/scoring/components/ScoringForm";
+import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
+import { RealtimeProgramJudgesListener } from "@/components/dashboard/RealtimeProgramJudgesListener";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
@@ -47,6 +49,9 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
 
   return (
     <div className="flex flex-col gap-6">
+      <RealtimeProgramsListener />
+      <RealtimeProgramJudgesListener />
+
       <div>
         <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
           <Link href="/judge">← Dashboard</Link>

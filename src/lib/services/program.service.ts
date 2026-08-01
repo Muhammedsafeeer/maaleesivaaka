@@ -23,6 +23,10 @@ export async function listPrograms(filters: ProgramFilters = {}): Promise<Progra
   const { data, error } = await query;
 
   if (error) {
+    // D-015: without this, a real query/RLS failure here looks identical to "no
+    // programs match" to every caller (audience "Now Performing", admin list, ...) —
+    // logged so it's diagnosable from server logs instead of a silent empty result.
+    console.error("listPrograms failed:", error.message);
     return [];
   }
 

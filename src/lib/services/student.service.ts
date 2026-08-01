@@ -61,6 +61,12 @@ export async function createStudent(input: StudentInput): Promise<ServiceResult<
     .single();
 
   if (error) {
+    // errcode 23505 (unique_violation) is the students_roll_number_key constraint
+    // (20260803000000_students_roll_number_unique.sql) — same "translate the DB's raw
+    // error into a friendly one" reasoning as assignment.service.ts's 23514 check.
+    if (error.code === "23505") {
+      return { success: false, error: "That roll number is already in use." };
+    }
     return { success: false, error: "Could not create the student. Please try again." };
   }
 
@@ -80,6 +86,9 @@ export async function updateStudent(
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "That roll number is already in use." };
+    }
     return { success: false, error: "Could not update the student. Please try again." };
   }
 

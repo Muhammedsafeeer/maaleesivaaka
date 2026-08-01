@@ -82,6 +82,10 @@ export function StudentFormDialog({
       : emptyDefaults,
   });
 
+  // `open` is in the deps, not just `student` — this dialog stays mounted between
+  // opens (CreateStudentButton toggles `open` rather than remounting), so without it
+  // the form only ever reset once at mount: creating student A, closing, and reopening
+  // to add student B left A's values still sitting in every field.
   useEffect(() => {
     reset(
       student
@@ -95,7 +99,7 @@ export function StudentFormDialog({
           }
         : emptyDefaults,
     );
-  }, [student, reset]);
+  }, [student, open, reset]);
 
   function onSubmit(values: StudentInput) {
     startTransition(async () => {
