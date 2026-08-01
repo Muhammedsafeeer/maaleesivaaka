@@ -171,3 +171,60 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Milad-un-Nabi audience theme (Phase 17) — scoped to `.audience-shell`
+ * (src/app/audience/layout.tsx), never applied globally. Matches the mosque's real
+ * event branding (confirmed with user): deep green ground, gold ornament, ivory data
+ * surfaces. Stacked with `.dark` in the layout to inherit the house/podium tokens above,
+ * already brightened for the same projector/TV audience this page targets.
+ */
+.audience-shell {
+  --stage-green-950: oklch(0.19 0.05 152);
+  --stage-green-900: oklch(0.24 0.06 152);
+  --stage-green-800: oklch(0.32 0.07 152);
+  --stage-gold: oklch(0.78 0.13 85);
+  --stage-gold-bright: oklch(0.88 0.14 92);
+  --stage-gold-dim: oklch(0.6 0.1 85);
+  --stage-ivory: oklch(0.97 0.02 85);
+  --stage-ink: oklch(0.26 0.03 152);
+
+  /* Re-point the shared shadcn tokens so unmodified Card/Badge/Button primitives pick
+     up the Milad-un-Nabi theme for free — most audience components need no rewrite. */
+  --background: var(--stage-green-950);
+  --foreground: var(--stage-ivory);
+  --card: var(--stage-ivory);
+  --card-foreground: var(--stage-ink);
+  --popover: var(--stage-ivory);
+  --popover-foreground: var(--stage-ink);
+  --primary: var(--stage-gold);
+  --primary-foreground: var(--stage-ink);
+  --border: var(--stage-gold-dim);
+  --muted: oklch(0.94 0.02 85);
+  --muted-foreground: oklch(0.45 0.03 152);
+
+  background: var(--stage-green-950);
+  color: var(--stage-ivory);
+}
+
+@keyframes lantern-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.lantern-glow {
+  animation: lantern-glow 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lantern-glow {
+    animation: none;
+  }
+}

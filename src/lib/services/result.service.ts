@@ -135,6 +135,7 @@ export type PublicResultRow = {
   programCategory: string;
   groupName: string;
   groupPhotoUrl: string | null;
+  updatedAt: string;
 };
 
 /**
@@ -174,6 +175,7 @@ export async function listLatestPublishedResults(limit = 10): Promise<PublicResu
         programCategory: row.programs.category,
         groupName: group.name,
         groupPhotoUrl: group.photo_url,
+        updatedAt: row.updated_at,
       },
     ];
   });
@@ -194,7 +196,7 @@ export async function listProgramWinners(): Promise<PublicResultRow[]> {
   const { data, error } = await supabase
     .from("results")
     .select(
-      "id, position, points, programs(name, category), students(main_groups(name, photo_url))",
+      "id, position, points, updated_at, programs(name, category), students(main_groups(name, photo_url))",
     )
     .eq("position", 1);
 
@@ -217,6 +219,7 @@ export async function listProgramWinners(): Promise<PublicResultRow[]> {
         programCategory: row.programs.category,
         groupName: group.name,
         groupPhotoUrl: group.photo_url,
+        updatedAt: row.updated_at,
       },
     ];
   });

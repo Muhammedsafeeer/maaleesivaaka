@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Program } from "@/types/program";
-import type { Category, StageType, ProgramStatus } from "@/constants/programs";
+import { CATEGORIES, type Category, type StageType, type ProgramStatus } from "@/constants/programs";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -31,6 +31,34 @@ export async function listPrograms(filters: ProgramFilters = {}): Promise<Progra
   }
 
   return data;
+}
+
+export type CategoryStatus = {
+  category: Category;
+  declared: number;
+  total: number;
+};
+
+/**
+ * Audience "Status of Festival" widget (Phase 17): declared (published) vs. total
+ * programs, per category. Excludes 'draft' programs from `total` — a draft is admin
+ * setup-in-progress, not a real commitment yet, so it shouldn't dent the audience-facing
+ * completion picture. Computed in JS from `listPrograms({})` rather than a new SQL
+ * view/RPC — the dataset is one school's programs, small enough that a single-pass
+ * reduce is simpler and more honest than adding DB machinery for it.
+ */
+export async function listCategoryStatus(): Promise<CategoryStatus[]> {
+  const programs = await listPrograms({});
+  const scheduled = programs.filter((p) => p.status !== "draft");
+
+  return CATEGORIES.map(({ value: category }) => {
+    const inCategory = scheduled.filter((p) => p.category === category);
+    return {
+      category,
+      declared: inCategory.filter((p) => p.status === "published").length,
+      total: inCategory.length,
+    };
+  });
 }
 
 export async function getProgram(id: string): Promise<Program | null> {
