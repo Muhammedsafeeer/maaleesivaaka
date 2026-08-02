@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { listStudents } from "@/lib/services/student.service";
 import { listGroups } from "@/lib/services/group.service";
-import { StudentsTable } from "@/features/students/components/StudentsTable";
+import { StudentsGrid } from "@/features/students/components/StudentsGrid";
 import { CreateStudentButton } from "@/features/students/components/CreateStudentButton";
 import { StudentFilters } from "@/features/students/components/StudentFilters";
 import type { Category } from "@/constants/programs";
@@ -40,7 +40,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
 
       <StudentFilters groups={groups} />
 
-      <StudentsTable students={students} groups={groups} />
+      <StudentsGrid students={students} groups={groups} />
     </div>
   );
 }

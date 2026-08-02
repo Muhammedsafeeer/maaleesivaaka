@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  GraduationCapIcon,
+  ListMusicIcon,
+  UsersIcon,
+  GavelIcon,
+  CheckCircle2Icon,
+  ClockIcon,
+} from "lucide-react";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
@@ -19,19 +27,51 @@ export default async function AdminDashboardPage() {
       <RealtimeLeaderboardListener />
       <div>
         <h1 className="font-heading text-xl font-medium">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">An overview of the festival.</p>
+        <p className="text-sm text-muted-foreground">
+          An overview of the festival. Click a card to jump into that section.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Students" value={stats.totalStudents} />
-        <StatCard label="Programs" value={stats.totalPrograms} />
-        <StatCard label="Groups" value={stats.totalGroups} />
-        <StatCard label="Judges" value={stats.totalJudges} />
-        <StatCard label="Completed" value={stats.completedPrograms} />
-        <StatCard label="Pending" value={stats.pendingPrograms} />
+        <StatCard
+          label="Students"
+          value={stats.totalStudents}
+          href="/admin/students"
+          icon={<GraduationCapIcon className="size-4" />}
+        />
+        <StatCard
+          label="Programs"
+          value={stats.totalPrograms}
+          href="/admin/programs"
+          icon={<ListMusicIcon className="size-4" />}
+        />
+        <StatCard
+          label="Groups"
+          value={stats.totalGroups}
+          href="/admin/groups"
+          icon={<UsersIcon className="size-4" />}
+        />
+        <StatCard
+          label="Judges"
+          value={stats.totalJudges}
+          href="/admin/judges"
+          icon={<GavelIcon className="size-4" />}
+        />
+        <StatCard
+          label="Completed"
+          value={stats.completedPrograms}
+          href="/admin/programs"
+          icon={<CheckCircle2Icon className="size-4" />}
+        />
+        <StatCard
+          label="Pending"
+          value={stats.pendingPrograms}
+          href="/admin/programs"
+          icon={<ClockIcon className="size-4" />}
+        />
       </div>
 
-      <Card>
+      <Card className="transition-shadow duration-200 hover:shadow-md">
         <CardHeader>
           <CardTitle>Leaderboard</CardTitle>
           <CardAction>
