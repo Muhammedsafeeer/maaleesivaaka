@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Gavel, Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -75,12 +75,19 @@ export function CreateJudgeDialog() {
         <Plus className="size-4" data-icon="inline-start" />
         Add judge
       </Button>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add judge</DialogTitle>
-          <DialogDescription>
-            Create a judge account with a password they can sign in with immediately.
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-house-yellow/20 text-house-yellow">
+              <Gavel className="size-5" />
+            </span>
+            <div>
+              <DialogTitle>Add judge</DialogTitle>
+              <DialogDescription>
+                Create a judge account with a password they can sign in with immediately.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { ListMusic, Plus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
+import { CATEGORIES, STAGE_TYPES } from "@/constants/programs";
 import {
   programSchema,
   type ProgramInput,
@@ -35,9 +35,8 @@ import {
   updateProgramAction,
   getScoringCriteriaAction,
 } from "@/features/programs/actions/program.actions";
+import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatusBadge";
 import type { Program } from "@/types/program";
-
-const statusLabels = Object.fromEntries(PROGRAM_STATUSES.map((s) => [s.value, s.label]));
 
 type ProgramFormDialogProps = {
   open: boolean;
@@ -132,14 +131,21 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit program" : "Add program"}</DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update this program's details."
-              : "New programs start as a draft."}
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-podium-gold/15 text-podium-gold">
+              <ListMusic className="size-5" />
+            </span>
+            <div>
+              <DialogTitle>{isEditing ? "Edit program" : "Add program"}</DialogTitle>
+              <DialogDescription>
+                {isEditing
+                  ? "Update this program's details."
+                  : "New programs start as a draft."}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
@@ -273,9 +279,7 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
             <div className="flex flex-col gap-2">
               <Label>Status</Label>
               <div>
-                <Badge variant={program.status === "published" ? "default" : "secondary"}>
-                  {statusLabels[program.status]}
-                </Badge>
+                <ProgramStatusBadge status={program.status} />
               </div>
               <p className="text-sm text-muted-foreground">
                 Managed automatically by the fixture and scoring workflow — assign a serial

@@ -4,6 +4,7 @@ import { useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Gavel } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -58,13 +59,20 @@ export function EditJudgeDialog({ open, onOpenChange, judge }: EditJudgeDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit judge</DialogTitle>
-          <DialogDescription>
-            Email and password can&apos;t be changed here — delete and recreate the
-            account if they need to change.
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-house-yellow/20 text-house-yellow">
+              <Gavel className="size-5" />
+            </span>
+            <div>
+              <DialogTitle>Edit judge</DialogTitle>
+              <DialogDescription>
+                Email and password can&apos;t be changed here — delete and recreate the
+                account if they need to change.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">

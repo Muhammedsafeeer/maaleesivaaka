@@ -2,15 +2,17 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { Radio } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatusBadge";
 import { startNextProgramAction } from "@/features/programs/actions/fixture.actions";
-import { CATEGORIES, PROGRAM_STATUSES, type StageType } from "@/constants/programs";
+import { CATEGORIES, type StageType } from "@/constants/programs";
+import { cn } from "@/lib/utils";
 import type { Program } from "@/types/program";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
-const statusLabels = Object.fromEntries(PROGRAM_STATUSES.map((s) => [s.value, s.label]));
 
 export function CurrentProgramCard({
   stageType,
@@ -35,22 +37,29 @@ export function CurrentProgramCard({
   }
 
   return (
-    <Card>
+    <Card className={cn(current && "ring-podium-gold/40")}>
       <CardHeader>
-        <CardTitle>Now on stage</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          {current ? (
+            <span className="flex size-6 items-center justify-center rounded-lg bg-podium-gold/15 text-podium-gold">
+              <Radio className="size-3.5 animate-pulse" />
+            </span>
+          ) : null}
+          Now on stage
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {current ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline gap-3">
-              <span className="font-heading text-3xl font-semibold tabular-nums">
+              <span className="font-heading text-3xl font-semibold tabular-nums text-podium-gold">
                 #{current.serial_number}
               </span>
               <span className="text-lg font-medium">{current.name}</span>
             </div>
             <div className="flex gap-2">
               <Badge variant="outline">{categoryLabels[current.category]}</Badge>
-              <Badge>{statusLabels[current.status]}</Badge>
+              <ProgramStatusBadge status={current.status} />
             </div>
           </div>
         ) : (

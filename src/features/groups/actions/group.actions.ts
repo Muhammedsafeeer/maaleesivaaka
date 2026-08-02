@@ -9,10 +9,18 @@ import {
   updateGroupPhoto,
 } from "@/lib/services/group.service";
 import { assertAdmin } from "@/lib/services/auth.service";
+import type { Group } from "@/types/group";
 
 export type GroupActionResult = { error: string } | { error?: undefined };
 
-export async function createGroupAction(input: GroupInput): Promise<GroupActionResult> {
+/** Unlike GroupActionResult, this hands the created row back — the create dialog
+ * needs the new id right away so it can unlock the photo-upload step in place
+ * instead of making the admin reopen the dialog in edit mode. */
+export type CreateGroupActionResult =
+  | { error: string; group?: undefined }
+  | { error?: undefined; group: Group };
+
+export async function createGroupAction(input: GroupInput): Promise<CreateGroupActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
@@ -25,7 +33,8 @@ export async function createGroupAction(input: GroupInput): Promise<GroupActionR
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/groups");
-  return {};
+  revalidatePath("/admin");
+  return { group: result.data };
 }
 
 export async function updateGroupAction(

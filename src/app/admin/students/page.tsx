@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GraduationCap } from "lucide-react";
 import { listStudents } from "@/lib/services/student.service";
 import { listGroups } from "@/lib/services/group.service";
 import { StudentsGrid } from "@/features/students/components/StudentsGrid";
@@ -28,12 +29,17 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-xl font-medium">Students</h1>
-          <p className="text-sm text-muted-foreground">
-            {students.length} {students.length === 1 ? "student" : "students"}.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-house-blue/15 text-house-blue">
+            <GraduationCap className="size-5" />
+          </span>
+          <div>
+            <h1 className="font-heading text-xl font-medium">Students</h1>
+            <p className="text-sm text-muted-foreground">
+              {students.length} {students.length === 1 ? "student" : "students"}.
+            </p>
+          </div>
         </div>
         <CreateStudentButton groups={groups} />
       </div>

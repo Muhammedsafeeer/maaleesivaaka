@@ -9,12 +9,20 @@ import {
   updateStudentPhoto,
 } from "@/lib/services/student.service";
 import { assertAdmin } from "@/lib/services/auth.service";
+import type { Student } from "@/types/student";
 
 export type StudentActionResult = { error: string } | { error?: undefined };
 
+/** Unlike StudentActionResult, this hands the created row back — the create dialog
+ * needs the new id right away so it can unlock the photo-upload step in place
+ * instead of making the admin reopen the dialog in edit mode. */
+export type CreateStudentActionResult =
+  | { error: string; student?: undefined }
+  | { error?: undefined; student: Student };
+
 export async function createStudentAction(
   input: StudentInput,
-): Promise<StudentActionResult> {
+): Promise<CreateStudentActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
@@ -27,7 +35,8 @@ export async function createStudentAction(
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/students");
-  return {};
+  revalidatePath("/admin");
+  return { student: result.data };
 }
 
 export async function updateStudentAction(

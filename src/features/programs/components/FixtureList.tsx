@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/tables/EmptyState";
+import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatusBadge";
 import {
   setProgramStatusAction,
   reorderUpcomingAction,
@@ -30,19 +31,12 @@ import { cn } from "@/lib/utils";
 import type { Program } from "@/types/program";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
-const statusLabels = Object.fromEntries(PROGRAM_STATUSES.map((s) => [s.value, s.label]));
 
 // 'published' is deliberately excluded — that transition stays behind the program
 // page's "Publish results" gate (requires calculated results), not this override.
 const overridableStatuses = PROGRAM_STATUSES.filter((s) => s.value !== "published");
 
 const CURRENT_STATUSES = ["scoring"];
-
-function statusVariant(status: Program["status"]): "default" | "secondary" | "outline" {
-  if (CURRENT_STATUSES.includes(status)) return "default";
-  if (status === "published") return "secondary";
-  return "outline";
-}
 
 function FixtureRow({
   program,
@@ -82,7 +76,7 @@ function FixtureRow({
       onDrop={draggable ? onDrop : undefined}
       onDragEnd={draggable ? onDragEnd : undefined}
       className={cn(
-        CURRENT_STATUSES.includes(program.status) && "bg-secondary/50",
+        CURRENT_STATUSES.includes(program.status) && "bg-podium-gold/10 hover:bg-podium-gold/15",
         isDragging && "opacity-40",
       )}
     >
@@ -109,7 +103,7 @@ function FixtureRow({
       </TableCell>
       <TableCell className="w-36">
         {program.status === "published" ? (
-          <Badge variant={statusVariant(program.status)}>{statusLabels.published}</Badge>
+          <ProgramStatusBadge status={program.status} />
         ) : (
           <Select
             value={program.status}
@@ -201,32 +195,34 @@ export function FixtureList({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Serial</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {order.map((program) => {
-          const draggable = program.status === "upcoming";
-          return (
-            <FixtureRow
-              key={program.id}
-              program={program}
-              draggable={draggable}
-              isDragging={draggedId === program.id}
-              onDragStart={() => setDraggedId(program.id)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => handleDrop(program.id)}
-              onDragEnd={() => setDraggedId(null)}
-            />
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Serial</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {order.map((program) => {
+            const draggable = program.status === "upcoming";
+            return (
+              <FixtureRow
+                key={program.id}
+                program={program}
+                draggable={draggable}
+                isDragging={draggedId === program.id}
+                onDragStart={() => setDraggedId(program.id)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => handleDrop(program.id)}
+                onDragEnd={() => setDraggedId(null)}
+              />
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
