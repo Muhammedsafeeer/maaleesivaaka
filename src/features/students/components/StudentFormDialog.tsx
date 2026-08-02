@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -25,7 +24,9 @@ import {
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { PhotoUpload } from "@/components/forms/PhotoUpload";
-import { CATEGORIES, GENDERS } from "@/constants/programs";
+import { PendingPhotoPicker } from "@/components/forms/PendingPhotoPicker";
+import { uploadPhoto } from "@/lib/services/storage.service";
+import { CATEGORIES, CLASSES, GENDERS } from "@/constants/programs";
 import {
   studentSchema,
   type StudentInput,
@@ -49,11 +50,17 @@ type StudentFormDialogProps = {
 const emptyDefaults: StudentInput = {
   roll_number: "",
   name: "",
-  class: "",
+  class: "1",
   gender: "male",
   category: "kids",
   group_id: "",
 };
+
+// students.class is a plain `text` column — a row saved before the dropdown existed
+// could hold anything. Falls back to "1" rather than a value the Select can't render.
+function toStudentClass(value: string): StudentInput["class"] {
+  return (CLASSES.some((c) => c.value === value) ? value : CLASSES[0].value) as StudentInput["class"];
+}
 
 export function StudentFormDialog({
   open,
@@ -63,18 +70,21 @@ export function StudentFormDialog({
 }: StudentFormDialogProps) {
   const isEditingExisting = student !== undefined;
   const [isPending, startTransition] = useTransition();
-  // A brand-new student unlocks its photo step in place, right after creation —
-  // no need to close the dialog and reopen it in edit mode just to attach a photo.
-  const [justCreated, setJustCreated] = useState<Student | null>(null);
+  // A photo is required when creating (not when editing — an existing student can
+  // keep their current photo). Held locally until the row exists, then uploaded and
+  // persisted as part of the same submit.
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoError, setPhotoError] = useState<string | undefined>(undefined);
   const [syncedOpen, setSyncedOpen] = useState(open);
 
-  // Clear the "just created" step whenever the dialog opens fresh — adjusted during
-  // render rather than in an Effect (React docs: "adjust state when a prop changes"),
-  // same pattern as FixtureList's syncedPrograms guard, to avoid an extra render pass.
+  // Clear local state whenever the dialog opens fresh — adjusted during render rather
+  // than in an Effect (React docs: "adjust state when a prop changes"), same pattern as
+  // FixtureList's syncedPrograms guard, to avoid an extra render pass.
   if (open !== syncedOpen) {
     setSyncedOpen(open);
     if (open) {
-      setJustCreated(null);
+      setPhotoFile(null);
+      setPhotoError(undefined);
     }
   }
 
@@ -90,7 +100,7 @@ export function StudentFormDialog({
       ? {
           roll_number: student.roll_number,
           name: student.name,
-          class: student.class,
+          class: toStudentClass(student.class),
           gender: student.gender,
           category: student.category,
           group_id: student.group_id,
@@ -109,7 +119,7 @@ export function StudentFormDialog({
           ? {
               roll_number: student.roll_number,
               name: student.name,
-              class: student.class,
+              class: toStudentClass(student.class),
               gender: student.gender,
               category: student.category,
               group_id: student.group_id,
@@ -120,6 +130,11 @@ export function StudentFormDialog({
   }, [student, open, reset]);
 
   function onSubmit(values: StudentInput) {
+    if (!isEditingExisting && !photoFile) {
+      setPhotoError("A photo is required.");
+      return;
+    }
+
     startTransition(async () => {
       if (isEditingExisting) {
         const result = await updateStudentAction(student.id, values);
@@ -132,14 +147,35 @@ export function StudentFormDialog({
         return;
       }
 
-      const result = await createStudentAction(values);
-      if (!result.student) {
-        toast.error(result.error);
+      const createResult = await createStudentAction(values);
+      if (!createResult.student) {
+        toast.error(createResult.error);
+        return;
+      }
+
+      const uploadResult = await uploadPhoto(
+        "student-photos",
+        createResult.student.id,
+        photoFile!,
+      );
+      if (!uploadResult.success) {
+        toast.error(`Student created, but the photo failed to upload: ${uploadResult.error}`);
+        onOpenChange(false);
+        return;
+      }
+
+      const persistResult = await updateStudentPhotoAction(
+        createResult.student.id,
+        uploadResult.data,
+      );
+      if (persistResult.error) {
+        toast.error(`Student created, but the photo failed to save: ${persistResult.error}`);
+        onOpenChange(false);
         return;
       }
 
       toast.success("Student created.");
-      setJustCreated(result.student);
+      onOpenChange(false);
     });
   }
 
@@ -152,181 +188,180 @@ export function StudentFormDialog({
               <GraduationCap className="size-5" />
             </span>
             <div>
-              <DialogTitle>
-                {isEditingExisting ? "Edit student" : justCreated ? "Add a photo" : "Add student"}
-              </DialogTitle>
+              <DialogTitle>{isEditingExisting ? "Edit student" : "Add student"}</DialogTitle>
               <DialogDescription>
                 {isEditingExisting
                   ? "Update this student's details."
-                  : justCreated
-                    ? `"${justCreated.name}" is registered. Give them a photo now, or add one later.`
-                    : "Register a new student and assign them to a group."}
+                  : "Register a new student and assign them to a group."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        {!justCreated ? (
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="student-roll-number">Roll number</Label>
-                <Input
-                  id="student-roll-number"
-                  autoComplete="off"
-                  aria-invalid={errors.roll_number ? true : undefined}
-                  {...register("roll_number")}
-                />
-                {errors.roll_number ? (
-                  <p role="alert" className="text-sm text-destructive">
-                    {errors.roll_number.message}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="student-class">Class</Label>
-                <Input
-                  id="student-class"
-                  autoComplete="off"
-                  aria-invalid={errors.class ? true : undefined}
-                  {...register("class")}
-                />
-                {errors.class ? (
-                  <p role="alert" className="text-sm text-destructive">
-                    {errors.class.message}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="student-name">Name</Label>
+              <Label htmlFor="student-roll-number">Roll number</Label>
               <Input
-                id="student-name"
+                id="student-roll-number"
                 autoComplete="off"
-                aria-invalid={errors.name ? true : undefined}
-                {...register("name")}
+                aria-invalid={errors.roll_number ? true : undefined}
+                {...register("roll_number")}
               />
-              {errors.name ? (
+              {errors.roll_number ? (
                 <p role="alert" className="text-sm text-destructive">
-                  {errors.name.message}
+                  {errors.roll_number.message}
                 </p>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="student-gender">Gender</Label>
-                <Controller
-                  control={control}
-                  name="gender"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="student-gender" aria-invalid={errors.gender ? true : undefined}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>
-                            {g.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="student-category">Category</Label>
-                <Controller
-                  control={control}
-                  name="category"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="student-category" aria-invalid={errors.category ? true : undefined}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Must be unique within the class.</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="student-group">Main group</Label>
+              <Label htmlFor="student-class">Class</Label>
               <Controller
                 control={control}
-                name="group_id"
+                name="class"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="student-group" aria-invalid={errors.group_id ? true : undefined}>
-                      <SelectValue placeholder="Select a group" />
+                    <SelectTrigger id="student-class" aria-invalid={errors.class ? true : undefined}>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {groups.map((group) => (
-                        <SelectItem key={group.id} value={group.id}>
-                          {group.name}
+                      {CLASSES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-              {errors.group_id ? (
+              {errors.class ? (
                 <p role="alert" className="text-sm text-destructive">
-                  {errors.group_id.message}
+                  {errors.class.message}
                 </p>
               ) : null}
             </div>
+          </div>
 
-            {isEditingExisting ? (
-              <div className="flex flex-col gap-2">
-                <Label>Photo</Label>
-                <PhotoUpload
-                  bucket="student-photos"
-                  entityId={student.id}
-                  currentUrl={student.photo_url}
-                  onPersist={(url) => updateStudentPhotoAction(student.id, url)}
-                  alt={`${student.name} photo`}
-                />
-              </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="student-name">Name</Label>
+            <Input
+              id="student-name"
+              autoComplete="off"
+              aria-invalid={errors.name ? true : undefined}
+              {...register("name")}
+            />
+            {errors.name ? (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.name.message}
+              </p>
             ) : null}
+          </div>
 
-            <DialogFooter>
-              <SubmitButton isPending={isPending} pendingText="Saving…">
-                {isEditingExisting ? "Save changes" : "Create student"}
-              </SubmitButton>
-            </DialogFooter>
-          </form>
-        ) : (
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label>Photo</Label>
-              <PhotoUpload
-                bucket="student-photos"
-                entityId={justCreated.id}
-                currentUrl={justCreated.photo_url}
-                onPersist={(url) => updateStudentPhotoAction(justCreated.id, url)}
-                alt={`${justCreated.name} photo`}
+              <Label htmlFor="student-gender">Gender</Label>
+              <Controller
+                control={control}
+                name="gender"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="student-gender" aria-invalid={errors.gender ? true : undefined}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDERS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
             </div>
 
-            <DialogFooter>
-              <Button type="button" onClick={() => onOpenChange(false)}>
-                Done
-              </Button>
-            </DialogFooter>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="student-category">Category</Label>
+              <Controller
+                control={control}
+                name="category"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="student-category" aria-invalid={errors.category ? true : undefined}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
           </div>
-        )}
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="student-group">Main group</Label>
+            <Controller
+              control={control}
+              name="group_id"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="student-group" aria-invalid={errors.group_id ? true : undefined}>
+                    <SelectValue placeholder="Select a group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.group_id ? (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.group_id.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Photo{isEditingExisting ? "" : " (required)"}</Label>
+            {isEditingExisting ? (
+              <PhotoUpload
+                bucket="student-photos"
+                entityId={student.id}
+                currentUrl={student.photo_url}
+                onPersist={(url) => updateStudentPhotoAction(student.id, url)}
+                alt={`${student.name} photo`}
+              />
+            ) : (
+              <PendingPhotoPicker
+                file={photoFile}
+                onChange={(file) => {
+                  setPhotoFile(file);
+                  if (file) setPhotoError(undefined);
+                }}
+                alt="New student photo"
+                error={photoError}
+              />
+            )}
+          </div>
+
+          <DialogFooter>
+            <SubmitButton isPending={isPending} pendingText="Saving…">
+              {isEditingExisting ? "Save changes" : "Create student"}
+            </SubmitButton>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -29,7 +29,7 @@ export async function uploadPhoto(
   }
 
   if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    return { success: false, error: "Photo must be 5 MB or smaller." };
+    return { success: false, error: "Photo must be 500 KB or smaller." };
   }
 
   const supabase = createClient();

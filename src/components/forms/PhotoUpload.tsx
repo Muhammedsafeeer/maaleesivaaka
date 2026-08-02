@@ -5,7 +5,8 @@ import { ImageIcon, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { uploadPhoto, removePhoto } from "@/lib/services/storage.service";
-import { ALLOWED_PHOTO_MIME_TYPES, type PhotoBucket } from "@/constants/storage";
+import { compressImageToLimit } from "@/lib/utils/compressImage";
+import { ALLOWED_PHOTO_MIME_TYPES, MAX_PHOTO_SIZE_BYTES, type PhotoBucket } from "@/constants/storage";
 
 type PhotoUploadProps = {
   bucket: PhotoBucket;
@@ -25,6 +26,7 @@ type PhotoUploadProps = {
  */
 export function PhotoUpload({ bucket, entityId, currentUrl, onPersist, alt }: PhotoUploadProps) {
   const [url, setUrl] = useState(currentUrl);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,22 +35,31 @@ export function PhotoUpload({ bucket, entityId, currentUrl, onPersist, alt }: Ph
     event.target.value = ""; // allow re-selecting the same file later
     if (!file) return;
 
-    startTransition(async () => {
-      const uploadResult = await uploadPhoto(bucket, entityId, file);
-      if (!uploadResult.success) {
-        toast.error(uploadResult.error);
-        return;
-      }
+    setIsCompressing(true);
+    compressImageToLimit(file, MAX_PHOTO_SIZE_BYTES)
+      .then((compressed) => {
+        setIsCompressing(false);
+        startTransition(async () => {
+          const uploadResult = await uploadPhoto(bucket, entityId, compressed);
+          if (!uploadResult.success) {
+            toast.error(uploadResult.error);
+            return;
+          }
 
-      const persistResult = await onPersist(uploadResult.data);
-      if (persistResult.error) {
-        toast.error(persistResult.error);
-        return;
-      }
+          const persistResult = await onPersist(uploadResult.data);
+          if (persistResult.error) {
+            toast.error(persistResult.error);
+            return;
+          }
 
-      setUrl(uploadResult.data);
-      toast.success("Photo saved.");
-    });
+          setUrl(uploadResult.data);
+          toast.success("Photo saved.");
+        });
+      })
+      .catch(() => {
+        setIsCompressing(false);
+        toast.error("Could not process that photo. Please try a different file.");
+      });
   }
 
   function handleRemove() {
@@ -97,18 +108,18 @@ export function PhotoUpload({ bucket, entityId, currentUrl, onPersist, alt }: Ph
             type="button"
             variant="outline"
             size="sm"
-            disabled={isPending}
+            disabled={isPending || isCompressing}
             onClick={() => inputRef.current?.click()}
           >
             <Upload className="size-3.5" data-icon="inline-start" />
-            {isPending ? "Saving…" : url ? "Replace photo" : "Upload photo"}
+            {isCompressing ? "Compressing…" : isPending ? "Saving…" : url ? "Replace photo" : "Upload photo"}
           </Button>
           {url ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              disabled={isPending}
+              disabled={isPending || isCompressing}
               onClick={handleRemove}
             >
               <Trash2 className="size-3.5" data-icon="inline-start" />
@@ -116,7 +127,9 @@ export function PhotoUpload({ bucket, entityId, currentUrl, onPersist, alt }: Ph
             </Button>
           ) : null}
         </div>
-        <p className="text-xs text-muted-foreground">JPEG, PNG, or WebP. Up to 5 MB.</p>
+        <p className="text-xs text-muted-foreground">
+          JPEG, PNG, or WebP. Larger photos are compressed to 500 KB automatically.
+        </p>
       </div>
     </div>
   );
