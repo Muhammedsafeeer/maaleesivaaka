@@ -21,14 +21,14 @@ export function FestivalStatus({ statuses }: { statuses: CategoryStatus[] }) {
   const overallPct = pct(totalDeclared, totalAll);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       {statuses.map((status) => {
         const isEmpty = status.total === 0;
         const complete = !isEmpty && status.declared === status.total;
         return (
           <div
             key={status.category}
-            className="flex flex-col gap-2 rounded-xl bg-(--stage-ivory) p-3 shadow-sm"
+            className="flex flex-col gap-2 rounded-2xl bg-(--stage-ivory) p-3 shadow-md"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-[0.65rem] font-semibold tracking-wide text-(--stage-ink)/60 uppercase">
@@ -58,21 +58,27 @@ export function FestivalStatus({ statuses }: { statuses: CategoryStatus[] }) {
 
       <div
         className={cn(
-          "col-span-2 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-(--stage-gold) bg-(--stage-green-800) p-3 text-center sm:col-span-4",
+          "col-span-2 flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-(--stage-spotlight) to-(--stage-spotlight-deep) p-4 text-center shadow-lg sm:col-span-1",
         )}
       >
-        <p className="text-[0.65rem] font-semibold tracking-wide text-(--stage-gold-bright)/80 uppercase">
+        <p className="text-[0.65rem] font-semibold tracking-wide text-(--stage-spotlight-gold)/80 uppercase">
           Overall Status
         </p>
-        <p className="font-[family-name:var(--font-audience-display)] text-3xl font-bold text-(--stage-gold-bright)">
+        <p className="font-[family-name:var(--font-audience-display)] text-3xl font-bold text-(--stage-spotlight-gold)">
           {totalAll === 0 ? "—" : `${overallPct}%`}
         </p>
-        <div className="h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-(--stage-ivory)/20">
+        <div className="h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-(--stage-spotlight-ink)/15">
           <div
-            className="h-full rounded-full bg-(--stage-gold)"
+            className="h-full rounded-full bg-(--stage-spotlight-gold)"
             style={{ width: `${overallPct}%` }}
           />
         </div>
+        <a
+          href="#full-standings"
+          className="mt-0.5 text-[0.6rem] font-semibold tracking-wide text-(--stage-spotlight-gold) uppercase hover:underline"
+        >
+          View details →
+        </a>
       </div>
     </div>
   );

@@ -2,6 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import type { Program } from "@/types/program";
 import type { StageType, ProgramStatus } from "@/constants/programs";
 
+export type RosterStudent = {
+  id: string;
+  name: string;
+  roll_number: string;
+  photo_url: string | null;
+  scoredJudgeCount: number;
+};
+
+export type ProgramRoster = {
+  students: RosterStudent[];
+  totalJudges: number;
+};
+
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -288,4 +301,48 @@ export async function reorderUpcoming(
   }
 
   return { success: true, data: null };
+}
+
+/**
+ * The on-stage program's roster in performance order (program_students.created_at,
+ * same ordering convention as listScorableStudents), each student annotated with how
+ * many of the program's assigned judges have scored them so far. The Fixture page
+ * derives "performing now" vs. "done" vs. "upcoming" from this: a student is done once
+ * scoredJudgeCount reaches totalJudges, and the first not-yet-done student is the one
+ * currently performing — there's no dedicated "on stage" flag per student, scoring
+ * progress is the only live signal available.
+ */
+export async function listProgramRoster(programId: string): Promise<ProgramRoster> {
+  const supabase = await createClient();
+
+  const [{ data: assigned, error: assignedError }, { count: totalJudges }, { data: scores }] =
+    await Promise.all([
+      supabase
+        .from("program_students")
+        .select("students(id, name, roll_number, photo_url)")
+        .eq("program_id", programId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("program_judges")
+        .select("judge_id", { count: "exact", head: true })
+        .eq("program_id", programId),
+      supabase.from("judge_scores").select("student_id").eq("program_id", programId),
+    ]);
+
+  if (assignedError || !assigned) {
+    return { students: [], totalJudges: totalJudges ?? 0 };
+  }
+
+  const scoredCountByStudent = new Map<string, number>();
+  for (const row of scores ?? []) {
+    scoredCountByStudent.set(row.student_id, (scoredCountByStudent.get(row.student_id) ?? 0) + 1);
+  }
+
+  const students = assigned.flatMap((row) =>
+    row.students
+      ? [{ ...row.students, scoredJudgeCount: scoredCountByStudent.get(row.students.id) ?? 0 }]
+      : [],
+  );
+
+  return { students, totalJudges: totalJudges ?? 0 };
 }

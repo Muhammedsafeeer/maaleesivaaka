@@ -138,21 +138,37 @@ export type PublicResultRow = {
   updatedAt: string;
 };
 
+export type LatestResultStudentRow = {
+  id: string;
+  position: number;
+  points: number;
+  programName: string;
+  programCategory: string;
+  studentName: string;
+  studentPhotoUrl: string | null;
+  updatedAt: string;
+};
+
 /**
- * D-017: audience-facing "Latest Results" — group (house) name only, deliberately no
- * student_id or student name anywhere in the return type, so a future call site can't
- * accidentally render one that was never fetched. RLS already restricts `results` to
- * published programs for an anonymous caller (D-003), so no explicit status filter is
- * needed here — the same query run by an admin session would also see unpublished rows,
- * which is why this is a distinct function from listResults() rather than a shared one.
+ * D-020 (docs/decisions.md): audience-facing "Latest Results" shows the student's own
+ * name/photo — a deliberate widening of D-018's exception to D-017, applied here to
+ * every podium finish across every published program (recency-sorted), not just the
+ * single latest program's top 3. Returns `LatestResultStudentRow`, a distinct type from
+ * `PublicResultRow`, same reasoning as `LatestWinnerStudentRow` — so `listProgramWinners`
+ * and `listGroupLeaderboard` (still D-017 house-only) can't accidentally start returning
+ * student data just by sharing a shape. No new grant needed: reuses the
+ * `grant select (name, photo_url) on students to anon` already in place for D-018.
+ *
+ * RLS already restricts `results` to published programs for an anonymous caller
+ * (D-003), so no explicit status filter is needed here — the same query run by an admin
+ * session would also see unpublished rows, which is why this is a distinct function
+ * from listResults() rather than a shared one.
  */
-export async function listLatestPublishedResults(limit = 10): Promise<PublicResultRow[]> {
+export async function listLatestPublishedResults(limit = 10): Promise<LatestResultStudentRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
-    .select(
-      "id, position, points, updated_at, programs(name, category), students(main_groups(name, photo_url))",
-    )
+    .select("id, position, points, updated_at, programs(name, category), students(name, photo_url)")
     .order("updated_at", { ascending: false })
     .limit(limit);
 
@@ -162,8 +178,8 @@ export async function listLatestPublishedResults(limit = 10): Promise<PublicResu
   }
 
   return data.flatMap((row) => {
-    const group = row.students?.main_groups;
-    if (!row.programs || !group) {
+    const student = row.students;
+    if (!row.programs || !student) {
       return [];
     }
     return [
@@ -173,8 +189,8 @@ export async function listLatestPublishedResults(limit = 10): Promise<PublicResu
         points: row.points,
         programName: row.programs.name,
         programCategory: row.programs.category,
-        groupName: group.name,
-        groupPhotoUrl: group.photo_url,
+        studentName: student.name,
+        studentPhotoUrl: student.photo_url,
         updatedAt: row.updated_at,
       },
     ];
@@ -229,6 +245,133 @@ export async function listProgramWinners(): Promise<PublicResultRow[]> {
       (CATEGORY_ORDER.get(a.programCategory) ?? 0) - (CATEGORY_ORDER.get(b.programCategory) ?? 0);
     return categoryDiff !== 0 ? categoryDiff : a.programName.localeCompare(b.programName);
   });
+}
+
+export type LatestWinnerStudentRow = {
+  id: string;
+  position: number;
+  points: number;
+  programName: string;
+  programCategory: string;
+  studentName: string;
+  studentPhotoUrl: string | null;
+  updatedAt: string;
+};
+
+/**
+ * D-018 (docs/decisions.md): a deliberate, narrow EXCEPTION to D-017's house-only
+ * contract — the audience "Latest Winner" podium shows the actual student's own name
+ * and photo, not their house. Explicitly requested and confirmed by the user after
+ * being shown the consequence (public, unauthenticated exposure of student identity).
+ * Requires `students.name`/`photo_url` to be readable by anon
+ * (`supabase/migrations/20260803020000_latest_winner_student_details.sql`) — every
+ * OTHER audience-facing function in this file stays on the house-only contract and
+ * does not need that grant. Returns a distinct type (`LatestWinnerStudentRow`, not
+ * `PublicResultRow`) specifically so this one exception can never be confused with, or
+ * accidentally substituted into, a call site that expects the D-017-compliant shape.
+ *
+ * The top 3 positions of the single most-recently-published program — a focused "who
+ * just won" podium, distinct from listLatestPublishedResults' recency feed across every
+ * program and from listProgramWinners' full every-program list. Two queries: find which
+ * program was updated most recently, then read that program's own top 3 by position.
+ */
+export async function listLatestProgramPodium(): Promise<LatestWinnerStudentRow[]> {
+  const supabase = await createClient();
+
+  const { data: latest, error: latestError } = await supabase
+    .from("results")
+    .select("program_id")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError || !latest) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("results")
+    .select("id, position, points, updated_at, programs(name, category), students(name, photo_url)")
+    .eq("program_id", latest.program_id)
+    .lte("position", 3)
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("listLatestProgramPodium failed:", error.message);
+    return [];
+  }
+
+  return data.flatMap((row) => {
+    const student = row.students;
+    if (!row.programs || !student) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        position: row.position,
+        points: row.points,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        studentName: student.name,
+        studentPhotoUrl: student.photo_url,
+        updatedAt: row.updated_at,
+      },
+    ];
+  });
+}
+
+export type StudentSearchResult = {
+  studentId: string;
+  studentName: string;
+  results: {
+    id: string;
+    programName: string;
+    programCategory: string;
+    position: number;
+    points: number;
+    updatedAt: string;
+  }[];
+};
+
+/**
+ * D-019 (docs/decisions.md): "Find My Result" — a lookup-only exception to D-017,
+ * distinct from D-018's public podium. `search_student_results` is a SECURITY DEFINER
+ * RPC (supabase/migrations/20260804000000_search_student_results.sql) that matches the
+ * query against a student's exact roll number or their name (min 3 characters, capped
+ * at 5 students) and returns only that student's own published results — a caller must
+ * already know who they're looking for; nothing here is browsable. Grouped by student
+ * here (the RPC returns one flat row per result) since a name search can match more
+ * than one student.
+ */
+export async function searchStudentResults(query: string): Promise<StudentSearchResult[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("search_student_results", { p_query: query });
+
+  if (error) {
+    console.error("searchStudentResults failed:", error.message);
+    return [];
+  }
+
+  const byStudent = new Map<string, StudentSearchResult>();
+  for (const row of data) {
+    const entry = byStudent.get(row.student_id) ?? {
+      studentId: row.student_id,
+      studentName: row.student_name,
+      results: [],
+    };
+    entry.results.push({
+      id: `${row.student_id}-${row.program_name}-${row.updated_at}`,
+      programName: row.program_name,
+      programCategory: row.program_category,
+      position: row.result_position,
+      points: row.points,
+      updatedAt: row.updated_at,
+    });
+    byStudent.set(row.student_id, entry);
+  }
+
+  return Array.from(byStudent.values());
 }
 
 /**

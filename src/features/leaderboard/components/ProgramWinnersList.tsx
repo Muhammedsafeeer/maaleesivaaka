@@ -1,62 +1,37 @@
-import { Badge } from "@/components/ui/badge";
+import { ChevronRight } from "lucide-react";
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
-import { CATEGORIES } from "@/constants/programs";
 import type { PublicResultRow } from "@/lib/services/result.service";
 
-const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
-
 /**
- * Every published program's 1st-place winner, grouped by category — distinct from
- * LatestResultsList (recency-sorted, every podium position) so the audience can scan
- * "who won what" as a whole rather than only the most recent activity. `winners` is
- * already sorted category-then-name by listProgramWinners, so grouping here is a
- * single pass, not a re-sort. D-017: house name only, same contract as
- * LatestResultsList.
+ * Every published program's 1st-place winner — a compact table (rank badge, house,
+ * program, chevron), matching the density of the Kerala Kalolsavam reference's
+ * "Leading Schools" table. `winners` is already sorted category-then-name by
+ * listProgramWinners. D-017: house name only, same contract as LatestResultsList.
  */
 export function ProgramWinnersList({ winners }: { winners: PublicResultRow[] }) {
-  const grouped = new Map<string, PublicResultRow[]>();
-  for (const winner of winners) {
-    const group = grouped.get(winner.programCategory) ?? [];
-    group.push(winner);
-    grouped.set(winner.programCategory, group);
-  }
-
   if (winners.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-(--stage-ivory)/60">
+      <p className="py-6 text-center text-sm text-(--stage-ink)/50">
         First-place winners appear here as results are published.
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      {Array.from(grouped.entries()).map(([category, categoryWinners]) => (
-        <div key={category} className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold tracking-wide text-(--stage-gold-bright)/80 uppercase">
-            {categoryLabels[category] ?? category}
-          </h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {categoryWinners.map((winner) => (
-              <div
-                key={winner.id}
-                className="flex items-center gap-3 rounded-xl bg-(--stage-ivory) px-3 py-2 shadow-sm"
-              >
-                <PhotoThumbnail url={winner.groupPhotoUrl} alt={`${winner.groupName} photo`} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-(--stage-ink)">
-                    {winner.groupName}
-                  </p>
-                  <p className="truncate text-xs text-(--stage-ink)/60">{winner.programName}</p>
-                </div>
-                <Badge className="border-none bg-(--stage-gold)/25 text-(--stage-gold-dim)">
-                  1st
-                </Badge>
-              </div>
-            ))}
+    <ol className="flex flex-col divide-y divide-(--stage-gold-dim)/15">
+      {winners.map((winner, index) => (
+        <li key={winner.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-(--section-ruby)/10 text-xs font-bold text-(--section-ruby) tabular-nums">
+            {index + 1}
+          </span>
+          <PhotoThumbnail url={winner.groupPhotoUrl} alt={`${winner.groupName} photo`} className="size-8" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-(--stage-ink)">{winner.groupName}</p>
+            <p className="truncate text-xs text-(--stage-ink)/50">{winner.programName}</p>
           </div>
-        </div>
+          <ChevronRight className="size-4 shrink-0 text-(--stage-ink)/30" aria-hidden="true" />
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }

@@ -5,16 +5,18 @@ type PhotoThumbnailProps = {
   url: string | null;
   alt: string;
   className?: string;
+  style?: React.CSSProperties;
 };
 
 /** Shared small-photo treatment for table rows and the dashboard leaderboard. */
-export function PhotoThumbnail({ url, alt, className }: PhotoThumbnailProps) {
+export function PhotoThumbnail({ url, alt, className, style }: PhotoThumbnailProps) {
   return (
     <div
       className={cn(
         "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted",
         className,
       )}
+      style={style}
     >
       {url ? (
         // External Storage URL — see PhotoUpload.tsx for why this isn't next/image.

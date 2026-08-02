@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-full flex-1 items-center justify-center p-4">
+    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-4 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
@@ -26,6 +27,12 @@ export default function LoginPage() {
           <LoginForm />
         </CardContent>
       </Card>
+      <Link
+        href="/audience"
+        className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        View the public audience page instead
+      </Link>
     </div>
   );
 }

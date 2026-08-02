@@ -20,7 +20,7 @@ const uiFont = DM_Sans({
 export default function AudienceLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`audience-shell dark min-h-full ${displayFont.variable} ${uiFont.variable}`}
+      className={`audience-shell min-h-full ${displayFont.variable} ${uiFont.variable}`}
       style={{ fontFamily: "var(--font-audience-ui)" }}
     >
       {children}

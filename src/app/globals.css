@@ -173,38 +173,116 @@
 }
 
 /*
- * Milad-un-Nabi audience theme (Phase 17) — scoped to `.audience-shell`
- * (src/app/audience/layout.tsx), never applied globally. Matches the mosque's real
- * event branding (confirmed with user): deep green ground, gold ornament, ivory data
- * surfaces. Stacked with `.dark` in the layout to inherit the house/podium tokens above,
- * already brightened for the same projector/TV audience this page targets.
+ * Milad-un-Nabi audience theme (Phase 17, consolidated) — scoped to `.audience-shell`
+ * (src/app/audience/layout.tsx), never applied globally. A plain white ground (no
+ * boxed/framed panels — that ornament was removed by explicit request) with ONE
+ * deliberately dark "spotlight" surface, in the mosque banner's own authentic green —
+ * reserved for Leading Houses, Now Performing's live alcove, and the Overall Status
+ * tile: three genuinely "this is the highlighted moment" surfaces, one consistent
+ * treatment. Every other panel gets its own jewel-tone heading accent on the white
+ * ground, so each section still reads as visually distinct without a background or
+ * border of its own. No `.dark` class on the layout element (see audience/layout.tsx).
  */
 .audience-shell {
-  --stage-green-950: oklch(0.19 0.05 152);
-  --stage-green-900: oklch(0.24 0.06 152);
-  --stage-green-800: oklch(0.32 0.07 152);
-  --stage-gold: oklch(0.78 0.13 85);
-  --stage-gold-bright: oklch(0.88 0.14 92);
-  --stage-gold-dim: oklch(0.6 0.1 85);
-  --stage-ivory: oklch(0.97 0.02 85);
-  --stage-ink: oklch(0.26 0.03 152);
+  --stage-cream: oklch(1 0 0);
+  --stage-cream-deep: oklch(0.915 0.022 85);
+  --stage-ivory: oklch(0.995 0.005 85);
+  --stage-ink: oklch(0.2 0.015 90);
+
+  --stage-gold: oklch(0.6 0.15 82);
+  --stage-gold-bright: oklch(0.45 0.16 80);
+  --stage-gold-dim: oklch(0.7 0.1 84);
+
+  /* The spotlight — one dark violet surface family, matched directly to the Kerala
+     Kalolsavam reference's "Leading Districts" hero panel (explicit "make exactly like
+     that" request) — used consistently wherever something is "the highlighted moment"
+     (Leading Houses' whole panel, Now Performing's live alcove) rather than two
+     unrelated dark treatments living side by side. */
+  --stage-spotlight: oklch(0.26 0.11 300);
+  --stage-spotlight-deep: oklch(0.19 0.09 300);
+  --stage-spotlight-card: oklch(0.32 0.1 300);
+  --stage-spotlight-ink: oklch(0.97 0.02 85);
+  --stage-spotlight-ink-dim: oklch(0.8 0.03 85);
+  /* Bright gold for text/ornament directly on the spotlight — the regular
+     --stage-gold* tokens are darkened for contrast on the light ground, so they'd read
+     too dark against this deliberately dark exception. */
+  --stage-spotlight-gold: oklch(0.84 0.14 85);
+
+  /* Section-identity accents — one jewel tone per light-ground panel (Now Performing,
+     Latest Results, Status of Festival, Program Winners, the category cards), so each
+     reads as visually distinct at a glance, echoing the reference's "each panel/card
+     gets its own colour" pattern. Leading Houses doesn't need one of these — its
+     spotlight background already sets it apart, so its border stays gold (ornament,
+     not section identity). */
+  --section-emerald: oklch(0.48 0.13 155);
+  --section-sapphire: oklch(0.46 0.13 250);
+  --section-ruby: oklch(0.46 0.16 20);
+  --section-amber: oklch(0.5 0.15 60);
 
   /* Re-point the shared shadcn tokens so unmodified Card/Badge/Button primitives pick
-     up the Milad-un-Nabi theme for free — most audience components need no rewrite. */
-  --background: var(--stage-green-950);
-  --foreground: var(--stage-ivory);
+     up the theme for free — most audience components need no rewrite. */
+  --background: var(--stage-cream);
+  --foreground: var(--stage-ink);
   --card: var(--stage-ivory);
   --card-foreground: var(--stage-ink);
   --popover: var(--stage-ivory);
   --popover-foreground: var(--stage-ink);
   --primary: var(--stage-gold);
-  --primary-foreground: var(--stage-ink);
+  --primary-foreground: var(--stage-ivory);
   --border: var(--stage-gold-dim);
-  --muted: oklch(0.94 0.02 85);
-  --muted-foreground: oklch(0.45 0.03 152);
+  --muted: var(--stage-cream-deep);
+  --muted-foreground: oklch(0.48 0.015 90);
 
-  background: var(--stage-green-950);
-  color: var(--stage-ivory);
+  background: var(--stage-cream);
+  color: var(--stage-ink);
+}
+
+/*
+ * Admin/judge dashboard theme — scoped to `.dashboard-shell` (src/app/admin/layout.tsx,
+ * src/app/judge/layout.tsx), never applied globally (login stays on the plain neutral
+ * shadcn theme). Warm cream ground + a vivid chartreuse accent + near-black contrast
+ * surfaces, matching the reference the user pointed to. Re-points the same shared
+ * shadcn tokens the audience theme does, so every unmodified Card/Badge/Button/Table/
+ * Sidebar primitive already used across /admin and /judge picks it up for free — no
+ * component rewrite needed, only this token block plus a `--radius` bump for the
+ * softer, rounder corners the reference uses throughout.
+ */
+.dashboard-shell {
+  --background: oklch(0.97 0.007 95);
+  --foreground: oklch(0.22 0.01 95);
+  --card: oklch(0.995 0.003 95);
+  --card-foreground: oklch(0.22 0.01 95);
+  --popover: oklch(0.995 0.003 95);
+  --popover-foreground: oklch(0.22 0.01 95);
+
+  /* The reference's signature chartreuse — used for primary buttons, the active nav
+     tint, and focus rings. Dark (not white) foreground text: the lime is light enough
+     that white text would fail contrast. */
+  --primary: oklch(0.87 0.19 122);
+  --primary-foreground: oklch(0.22 0.05 122);
+
+  --secondary: oklch(0.95 0.008 95);
+  --secondary-foreground: oklch(0.22 0.01 95);
+  --muted: oklch(0.95 0.008 95);
+  --muted-foreground: oklch(0.52 0.012 95);
+  --accent: oklch(0.94 0.06 122);
+  --accent-foreground: oklch(0.22 0.05 122);
+  --border: oklch(0.9 0.008 95);
+  --input: oklch(0.9 0.008 95);
+  --ring: oklch(0.82 0.15 122);
+  --radius: 0.85rem;
+
+  --sidebar: oklch(0.965 0.008 95);
+  --sidebar-foreground: oklch(0.22 0.01 95);
+  --sidebar-primary: oklch(0.87 0.19 122);
+  --sidebar-primary-foreground: oklch(0.22 0.05 122);
+  --sidebar-accent: oklch(0.92 0.05 122);
+  --sidebar-accent-foreground: oklch(0.22 0.05 122);
+  --sidebar-border: oklch(0.9 0.008 95);
+  --sidebar-ring: oklch(0.82 0.15 122);
+
+  background: var(--background);
+  color: var(--foreground);
 }
 
 @keyframes lantern-glow {

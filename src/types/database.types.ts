@@ -463,6 +463,18 @@ export type Database = {
         Args: { p_program_id: string; p_student_id: string }
         Returns: boolean
       }
+      search_student_results: {
+        Args: { p_query: string }
+        Returns: {
+          student_id: string
+          student_name: string
+          program_name: string
+          program_category: Database["public"]["Enums"]["participant_category"]
+          result_position: number
+          points: number
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       gender: "male" | "female"

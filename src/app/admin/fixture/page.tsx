@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listFixture } from "@/lib/services/fixture.service";
+import { listFixture, listProgramRoster } from "@/lib/services/fixture.service";
 import { FixtureList } from "@/features/programs/components/FixtureList";
 import { CurrentProgramCard } from "@/features/programs/components/CurrentProgramCard";
+import { ProgramRoster } from "@/features/programs/components/ProgramRoster";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
+import { RealtimeJudgeScoresListener } from "@/components/dashboard/RealtimeJudgeScoresListener";
 import { STAGE_TYPES, type StageType } from "@/constants/programs";
 import { cn } from "@/lib/utils";
 
@@ -26,10 +29,12 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
   const current = programs.find((p) => CURRENT_STATUSES.includes(p.status)) ?? null;
   const next =
     programs.find((p) => p.status === "upcoming" && p.serial_number !== null) ?? null;
+  const roster = current ? await listProgramRoster(current.id) : null;
 
   return (
     <div className="flex flex-col gap-6">
       <RealtimeProgramsListener />
+      <RealtimeJudgeScoresListener />
 
       <div>
         <h1 className="font-heading text-xl font-medium">Fixture</h1>
@@ -69,8 +74,19 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
         <div className="lg:col-span-2">
           <FixtureList programs={programs} stageType={stageType} />
         </div>
-        <div>
+        <div className="flex flex-col gap-6">
           <CurrentProgramCard stageType={stageType} current={current} next={next} />
+
+          {current && roster ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Students — {current.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProgramRoster roster={roster} />
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>

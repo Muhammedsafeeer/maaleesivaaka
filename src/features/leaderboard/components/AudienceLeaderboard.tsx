@@ -1,130 +1,106 @@
-import { Trophy } from "lucide-react";
-import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TrophyCup } from "@/features/leaderboard/components/MotifIcons";
 import type { GroupLeaderboardRow } from "@/lib/services/leaderboard.service";
 
-const HOUSE_TOKENS = [
-  "var(--house-red)",
-  "var(--house-blue)",
-  "var(--house-green)",
-  "var(--house-yellow)",
-] as const;
+const RANK_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
+const RANK_TONES = { 1: "gold", 2: "silver", 3: "bronze" } as const;
 
-/** Deterministic house accent from `id` — house colour isn't stored data (main_groups
- * has no colour column), so the same house always lands on the same accent across
- * renders/ranks without needing one. */
-function houseAccent(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  return HOUSE_TOKENS[hash % HOUSE_TOKENS.length];
-}
+function PodiumCard({ group, isLeader }: { group: GroupLeaderboardRow; isLeader: boolean }) {
+  const tone = RANK_TONES[group.rank as 1 | 2 | 3] ?? "bronze";
 
-const RANK_MEDAL: Record<number, string> = {
-  1: "var(--podium-gold)",
-  2: "var(--podium-silver)",
-  3: "var(--podium-bronze)",
-};
-
-function PodiumCard({
-  group,
-  isLeader,
-}: {
-  group: GroupLeaderboardRow;
-  isLeader: boolean;
-}) {
   return (
     <div
       className={cn(
-        "relative flex flex-1 flex-col items-center gap-2 rounded-xl bg-(--stage-ivory) px-3 pt-5 pb-4 text-center shadow-sm",
-        isLeader ? "order-2 pt-7 pb-5" : "order-1 last:order-3",
+        "relative flex flex-1 flex-col items-center gap-1 rounded-2xl bg-(--stage-spotlight-card) px-2 pb-4 text-center",
+        isLeader ? "order-2 pt-14 pb-6 shadow-lg ring-1 ring-(--stage-spotlight-gold)/30" : "order-1 pt-10 last:order-3",
       )}
-      style={{ borderTop: `4px solid ${houseAccent(group.id)}` }}
     >
       {isLeader ? (
-        <Trophy
-          className="lantern-glow absolute -top-4 size-7 text-(--stage-gold)"
+        <span
           aria-hidden="true"
+          className="pointer-events-none absolute -top-6 left-1/2 size-28 -translate-x-1/2 rounded-full bg-(--stage-spotlight-gold) opacity-25 blur-2xl"
         />
       ) : null}
-      <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-(--stage-ink)"
-        style={{ background: RANK_MEDAL[group.rank] }}
-      >
-        {group.rank}
-      </span>
-      <PhotoThumbnail url={group.photo_url} alt={`${group.name} photo`} className="size-10" />
+
+      <TrophyCup
+        tone={tone}
+        className={cn("lantern-glow absolute -top-9 drop-shadow-md", isLeader ? "size-16" : "size-11")}
+      />
+
       <span
         className={cn(
-          "truncate font-[family-name:var(--font-audience-display)] font-bold text-(--stage-ink)",
-          isLeader ? "text-lg" : "text-base",
+          "w-fit rounded-full px-2 py-0.5 text-[0.6rem] font-bold tracking-wide uppercase",
+          isLeader
+            ? "bg-(--stage-spotlight-gold)/20 text-(--stage-spotlight-gold)"
+            : "bg-(--stage-spotlight-ink)/10 text-(--stage-spotlight-ink-dim)",
+        )}
+      >
+        {RANK_LABELS[group.rank] ?? `#${group.rank}`}
+      </span>
+      <span
+        className={cn(
+          "mt-1 truncate font-[family-name:var(--font-audience-display)] font-bold text-(--stage-spotlight-ink)",
+          isLeader ? "text-xl" : "text-sm",
         )}
       >
         {group.name}
       </span>
-      <span className="font-mono text-xs font-semibold tabular-nums text-(--stage-ink)/60">
-        {group.total_points} pts
+      <span
+        className={cn(
+          "font-mono font-extrabold tabular-nums text-(--stage-spotlight-gold)",
+          isLeader ? "text-3xl" : "text-lg",
+        )}
+      >
+        {group.total_points}
+      </span>
+      <span className="text-[0.6rem] font-semibold tracking-widest text-(--stage-spotlight-ink-dim) uppercase">
+        Points
       </span>
     </div>
   );
 }
 
-function RankRow({ group }: { group: GroupLeaderboardRow }) {
-  return (
-    <li className="flex items-center gap-3 overflow-hidden rounded-xl bg-(--stage-ivory) pr-4 shadow-sm">
-      <span
-        className="w-1.5 self-stretch shrink-0"
-        style={{ background: houseAccent(group.id) }}
-        aria-hidden="true"
-      />
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-(--stage-ink)/10 text-sm font-bold text-(--stage-ink)">
-        {group.rank}
-      </span>
-      <PhotoThumbnail url={group.photo_url} alt={`${group.name} photo`} />
-      <span className="min-w-0 flex-1 truncate font-semibold text-(--stage-ink)">
-        {group.name}
-      </span>
-      <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-(--stage-ink)/80">
-        {group.total_points} pts
-      </span>
-    </li>
-  );
-}
-
 /**
- * Audience-only leaderboard display (Phase 17 layout pass) — a top-3 podium (matching
- * the reference's "Leading Districts" hero) with any remaining houses listed below.
- * With this app's real house counts (typically 3-4), the podium usually IS the whole
- * leaderboard — no separate full-standings table needed, unlike the reference's
- * district/school scale. Distinct from the shared `LeaderboardList` used by /admin,
- * which stays on the neutral shadcn theme.
+ * Audience-only leaderboard hero — top-3 podium only (a real illustrated trophy cup per
+ * position, gold/silver/bronze, not a generic outline icon), matching the Kerala
+ * Kalolsavam reference's "Leading Districts" panel: no photos, no houses-4-and-below
+ * list here — those live in the separate full-standings table further down the page
+ * (see audience/page.tsx's `#full-standings` section), same split as the reference's
+ * dark hero podium vs. its later light "Leading Districts" table. Always rendered
+ * inside an `OrnateFrame surface="spotlight"`.
+ *
+ * No `overflow-hidden` on the card itself — the cup and its glow both sit above the
+ * card's own top edge (`-top-9`/`-top-6`), and clipping them there was a real bug: a
+ * previous pass added `overflow-hidden` for the glow effect without noticing it also
+ * silently clipped the trophy.
  */
 export function AudienceLeaderboard({ rows }: { rows: GroupLeaderboardRow[] }) {
   if (rows.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-(--stage-ivory)/60">
+      <p className="py-8 text-center text-sm text-(--stage-spotlight-ink)/60">
         The leaderboard fills in once judges start submitting scores.
       </p>
     );
   }
 
   const top3 = rows.filter((r) => r.rank <= 3).sort((a, b) => a.rank - b.rank);
-  const rest = rows.filter((r) => r.rank > 3);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-end gap-3">
+      <div className="flex items-end gap-3 pt-6">
         {top3.map((group) => (
           <PodiumCard key={group.id} group={group} isLeader={group.rank === 1} />
         ))}
       </div>
-      {rest.length > 0 ? (
-        <ol className="flex flex-col gap-2">
-          {rest.map((group) => (
-            <RankRow key={group.id} group={group} />
-          ))}
-        </ol>
+      {rows.length > 3 ? (
+        <a
+          href="#full-standings"
+          className="mx-auto flex items-center gap-1 text-xs font-semibold tracking-wide text-(--stage-spotlight-gold) uppercase hover:underline"
+        >
+          View detailed standings
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </a>
       ) : null}
     </div>
   );

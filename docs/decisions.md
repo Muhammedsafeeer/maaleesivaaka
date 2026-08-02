@@ -22,6 +22,9 @@ Format: context → decision → consequences. Newest decisions are appended at 
 | [D-015](#d-015-is_admin-made-security-definer-to-break-a-real-recursive-rls-cycle) | `is_admin()` made `SECURITY DEFINER` to break a real recursive RLS cycle | 2026-07-30 | Accepted (bug fix, found live post-Phase-13) |
 | [D-016](#d-016-realtime-via-routerrefresh-tanstack-query-and-zustand-stay-uninstalled) | Realtime via `router.refresh()`; TanStack Query and Zustand stay uninstalled | 2026-07-30 | Accepted |
 | [D-017](#d-017-audience-dashboard-shows-group-names-only-never-individual-student-names) | Audience dashboard shows group names only, never individual student names | 2026-07-30 | Accepted |
+| [D-018](#d-018-latest-winner-podium-is-a-narrow-confirmed-exception-to-d-017) | "Latest Winner" podium is a narrow, confirmed exception to D-017 | 2026-08-02 | Accepted |
+| [D-019](#d-019-find-my-result-student-search-is-a-lookup-only-exception-to-d-017) | "Find My Result" student search is a lookup-only exception to D-017 | 2026-08-04 | Accepted |
+| [D-020](#d-020-latest-results-widens-the-student-detail-exception-to-every-podium-finish) | "Latest Results" widens the student-detail exception to every podium finish | 2026-08-05 | Accepted |
 
 ---
 
@@ -803,3 +806,164 @@ individual recognition.
 - If a "now performing" per-student display is ever wanted later, it needs its own
   fresh decision (a purpose-built view scoped to, e.g., only students in the currently
   `ongoing` program) — this ADR does not preclude that, it just declines it for now.
+
+---
+
+## D-018: "Latest Winner" podium is a narrow, confirmed exception to D-017
+
+**Date:** 2026-08-02 · **Status:** Accepted
+
+### Context
+
+The user asked for the audience "Latest Winner" panel (the freshest published program's
+top 3) to show the actual students who placed, with photos, instead of their house —
+"remove latest winner groupwise, add latest winner top three student details instead of
+group." This is exactly the request D-017 anticipated and declined to pre-approve: "If a
+[per-student display] is ever wanted later, it needs its own fresh decision."
+
+Before implementing anything, the consequence was restated to the user explicitly: this
+is a fully public, unauthenticated page — visible to anyone with the URL, no login,
+often on a shared TV/projector — and the app has a "Kids" category, so some students
+shown could be young children. The alternative offered (first name only, no photo) was
+declined; the user confirmed the full version (name + photo) after hearing the
+consequence.
+
+### Decision
+
+Exactly one panel — the "Latest Winner" podium (`listLatestProgramPodium`,
+`LatestWinnerPodium`) — shows a student's own `name` and `photo_url`, sourced via a new,
+narrow anon grant (`grant select (name, photo_url) on students to anon;`,
+`supabase/migrations/20260803020000_latest_winner_student_details.sql`). Every other
+audience-facing read (`listLatestPublishedResults`, `listProgramWinners`,
+`listGroupLeaderboard`, "Now Performing") is untouched and stays house/group-only, per
+D-017 — this is not a reopening of D-017 generally, only a single named exception to it.
+
+`roll_number`, `class`, and `gender` remain ungranted to `anon` — only `name` and
+`photo_url` were added, the minimum needed for "top 3 students, with photos."
+
+### Reasoning
+
+D-017's own rationale (real, permanent, publicly-queryable PII about named children) is
+still correct and still applies to every panel that isn't this one. The difference here
+is informed, explicit user consent for this one specific, narrow surface, given with the
+actual consequence stated up front — not a default, not something a future feature could
+casually extend to another panel without going through the same conversation again.
+
+### Consequences
+
+- A new Supabase migration grants `anon` two additional `students` columns. This is a
+  real widening of what an anonymous request can read directly from the table (not just
+  through this one page's queries) — anyone with API access, not just this page's UI,
+  can now read every student's name and photo, for as long as this grant stands.
+- `result.service.ts` gains a second, differently-shaped type
+  (`LatestWinnerStudentRow`, `studentName`/`studentPhotoUrl`) specifically for this one
+  function, kept deliberately distinct from `PublicResultRow` (which has no student
+  field at all) — so the D-017-compliant functions can't accidentally start returning
+  student data just by sharing a type.
+- If this ever needs to be reverted, the two migration lines are the entire blast
+  radius: revoke the grant and revert `listLatestProgramPodium`/`LatestWinnerPodium` to
+  the group-based version (git history from before this commit).
+
+## D-019: "Find My Result" student search is a lookup-only exception to D-017
+
+**Date:** 2026-08-04 · **Status:** Accepted
+
+### Context
+
+The user asked for a section showing student-wise results. Shown three options — a
+full public list of every student's results, a podium-style list of every podium finish
+across the festival, or a search box where you look up one specific student you already
+know — they chose search. This is deliberately the narrowest of the three: unlike D-018
+(a public top-3 podium visible to anyone who loads the page), nothing here is visible
+without already knowing the student's own name or roll number.
+
+### Decision
+
+A new `search_student_results(p_query text)` Postgres function
+(`supabase/migrations/20260804000000_search_student_results.sql`), `SECURITY DEFINER`
+so it can match against `students.roll_number` without granting that column to `anon` at
+all — matching is internal to the function; `roll_number` is never included in what it
+returns. Matches require the query to be the exact roll number or a substring of the
+student's name, minimum 3 characters, capped at 5 matched students per call, and only
+returns results from `published` programs. `roll_number`/`class`/`gender` stay
+ungranted, same boundary D-018 already drew — only `name` comes back, alongside each
+matched program's name, category, position, points, and date.
+
+A new `StudentResultSearch` component (search input + submit, no default/empty-state
+listing — the panel shows nothing until a query is submitted) calls this via a Server
+Action, keeping the RPC un-callable directly from a client bundle's inlined query string.
+
+### Reasoning
+
+A search box is a fundamentally different exposure shape than a public list: the
+`students` table already has 150+ names potentially, and this doesn't make any of them
+discoverable by browsing — you get a result only for someone you already have a
+name/roll-number for. That's meaningfully narrower than D-018, which puts three names on
+screen for every single visitor with zero effort. The residual risk is a scripted caller
+hitting the function directly with many different queries (there's no rate limiting
+anywhere in this app), which would eventually reconstruct a full roster — a real but
+unchanged-from-before risk, since D-018 already made every student's name (just not
+roll number) readable via the `students` table directly.
+
+### Consequences
+
+- One more `SECURITY DEFINER` function added to the same trust boundary as
+  `finalize_program_results`/`get_program_scores` — reviewed the same way: the function
+  body is the entire authorization surface, since RLS itself is bypassed inside it.
+- No new grant on `students` — this widens the audience surface without widening what
+  `anon` can read directly from a table, unlike D-018.
+- If this needs to be reverted, it's a single `drop function search_student_results` plus
+  removing `StudentResultSearch` from `audience/page.tsx` — no data model changes ride
+  on it.
+
+## D-020: "Latest Results" widens the student-detail exception to every podium finish
+
+**Date:** 2026-08-05 · **Status:** Accepted
+
+### Context
+
+The user asked for the audience "Latest Results" panel (recency-sorted, every podium
+position across every published program) to show student name/photo instead of house
+name — the same treatment D-018 gave the much narrower "Latest Winner" podium (top 3 of
+only the single most-recently-published program).
+
+Before implementing, the consequence was restated explicitly: "Latest Results" is a much
+bigger list than "Latest Winner" — every 1st/2nd/3rd across the whole festival,
+recency-sorted, potentially dozens of entries by the event's end, not a fixed top 3. This
+is a real widening of D-018's exception, not a repeat of the same narrow one. Presented
+with the choice (full name+photo / name only / leave house-only), the user chose the
+full treatment, applied to every entry in the feed.
+
+### Decision
+
+`listLatestPublishedResults()` now returns a new `LatestResultStudentRow` type
+(`studentName`/`studentPhotoUrl`, mirroring D-018's `LatestWinnerStudentRow`) instead of
+the house-based `PublicResultRow`, and `LatestResultsList` renders the student's name and
+photo. No new migration: this reuses the same `grant select (name, photo_url) on
+students to anon` already put in place for D-018
+(`20260803020000_latest_winner_student_details.sql`) — the grant is table-wide, not
+scoped to a single query, so D-018 had already made this technically possible; D-020 is
+the decision to actually use it here too.
+
+`listProgramWinners()` (the "Program Winners" table) and `listGroupLeaderboard()`
+(house standings) are untouched and stay house-only — this is not a reopening of D-017
+generally, only this one additional named panel.
+
+### Reasoning
+
+Once D-018 granted `anon` read access to `students.name`/`photo_url` at the column
+level, the *technical* exposure already existed table-wide — D-020 doesn't widen what
+the database allows, only what the UI chooses to display with data it could already
+read. The meaningful new consequence is purely a UI/UX one: significantly more
+individual children's names become visible on the public page over the course of the
+festival (every podium finish, not just the latest), and it's a continuously-growing
+feed rather than a fixed 3-name panel.
+
+### Consequences
+
+- `LatestResultStudentRow` is a distinct type from `PublicResultRow`, same reasoning as
+  `LatestWinnerStudentRow` — keeps the D-017-compliant functions (`listProgramWinners`,
+  `listGroupLeaderboard`) from accidentally sharing a shape with a student-detail read.
+- If this needs to be reverted, it's reverting `listLatestPublishedResults` and
+  `LatestResultsList` to their pre-D-020 (group-based) versions — the underlying anon
+  grant stays in place either way, since D-018 still depends on it.

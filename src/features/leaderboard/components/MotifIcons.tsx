@@ -5,6 +5,89 @@
  * an embedded asset — see PRODUCT.md's Brand Commitments).
  */
 
+import { useId } from "react";
+
+const CUP_TONES = {
+  gold: { light: "#fff3c4", mid: "#f0b90b", deep: "#b8790a" },
+  silver: { light: "#f4f6f8", mid: "#c3cad3", deep: "#8b95a1" },
+  bronze: { light: "#f0c9a0", mid: "#c9773f", deep: "#8a4f28" },
+} as const;
+
+/**
+ * A real illustrated trophy cup — a filled bowl, two curved handles, a stem, and a
+ * two-tier base, shaded with a gradient and a shine highlight — instead of a generic
+ * outline icon. Used on the Leading Houses podium (AudienceLeaderboard), one per
+ * position, tone-matched to gold/silver/bronze. `useId()` keeps each instance's
+ * gradient IDs unique so multiple cups on the same page (1st/2nd/3rd, all visible at
+ * once) don't clash.
+ */
+export function TrophyCup({
+  className,
+  tone = "gold",
+}: {
+  className?: string;
+  tone?: keyof typeof CUP_TONES;
+}) {
+  const id = useId();
+  const c = CUP_TONES[tone];
+
+  return (
+    <svg viewBox="0 0 64 72" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id={`${id}-body`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={c.light} />
+          <stop offset="55%" stopColor={c.mid} />
+          <stop offset="100%" stopColor={c.deep} />
+        </linearGradient>
+        <linearGradient id={`${id}-base`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={c.mid} />
+          <stop offset="100%" stopColor={c.deep} />
+        </linearGradient>
+      </defs>
+
+      {/* handles */}
+      <path
+        d="M14 16c-7 0-10 5-10 10s3 11 12 12"
+        fill="none"
+        stroke={`url(#${id}-body)`}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M50 16c7 0 10 5 10 10s-3 11-12 12"
+        fill="none"
+        stroke={`url(#${id}-body)`}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+      />
+
+      {/* bowl */}
+      <path
+        d="M15 14h34v10c0 12-9 20-17 20s-17-8-17-20V14Z"
+        fill={`url(#${id}-body)`}
+      />
+      {/* shine highlight */}
+      <path
+        d="M22 17c-1 8 1 15 6 19"
+        fill="none"
+        stroke={c.light}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        opacity="0.8"
+      />
+      {/* rim */}
+      <rect x="13" y="10" width="38" height="6" rx="3" fill={`url(#${id}-body)`} />
+
+      {/* stem */}
+      <path d="M29 44h6v9h-6z" fill={`url(#${id}-base)`} />
+
+      {/* base */}
+      <rect x="20" y="53" width="24" height="6" rx="2" fill={`url(#${id}-base)`} />
+      <rect x="16" y="59" width="32" height="7" rx="2" fill={`url(#${id}-base)`} />
+    </svg>
+  );
+}
+
 export function CrescentStar({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} aria-hidden="true">
