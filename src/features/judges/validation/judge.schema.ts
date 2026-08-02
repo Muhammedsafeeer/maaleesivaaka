@@ -17,12 +17,25 @@ export const createJudgeSchema = z.object({
 export type CreateJudgeInput = z.infer<typeof createJudgeSchema>;
 
 /**
- * Name only — editing email or password would need Supabase Auth's own confirmation
- * flows (a real feature, not built here). Shared by the edit dialog and
- * updateJudgeAction's re-validation.
+ * Name only — editing email would need Supabase Auth's own confirmation flows (a real
+ * feature, not built here). Shared by the edit dialog and updateJudgeAction's
+ * re-validation.
  */
 export const editJudgeSchema = z.object({
   name: z.string().min(1, "Name is required.").max(200),
 });
 
 export type EditJudgeInput = z.infer<typeof editJudgeSchema>;
+
+/**
+ * Password reset for an existing judge — a separate schema from editJudgeSchema
+ * because it's submitted to a different endpoint (PATCH /api/judges/[id], which needs
+ * the Admin API to call auth.admin.updateUserById, same reasoning as createJudgeSchema
+ * needing the Admin API to call auth.admin.createUser). Shared by the edit dialog and
+ * the route handler's own re-validation.
+ */
+export const updateJudgePasswordSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters."),
+});
+
+export type UpdateJudgePasswordInput = z.infer<typeof updateJudgePasswordSchema>;

@@ -6,14 +6,14 @@ import { createJudgeSchema } from "@/features/judges/validation/judge.schema";
 import type { Database } from "@/types/database.types";
 
 /**
- * D-006: the service role key is used in exactly two places in this codebase — this
- * file and src/app/api/judges/[id]/route.ts. Both instantiate their own client inline
- * rather than importing a shared lib/supabase/admin.ts factory — that factory would
- * make the privileged client trivially reusable from anywhere, exactly what D-006
- * exists to prevent. This is a genuine route handler, not a Server Action, because
- * Server Actions run with the CALLER's session — creating an auth.users row needs the
- * Admin API, which only the service role key can call (see app/README.md § Route
- * handlers vs Server Actions).
+ * D-006: the service role key is used in exactly three places in this codebase — this
+ * file's POST, and src/app/api/judges/[id]/route.ts's DELETE and PATCH. All
+ * instantiate their own client inline rather than importing a shared
+ * lib/supabase/admin.ts factory — that factory would make the privileged client
+ * trivially reusable from anywhere, exactly what D-006 exists to prevent. This is a
+ * genuine route handler, not a Server Action, because Server Actions run with the
+ * CALLER's session — creating an auth.users row needs the Admin API, which only the
+ * service role key can call (see app/README.md § Route handlers vs Server Actions).
  */
 export async function POST(request: Request) {
   const auth = await assertAdmin();
