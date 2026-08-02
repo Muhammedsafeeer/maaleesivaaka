@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { listGroupLeaderboard, type GroupLeaderboardRow } from "@/lib/services/leaderboard.service";
+import { listRecentStudents } from "@/lib/services/student.service";
+import type { StudentWithGroup } from "@/types/student";
 
 export type DashboardStats = {
   totalStudents: number;
@@ -14,6 +16,7 @@ export type DashboardStats = {
   completedPrograms: number;
   pendingPrograms: number;
   topGroups: GroupLeaderboardRow[];
+  recentStudents: StudentWithGroup[];
 };
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -27,6 +30,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { count: completedPrograms },
     { count: pendingPrograms },
     topGroups,
+    recentStudents,
   ] = await Promise.all([
     supabase.from("students").select("*", { count: "exact", head: true }),
     supabase.from("programs").select("*", { count: "exact", head: true }),
@@ -41,6 +45,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select("*", { count: "exact", head: true })
       .in("status", ["draft", "upcoming", "scoring"]),
     listGroupLeaderboard(5),
+    listRecentStudents(5),
   ]);
 
   return {
@@ -51,5 +56,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     completedPrograms: completedPrograms ?? 0,
     pendingPrograms: pendingPrograms ?? 0,
     topGroups,
+    recentStudents,
   };
 }

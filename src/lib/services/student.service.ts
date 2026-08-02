@@ -43,6 +43,27 @@ export async function listStudents(
   }));
 }
 
+/** Newest-first slice for the dashboard's students preview — a different ordering
+ * than listStudents' alphabetical listing, so it's its own query rather than a
+ * `limit` option bolted onto listStudents. */
+export async function listRecentStudents(limit: number): Promise<StudentWithGroup[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("students")
+    .select("*, main_groups(name)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    return [];
+  }
+
+  return data.map(({ main_groups, ...student }) => ({
+    ...student,
+    group_name: main_groups?.name ?? null,
+  }));
+}
+
 export type StudentInput = {
   roll_number: string;
   name: string;

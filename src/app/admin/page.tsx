@@ -7,10 +7,12 @@ import {
   GavelIcon,
   CheckCircle2Icon,
   ClockIcon,
+  TrophyIcon,
 } from "lucide-react";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
+import { StudentsPreviewList } from "@/components/dashboard/StudentsPreviewList";
 import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
@@ -71,19 +73,51 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      <Card className="transition-shadow duration-200 hover:shadow-md">
-        <CardHeader>
-          <CardTitle>Leaderboard</CardTitle>
-          <CardAction>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin/leaderboard">View full leaderboard →</Link>
-            </Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <LeaderboardList rows={stats.topGroups} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card
+          size="sm"
+          className="ring-podium-gold/30 transition-shadow duration-200 hover:shadow-md"
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-lg bg-podium-gold/15 text-podium-gold">
+                <TrophyIcon className="size-3.5" />
+              </span>
+              Leaderboard
+            </CardTitle>
+            <CardAction>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/admin/leaderboard">View all →</Link>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <LeaderboardList rows={stats.topGroups} compact />
+          </CardContent>
+        </Card>
+
+        <Card
+          size="sm"
+          className="ring-house-blue/30 transition-shadow duration-200 hover:shadow-md"
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-lg bg-house-blue/15 text-house-blue">
+                <GraduationCapIcon className="size-3.5" />
+              </span>
+              Students
+            </CardTitle>
+            <CardAction>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/admin/students">View all →</Link>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <StudentsPreviewList students={stats.recentStudents} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
