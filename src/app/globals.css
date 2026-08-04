@@ -306,3 +306,228 @@
     animation: none;
   }
 }
+
+/*
+ * Certificate printing (src/features/certificates) — CertificatePrintPortal portals one
+ * <CertificateTemplate> per page to document.body and toggles "printing-certificate" on
+ * <body> right before calling window.print(). Everything else that lives directly under
+ * <body> hides for that duration — not just #app-root (src/app/layout.tsx), but every
+ * sibling of it too, because Radix's Dialog/Toaster/Tooltip primitives ALSO portal
+ * straight to document.body rather than nesting inside #app-root. An allow-list
+ * (":not(#certificate-print-root)") catches those the same way an #app-root-only rule
+ * can't — e.g. PrintCertificatesDialog's own still-open Dialog, which would otherwise
+ * print itself instead of the certificates underneath it. A self-contained gold/cream
+ * palette rather than the audience-shell's --stage-* tokens, since this is triggered
+ * from both /admin (PrintCertificatesDialog) and /audience (StudentSearchBar).
+ */
+#certificate-print-root {
+  display: none;
+}
+
+body.printing-certificate > *:not(#certificate-print-root) {
+  display: none !important;
+}
+
+body.printing-certificate #certificate-print-root {
+  display: block !important;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+}
+
+/*
+ * Certificate layout, v2 — overlaid on the fixed public/certificate.jpeg design instead
+ * of a hand-built CSS frame. The image is exactly 1536×1024 (3:2); .certificate-page is
+ * sized to that same ratio in mm (297mm — the full A4-landscape width — × 198mm, since
+ * 297 × 1024⁄1536 = 198 exactly), so every .cert-field-* position below is a plain mm
+ * offset within .certificate-frame rather than a % that would need re-deriving if the
+ * page size ever changed. Values are measured off the source image at 1536×1024 (px
+ * × 0.19336 = mm, since 297⁄1536 = 198⁄1024 = 0.19336).
+ */
+.certificate-page {
+  width: 297mm;
+  height: 198mm;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fdf8ec;
+  page-break-after: always;
+  break-after: page;
+}
+
+.certificate-page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.certificate-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-image: url("/certificate.jpeg");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  color: #1f3a24;
+  /* Without this, Chrome/Edge/Firefox drop background-image entirely when printing
+     unless the user manually ticks "Background graphics" in the print dialog — which
+     almost nobody does, and there's no way to preselect it from the page. This forces
+     the certificate.jpeg background through regardless of that checkbox's state. */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.cert-field {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: 60mm;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.cert-field-name {
+  top: 108mm;
+  left: 148.5mm;
+  max-width: 140mm;
+  font-size: 7mm;
+  font-weight: 700;
+}
+
+/* Program name isn't one of the template's own printed fields (only CLASS / ROLL NO. /
+   CATEGORY / DATE are) — added here anyway, in the gap between the paragraph and the
+   icon row, because without it every certificate for the same student would read
+   identically regardless of which program they'd actually placed in. */
+.cert-field-program {
+  top: 137.8mm;
+  left: 148.5mm;
+  max-width: 190mm;
+  font-size: 3.6mm;
+  font-style: italic;
+  color: #3a2a05;
+}
+
+.cert-field-position {
+  top: 118.9mm;
+  left: 39.6mm;
+  max-width: 30mm;
+  font-size: 15mm;
+  font-weight: 900;
+  color: #0f5c33;
+}
+
+.cert-position-suffix {
+  font-size: 8mm;
+  font-weight: 700;
+  vertical-align: super;
+}
+
+/* Participation certificates share the same 30mm ribbon as the podium's position
+   number (cert-field-position, above) but print "PARTICIPATE" instead of a number
+   — too many characters for that font-size, so this shrinks it and wraps to the
+   two lines built into CertificateTemplate's markup rather than one long line. */
+.cert-field-position-participation {
+  font-size: 4.6mm;
+  line-height: 1.15;
+  letter-spacing: 0.2mm;
+  white-space: normal;
+}
+
+.cert-field-class {
+  top: 159.6mm;
+  left: 85.1mm;
+  max-width: 26mm;
+  font-size: 3.4mm;
+  font-weight: 600;
+}
+
+.cert-field-rollno {
+  top: 159.6mm;
+  left: 124.8mm;
+  max-width: 26mm;
+  font-size: 3.4mm;
+  font-weight: 600;
+}
+
+.cert-field-category {
+  top: 159.6mm;
+  left: 164.4mm;
+  max-width: 30mm;
+  font-size: 3.4mm;
+  font-weight: 600;
+}
+
+.cert-field-date {
+  top: 159.6mm;
+  left: 207.9mm;
+  max-width: 34mm;
+  font-size: 3.4mm;
+  font-weight: 600;
+  /* The template's own dotted "......../......../..........." blank (with its own "/"
+     separators) sits directly under this text — without a patch behind our rendered
+     "DD / MM / YYYY" string, its dots/slashes show through and visually pierce the
+     digits. A paper-toned patch masks that placeholder instead of trying to
+     pixel-align our text on top of it. */
+  background: #f5eeda;
+  padding: 0.5mm 1.5mm;
+  border-radius: 1mm;
+}
+
+.cert-photo {
+  position: absolute;
+  top: 93mm;
+  left: 250mm;
+  transform: translate(-50%, -50%);
+  /* Sized noticeably smaller than the gold frame's outer edge (not just its bounding
+     box) so the frame's own decorative border stays visible all the way around the
+     photo instead of being covered by it. */
+  width: 34mm;
+  height: 48mm;
+  object-fit: cover;
+  border-radius: 1mm;
+}
+
+.cert-seal {
+  position: absolute;
+  top: 180.9mm;
+  left: 148.8mm;
+  transform: translate(-50%, -50%);
+  width: 20mm;
+  /* height:auto let a tall (icon + wordmark) uploaded seal blow past the circle —
+     max-height caps it on both axes so object-fit:contain always fits inside the
+     template's "OFFICIAL SEAL" circle regardless of the uploaded image's own
+     proportions. */
+  height: auto;
+  max-height: 20mm;
+  object-fit: contain;
+}
+
+.cert-signature {
+  position: absolute;
+  top: 180.9mm;
+  left: 210.8mm;
+  transform: translate(-50%, -100%);
+  width: 36mm;
+  height: auto;
+  max-height: 14mm;
+  object-fit: contain;
+}
+
+.cert-field-signatory {
+  /* Was 193.4mm — that landed on/past the template's bottom decorative border (which
+     starts around 189mm), since there's very little clearance below the baked-in
+     "SIGNATURE" label. Pulled up to sit directly under the signature image, in the
+     clear paper strip above the border. */
+  top: 176mm;
+  left: 199.8mm;
+  max-width: 46mm;
+  font-size: 3.4mm;
+  font-style: italic;
+  color: #3a2a05;
+}

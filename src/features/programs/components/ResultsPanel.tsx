@@ -17,8 +17,10 @@ import {
   recalculateResultsAction,
   publishProgramAction,
 } from "@/features/programs/actions/result.actions";
+import { PrintCertificatesDialog } from "@/features/programs/components/PrintCertificatesDialog";
 import type { listResults } from "@/lib/services/result.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
+import type { CertificateSettings } from "@/lib/services/certificateSettings.service";
 import type { ProgramStatus } from "@/constants/programs";
 
 type ResultRow = Awaited<ReturnType<typeof listResults>>[number];
@@ -26,14 +28,20 @@ type CriterionAverage = { criterion_id: string; average: number };
 
 export function ResultsPanel({
   programId,
+  programName,
+  categoryLabel,
   status,
   results,
   criteria,
+  certificateSettings,
 }: {
   programId: string;
+  programName: string;
+  categoryLabel: string;
   status: ProgramStatus;
   results: ResultRow[];
   criteria: ScoringCriterion[];
+  certificateSettings: CertificateSettings;
 }) {
   const [isRecalculating, startRecalculate] = useTransition();
   const [isPublishing, startPublish] = useTransition();
@@ -74,6 +82,12 @@ export function ResultsPanel({
           </p>
         </div>
         <div className="flex gap-2">
+          <PrintCertificatesDialog
+            results={results}
+            programName={programName}
+            categoryLabel={categoryLabel}
+            certificateSettings={certificateSettings}
+          />
           {status === "scoring" ? (
             <Button
               variant="outline"

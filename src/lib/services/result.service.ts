@@ -111,12 +111,18 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
   return { success: true, data: null };
 }
 
-/** Results for a program, joined with the student's name for the admin review table. */
+/**
+ * Results for a program, joined with the student's name for the admin review table.
+ * Also carries class and house (main_groups) — not used by the review table itself, but
+ * needed by PrintCertificatesDialog (src/features/programs/components) for the podium's
+ * certificate details. Admin-only (RLS-scoped session), so this can safely include more
+ * than the anon-facing functions below ever expose (D-017/D-019).
+ */
 export async function listResults(programId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
-    .select("*, students(name, roll_number)")
+    .select("*, students(name, roll_number, class, photo_url, main_groups(name))")
     .eq("program_id", programId)
     .order("position", { ascending: true });
 
@@ -125,6 +131,113 @@ export async function listResults(programId: string) {
   }
 
   return data;
+}
+
+export type PodiumCertificateRow = {
+  id: string;
+  position: number;
+  points: number;
+  programId: string;
+  programName: string;
+  programCategory: string;
+  studentId: string;
+  studentName: string;
+  rollNumber: string;
+  className: string;
+  houseName: string | null;
+  photoUrl: string | null;
+};
+
+/**
+ * Every podium (position 1–3) result across every program, with full admin-only detail
+ * (roll number, class, house) — the dedicated /admin/certificates page's data source,
+ * flattened rather than nested (unlike listResults) since that page groups the same rows
+ * two ways: by student and by program (CertificatesBrowser). Admin-only session, so — same
+ * reasoning as listResults — this can include every program status, not just published.
+ */
+export async function listPodiumResultsForCertificates(): Promise<PodiumCertificateRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, program_id, programs(name, category), students(id, name, roll_number, class, photo_url, main_groups(name))",
+    )
+    .lte("position", 3)
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("listPodiumResultsForCertificates failed:", error.message);
+    return [];
+  }
+
+  return data.flatMap((row) => {
+    const student = row.students;
+    if (!student || !row.programs) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        position: row.position,
+        points: row.points,
+        programId: row.program_id,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        studentId: student.id,
+        studentName: student.name,
+        rollNumber: student.roll_number,
+        className: student.class,
+        houseName: student.main_groups?.name ?? null,
+        photoUrl: student.photo_url,
+      },
+    ];
+  });
+}
+
+/**
+ * Every scored result across every program, position-uncapped — the data source for
+ * the /admin/certificates "Participation" tab. Deliberately not filtered to
+ * position > 3: a podium finisher can hold both a position certificate (this file's
+ * listPodiumResultsForCertificates) and a participation certificate, confirmed with
+ * the user rather than assumed. Same flattened admin-only shape as
+ * listPodiumResultsForCertificates, just without the `.lte("position", 3)`.
+ */
+export async function listAllResultsForCertificates(): Promise<PodiumCertificateRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, program_id, programs(name, category), students(id, name, roll_number, class, photo_url, main_groups(name))",
+    )
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("listAllResultsForCertificates failed:", error.message);
+    return [];
+  }
+
+  return data.flatMap((row) => {
+    const student = row.students;
+    if (!student || !row.programs) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        position: row.position,
+        points: row.points,
+        programId: row.program_id,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        studentId: student.id,
+        studentName: student.name,
+        rollNumber: student.roll_number,
+        className: student.class,
+        houseName: student.main_groups?.name ?? null,
+        photoUrl: student.photo_url,
+      },
+    ];
+  });
 }
 
 export type PublicResultRow = {

@@ -39,6 +39,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      certificate_settings: {
+        Row: {
+          created_at: string
+          id: number
+          seal_url: string | null
+          signatory_name: string
+          signature_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          seal_url?: string | null
+          signatory_name?: string
+          signature_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          seal_url?: string | null
+          signatory_name?: string
+          signature_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       judge_scores: {
         Row: {
           criteria_scores: Json

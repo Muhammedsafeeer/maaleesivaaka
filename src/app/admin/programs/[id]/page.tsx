@@ -17,6 +17,7 @@ import { AssignJudgeDialog } from "@/features/programs/components/AssignJudgeDia
 import { ResultsPanel } from "@/features/programs/components/ResultsPanel";
 import { listResults } from "@/lib/services/result.service";
 import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
+import { getCertificateSettings } from "@/lib/services/certificateSettings.service";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
@@ -50,6 +51,7 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     assignableJudges,
     results,
     criteria,
+    certificateSettings,
   ] = await Promise.all([
     listAssignedStudents(id),
     listAssignableStudents(id),
@@ -57,6 +59,7 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     listAssignableJudges(id),
     listResults(id),
     listScoringCriteria(id),
+    getCertificateSettings(),
   ]);
 
   return (
@@ -107,9 +110,12 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
 
       <ResultsPanel
         programId={id}
+        programName={program.name}
+        categoryLabel={categoryLabels[program.category]}
         status={program.status}
         results={results}
         criteria={criteria}
+        certificateSettings={certificateSettings}
       />
     </div>
   );

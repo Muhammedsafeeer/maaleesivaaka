@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getScoreSettings } from "@/lib/services/scoreSettings.service";
+import { getCertificateSettings } from "@/lib/services/certificateSettings.service";
 import { ScoreSettingsForm } from "@/features/settings/components/ScoreSettingsForm";
+import { CertificateSettingsForm } from "@/features/settings/components/CertificateSettingsForm";
 
 export const metadata: Metadata = {
   title: "Settings",
 };
 
 export default async function SettingsPage() {
-  const settings = await getScoreSettings();
+  const [scoreSettings, certificateSettings] = await Promise.all([
+    getScoreSettings(),
+    getCertificateSettings(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,7 +35,21 @@ export default async function SettingsPage() {
             finalized after you save — already-completed or published results keep the
             points they were given at the time.
           </p>
-          <ScoreSettingsForm settings={settings} />
+          <ScoreSettingsForm settings={scoreSettings} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificate</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            The seal, signature, and signatory name stamped onto every printed
+            certificate — both from the admin certificate pages and the audience&apos;s
+            own &quot;Find My Result&quot; print button.
+          </p>
+          <CertificateSettingsForm settings={certificateSettings} />
         </CardContent>
       </Card>
     </div>

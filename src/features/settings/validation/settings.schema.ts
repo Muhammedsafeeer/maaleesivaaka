@@ -38,3 +38,12 @@ export const scoreSettingsFormSchema = z.object({
 });
 
 export type ScoreSettingsFormInput = z.infer<typeof scoreSettingsFormSchema>;
+
+/** The name printed under the signature image on every certificate (CertificateTemplate) —
+ * e.g. "Principal, Noorul Huda Madrassa". Blank is allowed (falls back to showing
+ * nothing rather than blocking certificate printing on this being filled in). */
+export const signatoryNameSchema = z.object({
+  signatoryName: z.string().trim().max(120, "Keep it under 120 characters."),
+});
+
+export type SignatoryNameInput = z.infer<typeof signatoryNameSchema>;

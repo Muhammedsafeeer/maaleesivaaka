@@ -9,6 +9,7 @@ import {
   listLatestProgramPodium,
   listProgramWinners,
 } from "@/lib/services/result.service";
+import { getCertificateSettings } from "@/lib/services/certificateSettings.service";
 import { AudienceLeaderboard } from "@/features/leaderboard/components/AudienceLeaderboard";
 import { FullStandingsList } from "@/features/leaderboard/components/FullStandingsList";
 import { OrnateFrame } from "@/features/leaderboard/components/OrnateFrame";
@@ -57,6 +58,7 @@ export default async function AudiencePage() {
     latestProgramPodium,
     programWinners,
     categoryStatus,
+    certificateSettings,
   ] = await Promise.all([
     // Starting a program on the Fixture page goes straight to 'scoring' — that's the
     // only "on stage" status a program can have (the 'ongoing' status was removed).
@@ -66,6 +68,7 @@ export default async function AudiencePage() {
     listLatestProgramPodium(),
     listProgramWinners(),
     listCategoryStatus(),
+    getCertificateSettings(),
   ]);
 
   // On-stage and off-stage each run independently (fixture.service.ts's
@@ -114,7 +117,7 @@ export default async function AudiencePage() {
           />
           Live
         </span>
-        <StudentSearchBar />
+        <StudentSearchBar certificateSettings={certificateSettings} />
         <Button
           asChild
           size="sm"

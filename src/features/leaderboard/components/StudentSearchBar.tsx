@@ -1,16 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CATEGORIES } from "@/constants/programs";
 import { searchStudentResultsAction } from "@/features/leaderboard/actions/searchStudentResults.action";
+import { CertificatePrintPortal } from "@/features/certificates/components/CertificatePrintPortal";
+import { CertificateTemplate } from "@/features/certificates/components/CertificateTemplate";
 import type { StudentSearchResult } from "@/lib/services/result.service";
+import type { CertificateSettings } from "@/lib/services/certificateSettings.service";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
+
+type PrintTarget = {
+  studentName: string;
+  programName: string;
+  categoryLabel: string;
+  position: number;
+  points: number;
+};
 
 /**
  * D-019 (docs/decisions.md): "Find My Result" — lookup-only, not a browsable list.
@@ -22,12 +33,22 @@ const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" }
  * page's `--stage-*` tokens — Radix's Dialog portals to `document.body`, outside
  * `.audience-shell`'s DOM subtree, so those custom properties wouldn't resolve there
  * anyway.
+ *
+ * Each result row also has a "print certificate" button (CertificatePrintPortal +
+ * CertificateTemplate, src/features/certificates) — it stays within D-019's contract
+ * since it only ever prints fields `search_student_results` already returned to this
+ * component (name, program, category, position, points), nothing fetched fresh and
+ * nothing roll-number/house/photo, unlike the fuller detail listResults() exposes to an
+ * authenticated admin session.
  */
-export function StudentSearchBar() {
+export function StudentSearchBar({ certificateSettings }: { certificateSettings: CertificateSettings }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<StudentSearchResult[] | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Certificate print target — built only from fields search_student_results already
+  // returns (D-019 stays as narrow as before; no new data is fetched to print this).
+  const [printTarget, setPrintTarget] = useState<PrintTarget | null>(null);
 
   function handleSearch(event: React.FormEvent) {
     event.preventDefault();
@@ -105,6 +126,25 @@ export function StudentSearchBar() {
                         <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-muted-foreground">
                           +{result.points} pts
                         </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 shrink-0"
+                          aria-label={`Print certificate for ${student.studentName} — ${result.programName}`}
+                          onClick={() =>
+                            setPrintTarget({
+                              studentName: student.studentName,
+                              programName: result.programName,
+                              categoryLabel:
+                                categoryLabels[result.programCategory] ?? result.programCategory,
+                              position: result.position,
+                              points: result.points,
+                            })
+                          }
+                        >
+                          <Printer className="size-3.5" aria-hidden="true" />
+                        </Button>
                       </li>
                     ))}
                   </ol>
@@ -120,6 +160,17 @@ export function StudentSearchBar() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <CertificatePrintPortal open={printTarget !== null} onClose={() => setPrintTarget(null)}>
+        {printTarget ? (
+          <CertificateTemplate
+            {...printTarget}
+            signatoryName={certificateSettings.signatoryName}
+            sealUrl={certificateSettings.sealUrl}
+            signatureUrl={certificateSettings.signatureUrl}
+          />
+        ) : null}
+      </CertificatePrintPortal>
     </>
   );
 }
