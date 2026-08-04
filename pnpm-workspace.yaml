@@ -9,5 +9,6 @@
 #
 # Do not add to this list without understanding what the package's install script does.
 allowBuilds:
+  core-js: set this to true or false
   sharp: true
   unrs-resolver: true

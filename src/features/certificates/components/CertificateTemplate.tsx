@@ -92,24 +92,25 @@ export function CertificateTemplate({
           {programLine}
         </p>
 
-        <p
-          className={`cert-field cert-field-position${
-            isParticipation ? " cert-field-position-participation" : ""
-          }`}
-        >
-          {isParticipation ? (
-            <>
-              PARTICI
+        {isParticipation ? (
+          <>
+            {/* Masks the template's baked-in "Position" word — the two-line
+                replacement text below sits where that word is, not above it like
+                the position number does, so the word has to go rather than just
+                being overlapped. */}
+            <div className="cert-position-patch" aria-hidden="true" />
+            <p className="cert-field cert-field-position cert-field-position-participation">
+              PARTICIPATION
               <br />
-              PATE
-            </>
-          ) : (
-            <>
-              {position}
-              <span className="cert-position-suffix">{positionSuffix}</span>
-            </>
-          )}
-        </p>
+              CERTIFICATE
+            </p>
+          </>
+        ) : (
+          <p className="cert-field cert-field-position">
+            {position}
+            <span className="cert-position-suffix">{positionSuffix}</span>
+          </p>
+        )}
 
         <p className="cert-field cert-field-class">{className ?? ""}</p>
         <p className="cert-field cert-field-rollno">{rollNumber ?? ""}</p>
@@ -118,20 +119,29 @@ export function CertificateTemplate({
 
         {/* All portaled outside Next's render tree at print time — plain <img> avoids
             next/image's lazy-loading and srcset handling for these Storage-hosted
-            images, neither of which is wanted for a static print asset. */}
+            images, neither of which is wanted for a static print asset.
+            crossOrigin="anonymous" is for generateCertificatePdf.ts's html2canvas
+            capture — without it, a cross-origin image (these are all Supabase Storage
+            URLs, a different origin than the app) taints the canvas and html2canvas
+            silently renders a blank box in its place instead of the image. */}
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={studentName} className="cert-photo" />
+          <img src={photoUrl} alt={studentName} className="cert-photo" crossOrigin="anonymous" />
         ) : null}
 
         {sealUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={sealUrl} alt="Official seal" className="cert-seal" />
+          <img src={sealUrl} alt="Official seal" className="cert-seal" crossOrigin="anonymous" />
         ) : null}
 
         {signatureUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={signatureUrl} alt="Signature" className="cert-signature" />
+          <img
+            src={signatureUrl}
+            alt="Signature"
+            className="cert-signature"
+            crossOrigin="anonymous"
+          />
         ) : null}
 
         {signatoryName ? <p className="cert-field cert-field-signatory">{signatoryName}</p> : null}

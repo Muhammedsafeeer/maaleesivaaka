@@ -49,9 +49,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        {/* Certificate printing (src/features/certificates/components/CertificatePrintPortal.tsx)
-            hides this whole shell via the "printing-certificate" body class (globals.css)
-            so only the portaled certificate pages reach paper. */}
         <div id="app-root" className="flex min-h-full flex-1 flex-col">
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster />

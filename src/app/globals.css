@@ -308,35 +308,21 @@
 }
 
 /*
- * Certificate printing (src/features/certificates) — CertificatePrintPortal portals one
- * <CertificateTemplate> per page to document.body and toggles "printing-certificate" on
- * <body> right before calling window.print(). Everything else that lives directly under
- * <body> hides for that duration — not just #app-root (src/app/layout.tsx), but every
- * sibling of it too, because Radix's Dialog/Toaster/Tooltip primitives ALSO portal
- * straight to document.body rather than nesting inside #app-root. An allow-list
- * (":not(#certificate-print-root)") catches those the same way an #app-root-only rule
- * can't — e.g. PrintCertificatesDialog's own still-open Dialog, which would otherwise
- * print itself instead of the certificates underneath it. A self-contained gold/cream
- * palette rather than the audience-shell's --stage-* tokens, since this is triggered
- * from both /admin (PrintCertificatesDialog) and /audience (StudentSearchBar).
+ * Certificate PDF generation (src/features/certificates) — CertificatePrintPortal
+ * portals one <CertificateTemplate> per page to document.body inside
+ * #certificate-print-root, then generateCertificatePdf.ts (html2canvas-pro + jsPDF)
+ * captures each .certificate-page as an image and assembles a downloaded PDF sized to
+ * match exactly (297×198mm per page, see .certificate-page below) — not
+ * window.print(), which mobile Safari/Chrome apply inconsistently (ignoring custom
+ * @page sizes, sometimes dropping the background-image) so the previous
+ * print-dialog approach rendered correctly on desktop but broke on a phone.
+ * Positioned off-screen rather than display:none — html2canvas needs the element
+ * actually laid out to capture it, a display:none element has no box to screenshot.
  */
 #certificate-print-root {
-  display: none;
-}
-
-body.printing-certificate > *:not(#certificate-print-root) {
-  display: none !important;
-}
-
-body.printing-certificate #certificate-print-root {
-  display: block !important;
-}
-
-@media print {
-  @page {
-    size: A4 landscape;
-    margin: 0;
-  }
+  position: fixed;
+  top: 0;
+  left: -10000px;
 }
 
 /*
@@ -356,13 +342,6 @@ body.printing-certificate #certificate-print-root {
   align-items: center;
   justify-content: center;
   background: #fdf8ec;
-  page-break-after: always;
-  break-after: page;
-}
-
-.certificate-page:last-child {
-  page-break-after: auto;
-  break-after: auto;
 }
 
 .certificate-frame {
@@ -373,12 +352,6 @@ body.printing-certificate #certificate-print-root {
   background-size: 100% 100%;
   background-repeat: no-repeat;
   color: #1f3a24;
-  /* Without this, Chrome/Edge/Firefox drop background-image entirely when printing
-     unless the user manually ticks "Background graphics" in the print dialog — which
-     almost nobody does, and there's no way to preselect it from the page. This forces
-     the certificate.jpeg background through regardless of that checkbox's state. */
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
 }
 
 .cert-field {
@@ -428,15 +401,36 @@ body.printing-certificate #certificate-print-root {
   vertical-align: super;
 }
 
-/* Participation certificates share the same 30mm ribbon as the podium's position
-   number (cert-field-position, above) but print "PARTICIPATE" instead of a number
-   — too many characters for that font-size, so this shrinks it and wraps to the
-   two lines built into CertificateTemplate's markup rather than one long line. */
+/* Participation certificates reuse the same ~34mm gold ribbon as the podium's
+   position number (cert-field-position, above) but print "PARTICIPATION
+   CERTIFICATE" across two lines instead of a number — too many characters for
+   that font-size, so this shrinks it, re-centers it in the ribbon's white circle
+   (rather than the number's own top-of-circle position, since a number pairs with
+   the template's baked-in "Position" label below it but this text replaces that
+   label instead of sitting above it), and turns off the ellipsis truncation
+   cert-field applies for single-line fields. cert-position-patch (below) covers
+   the baked-in "Position" word so it doesn't show through underneath. */
 .cert-field-position-participation {
-  font-size: 4.6mm;
-  line-height: 1.15;
-  letter-spacing: 0.2mm;
+  top: 121.5mm;
+  left: 39.6mm;
+  max-width: 32mm;
+  font-size: 3.45mm;
+  line-height: 1.25;
+  letter-spacing: 0.1mm;
   white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.cert-position-patch {
+  position: absolute;
+  top: 129.6mm;
+  left: 39.6mm;
+  width: 27.6mm;
+  height: 10.2mm;
+  background: #fff;
+  border-radius: 1mm;
+  transform: translate(-50%, -50%);
 }
 
 .cert-field-class {
