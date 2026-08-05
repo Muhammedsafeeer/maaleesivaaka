@@ -194,6 +194,64 @@ export async function listPodiumResultsForCertificates(): Promise<PodiumCertific
   });
 }
 
+export type PublishedProgramPodiumRow = {
+  programId: string;
+  programName: string;
+  programCategory: string;
+  podium: {
+    position: number;
+    studentName: string;
+    groupName: string | null;
+    photoUrl: string | null;
+  }[];
+};
+
+/**
+ * Every published program, each with its podium (position 1–3) — the data source for
+ * the /admin/results-poster page's "share this program's result to the WhatsApp
+ * group" poster. Deliberately published-only (unlike listPodiumResultsForCertificates,
+ * which intentionally includes every status so certificates can be printed ahead of
+ * the public announcement): a poster is the public announcement itself, so it can't
+ * exist for a program that hasn't been announced yet.
+ *
+ * Queries from `programs` rather than `results` (opposite of
+ * listPodiumResultsForCertificates) so a published program with no podium yet still
+ * shows up on the page with an empty podium, rather than being invisible until
+ * someone else finishes scoring it — the page's whole point is "here's what's left
+ * to post", not just "here's what's ready".
+ */
+export async function listPublishedProgramPodiums(): Promise<PublishedProgramPodiumRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("programs")
+    .select(
+      "id, name, category, results(position, students(name, photo_url, main_groups(name)))",
+    )
+    .eq("status", "published")
+    .lte("results.position", 3)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("listPublishedProgramPodiums failed:", error.message);
+    return [];
+  }
+
+  return data.map((program) => ({
+    programId: program.id,
+    programName: program.name,
+    programCategory: program.category,
+    podium: program.results
+      .filter((result) => result.students)
+      .map((result) => ({
+        position: result.position,
+        studentName: result.students!.name,
+        groupName: result.students!.main_groups?.name ?? null,
+        photoUrl: result.students!.photo_url,
+      }))
+      .sort((a, b) => a.position - b.position),
+  }));
+}
+
 /**
  * Every scored result across every program, position-uncapped — the data source for
  * the /admin/certificates "Participation" tab. Deliberately not filtered to

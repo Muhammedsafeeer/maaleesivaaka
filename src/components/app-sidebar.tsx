@@ -10,6 +10,7 @@ import {
   GavelIcon,
   TrophyIcon,
   AwardIcon,
+  ImageIcon,
   Settings2Icon,
   SparklesIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const ADMIN_NAV: NavMainItem[] = [
   { title: "Judges", url: "/admin/judges", icon: <GavelIcon /> },
   { title: "Leaderboard", url: "/admin/leaderboard", icon: <TrophyIcon /> },
   { title: "Certificates", url: "/admin/certificates", icon: <AwardIcon /> },
+  { title: "Results Poster", url: "/admin/results-poster", icon: <ImageIcon /> },
   { title: "Settings", url: "/admin/settings", icon: <Settings2Icon /> },
 ];
 
