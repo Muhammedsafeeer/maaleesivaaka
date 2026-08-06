@@ -39,6 +39,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_media: {
+        Row: {
+          ad_id: string
+          created_at: string
+          id: string
+          media_type: string
+          media_url: string
+          position: number
+        }
+        Insert: {
+          ad_id: string
+          created_at?: string
+          id?: string
+          media_type: string
+          media_url: string
+          position: number
+        }
+        Update: {
+          ad_id?: string
+          created_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_media_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          play_duration_seconds: number
+          position: number
+          transition_duration_ms: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          play_duration_seconds?: number
+          position: number
+          transition_duration_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          play_duration_seconds?: number
+          position?: number
+          transition_duration_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       certificate_settings: {
         Row: {
           created_at: string
@@ -125,6 +190,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          malayalam_name: string | null
           name: string
           photo_url: string | null
           updated_at: string
@@ -132,6 +198,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          malayalam_name?: string | null
           name: string
           photo_url?: string | null
           updated_at?: string
@@ -139,6 +206,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          malayalam_name?: string | null
           name?: string
           photo_url?: string | null
           updated_at?: string
@@ -255,6 +323,7 @@ export type Database = {
           category: Database["public"]["Enums"]["participant_category"]
           created_at: string
           id: string
+          malayalam_name: string | null
           name: string
           serial_number: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
@@ -265,6 +334,7 @@ export type Database = {
           category: Database["public"]["Enums"]["participant_category"]
           created_at?: string
           id?: string
+          malayalam_name?: string | null
           name: string
           serial_number?: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
@@ -275,6 +345,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["participant_category"]
           created_at?: string
           id?: string
+          malayalam_name?: string | null
           name?: string
           serial_number?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
@@ -334,6 +405,33 @@ export type Database = {
           },
         ]
       }
+      score_settings: {
+        Row: {
+          created_at: string
+          first_place_points: number
+          id: number
+          second_place_points: number
+          third_place_points: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          first_place_points?: number
+          id?: number
+          second_place_points?: number
+          third_place_points?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          first_place_points?: number
+          id?: number
+          second_place_points?: number
+          third_place_points?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scoring_criteria: {
         Row: {
           created_at: string
@@ -369,33 +467,6 @@ export type Database = {
           },
         ]
       }
-      score_settings: {
-        Row: {
-          created_at: string
-          first_place_points: number
-          id: number
-          second_place_points: number
-          third_place_points: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          first_place_points?: number
-          id?: number
-          second_place_points?: number
-          third_place_points?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          first_place_points?: number
-          id?: number
-          second_place_points?: number
-          third_place_points?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       students: {
         Row: {
           category: Database["public"]["Enums"]["participant_category"]
@@ -404,6 +475,7 @@ export type Database = {
           gender: Database["public"]["Enums"]["gender"]
           group_id: string
           id: string
+          malayalam_name: string | null
           name: string
           photo_url: string | null
           roll_number: string
@@ -416,6 +488,7 @@ export type Database = {
           gender: Database["public"]["Enums"]["gender"]
           group_id: string
           id?: string
+          malayalam_name?: string | null
           name: string
           photo_url?: string | null
           roll_number: string
@@ -428,6 +501,7 @@ export type Database = {
           gender?: Database["public"]["Enums"]["gender"]
           group_id?: string
           id?: string
+          malayalam_name?: string | null
           name?: string
           photo_url?: string | null
           roll_number?: string
@@ -490,18 +564,21 @@ export type Database = {
         Args: { p_program_id: string; p_student_id: string }
         Returns: boolean
       }
+      reorder_ads: { Args: { p_ids: string[] }; Returns: undefined }
       search_student_results: {
         Args: { p_query: string }
         Returns: {
+          points: number
+          program_category: Database["public"]["Enums"]["participant_category"]
+          program_name: string
+          result_position: number
           student_id: string
           student_name: string
-          program_name: string
-          program_category: Database["public"]["Enums"]["participant_category"]
-          result_position: number
-          points: number
           updated_at: string
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       gender: "male" | "female"

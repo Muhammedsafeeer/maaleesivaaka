@@ -15,6 +15,7 @@ import {
 import { EmptyState } from "@/components/tables/EmptyState";
 import { PosterDownloadPortal } from "@/features/results-poster/components/PosterDownloadPortal";
 import { ResultPosterTemplate } from "@/features/results-poster/components/ResultPosterTemplate";
+import { CATEGORY_MALAYALAM_LABELS, type Category } from "@/constants/programs";
 import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
 
 const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
@@ -107,7 +108,11 @@ export function ResultsPosterBrowser({
         {target ? (
           <ResultPosterTemplate
             programName={target.programName}
+            programMalayalamName={target.programMalayalamName}
             categoryLabel={categoryLabels[target.programCategory] ?? target.programCategory}
+            categoryMalayalamLabel={
+              CATEGORY_MALAYALAM_LABELS[target.programCategory as Category] ?? target.programCategory
+            }
             podium={target.podium}
           />
         ) : null}

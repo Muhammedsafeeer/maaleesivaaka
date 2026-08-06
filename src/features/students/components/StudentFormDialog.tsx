@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { GraduationCap } from "lucide-react";
@@ -25,6 +25,7 @@ import {
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { PhotoUpload } from "@/components/forms/PhotoUpload";
 import { PendingPhotoPicker } from "@/components/forms/PendingPhotoPicker";
+import { MalayalamSuggestion } from "@/components/forms/MalayalamSuggestion";
 import { uploadPhoto } from "@/lib/services/storage.service";
 import { CATEGORIES, CLASSES, GENDERS } from "@/constants/programs";
 import {
@@ -50,6 +51,7 @@ type StudentFormDialogProps = {
 const emptyDefaults: StudentInput = {
   roll_number: "",
   name: "",
+  malayalamName: "",
   class: "1",
   gender: "male",
   category: "kids",
@@ -93,6 +95,7 @@ export function StudentFormDialog({
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<StudentInput>({
     resolver: zodResolver(studentSchema),
@@ -100,6 +103,7 @@ export function StudentFormDialog({
       ? {
           roll_number: student.roll_number,
           name: student.name,
+          malayalamName: student.malayalam_name ?? "",
           class: toStudentClass(student.class),
           gender: student.gender,
           category: student.category,
@@ -107,6 +111,8 @@ export function StudentFormDialog({
         }
       : emptyDefaults,
   });
+
+  const malayalamNameValue = useWatch({ control, name: "malayalamName" });
 
   // `open` is in the deps, not just `student` — this dialog stays mounted between
   // opens (CreateStudentButton toggles `open` rather than remounting), so without it
@@ -119,6 +125,7 @@ export function StudentFormDialog({
           ? {
               roll_number: student.roll_number,
               name: student.name,
+              malayalamName: student.malayalam_name ?? "",
               class: toStudentClass(student.class),
               gender: student.gender,
               category: student.category,
@@ -256,6 +263,28 @@ export function StudentFormDialog({
             {errors.name ? (
               <p role="alert" className="text-sm text-destructive">
                 {errors.name.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="student-malayalam-name">Malayalam name</Label>
+            <Input
+              id="student-malayalam-name"
+              autoComplete="off"
+              lang="ml"
+              aria-invalid={errors.malayalamName ? true : undefined}
+              {...register("malayalamName")}
+            />
+            <MalayalamSuggestion
+              value={malayalamNameValue ?? ""}
+              onAccept={(text) =>
+                setValue("malayalamName", text, { shouldValidate: true, shouldDirty: true })
+              }
+            />
+            {errors.malayalamName ? (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.malayalamName.message}
               </p>
             ) : null}
           </div>

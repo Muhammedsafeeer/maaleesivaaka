@@ -25,6 +25,7 @@ type CertificateType = "position" | "participation";
 
 type CertificateJobEntry = {
   studentName: string;
+  studentMalayalamName: string | null;
   rollNumber: string;
   className: string;
   houseName: string | null;
@@ -122,6 +123,7 @@ export function CertificatesBrowser({
       .sort(byPosition)
       .map((win) => ({
         studentName: win.studentName,
+        studentMalayalamName: win.studentMalayalamName,
         rollNumber: win.rollNumber,
         className: win.className,
         houseName: win.houseName,

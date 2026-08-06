@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { UsersRound } from "lucide-react";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { PhotoUpload } from "@/components/forms/PhotoUpload";
 import { PendingPhotoPicker } from "@/components/forms/PendingPhotoPicker";
+import { MalayalamSuggestion } from "@/components/forms/MalayalamSuggestion";
 import { uploadPhoto } from "@/lib/services/storage.service";
 import { groupSchema, type GroupInput } from "@/features/groups/validation/group.schema";
 import {
@@ -46,13 +47,17 @@ export function GroupFormDialog({ open, onOpenChange, group }: GroupFormDialogPr
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<GroupInput>({
     resolver: zodResolver(groupSchema),
-    defaultValues: { name: group?.name ?? "" },
+    defaultValues: { name: group?.name ?? "", malayalamName: group?.malayalam_name ?? "" },
   });
+
+  const malayalamNameValue = useWatch({ control, name: "malayalamName" });
 
   // Clear local state whenever the dialog opens fresh — adjusted during render rather
   // than in an Effect (React docs: "adjust state when a prop changes"), same pattern as
@@ -69,7 +74,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: GroupFormDialogPr
   // being edited, or reopening a fresh "create" dialog after a previous session.
   useEffect(() => {
     if (open) {
-      reset({ name: group?.name ?? "" });
+      reset({ name: group?.name ?? "", malayalamName: group?.malayalam_name ?? "" });
     }
   }, [group, open, reset]);
 
@@ -147,6 +152,28 @@ export function GroupFormDialog({ open, onOpenChange, group }: GroupFormDialogPr
             {errors.name ? (
               <p role="alert" className="text-sm text-destructive">
                 {errors.name.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="group-malayalam-name">Malayalam name</Label>
+            <Input
+              id="group-malayalam-name"
+              autoComplete="off"
+              lang="ml"
+              aria-invalid={errors.malayalamName ? true : undefined}
+              {...register("malayalamName")}
+            />
+            <MalayalamSuggestion
+              value={malayalamNameValue ?? ""}
+              onAccept={(text) =>
+                setValue("malayalamName", text, { shouldValidate: true, shouldDirty: true })
+              }
+            />
+            {errors.malayalamName ? (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.malayalamName.message}
               </p>
             ) : null}
           </div>

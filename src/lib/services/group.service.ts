@@ -21,13 +21,14 @@ export async function listGroups(): Promise<Group[]> {
 
 export type GroupInput = {
   name: string;
+  malayalamName?: string;
 };
 
 export async function createGroup(input: GroupInput): Promise<ServiceResult<Group>> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("main_groups")
-    .insert(input)
+    .insert({ name: input.name, malayalam_name: input.malayalamName || null })
     .select()
     .single();
 
@@ -45,7 +46,7 @@ export async function updateGroup(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("main_groups")
-    .update(input)
+    .update({ name: input.name, malayalam_name: input.malayalamName || null })
     .eq("id", id)
     .select()
     .single();

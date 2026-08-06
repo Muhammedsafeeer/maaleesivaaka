@@ -122,7 +122,7 @@ export async function listResults(programId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
-    .select("*, students(name, roll_number, class, photo_url, main_groups(name))")
+    .select("*, students(name, malayalam_name, roll_number, class, photo_url, main_groups(name))")
     .eq("program_id", programId)
     .order("position", { ascending: true });
 
@@ -142,6 +142,7 @@ export type PodiumCertificateRow = {
   programCategory: string;
   studentId: string;
   studentName: string;
+  studentMalayalamName: string | null;
   rollNumber: string;
   className: string;
   houseName: string | null;
@@ -160,7 +161,7 @@ export async function listPodiumResultsForCertificates(): Promise<PodiumCertific
   const { data, error } = await supabase
     .from("results")
     .select(
-      "id, position, points, program_id, programs(name, category), students(id, name, roll_number, class, photo_url, main_groups(name))",
+      "id, position, points, program_id, programs(name, category), students(id, name, malayalam_name, roll_number, class, photo_url, main_groups(name))",
     )
     .lte("position", 3)
     .order("position", { ascending: true });
@@ -185,6 +186,7 @@ export async function listPodiumResultsForCertificates(): Promise<PodiumCertific
         programCategory: row.programs.category,
         studentId: student.id,
         studentName: student.name,
+        studentMalayalamName: student.malayalam_name,
         rollNumber: student.roll_number,
         className: student.class,
         houseName: student.main_groups?.name ?? null,
@@ -197,11 +199,14 @@ export async function listPodiumResultsForCertificates(): Promise<PodiumCertific
 export type PublishedProgramPodiumRow = {
   programId: string;
   programName: string;
+  programMalayalamName: string | null;
   programCategory: string;
   podium: {
     position: number;
     studentName: string;
+    studentMalayalamName: string | null;
     groupName: string | null;
+    groupMalayalamName: string | null;
     photoUrl: string | null;
   }[];
 };
@@ -225,7 +230,7 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
   const { data, error } = await supabase
     .from("programs")
     .select(
-      "id, name, category, results(position, students(name, photo_url, main_groups(name)))",
+      "id, name, malayalam_name, category, results(position, students(name, malayalam_name, photo_url, main_groups(name, malayalam_name)))",
     )
     .eq("status", "published")
     .lte("results.position", 3)
@@ -239,13 +244,16 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
   return data.map((program) => ({
     programId: program.id,
     programName: program.name,
+    programMalayalamName: program.malayalam_name,
     programCategory: program.category,
     podium: program.results
       .filter((result) => result.students)
       .map((result) => ({
         position: result.position,
         studentName: result.students!.name,
+        studentMalayalamName: result.students!.malayalam_name,
         groupName: result.students!.main_groups?.name ?? null,
+        groupMalayalamName: result.students!.main_groups?.malayalam_name ?? null,
         photoUrl: result.students!.photo_url,
       }))
       .sort((a, b) => a.position - b.position),
@@ -265,7 +273,7 @@ export async function listAllResultsForCertificates(): Promise<PodiumCertificate
   const { data, error } = await supabase
     .from("results")
     .select(
-      "id, position, points, program_id, programs(name, category), students(id, name, roll_number, class, photo_url, main_groups(name))",
+      "id, position, points, program_id, programs(name, category), students(id, name, malayalam_name, roll_number, class, photo_url, main_groups(name))",
     )
     .order("position", { ascending: true });
 
@@ -289,6 +297,7 @@ export async function listAllResultsForCertificates(): Promise<PodiumCertificate
         programCategory: row.programs.category,
         studentId: student.id,
         studentName: student.name,
+        studentMalayalamName: student.malayalam_name,
         rollNumber: student.roll_number,
         className: student.class,
         houseName: student.main_groups?.name ?? null,

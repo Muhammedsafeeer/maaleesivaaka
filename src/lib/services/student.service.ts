@@ -67,17 +67,30 @@ export async function listRecentStudents(limit: number): Promise<StudentWithGrou
 export type StudentInput = {
   roll_number: string;
   name: string;
+  malayalamName?: string;
   class: string;
   gender: Gender;
   category: Category;
   group_id: string;
 };
 
+function toRow(input: StudentInput) {
+  return {
+    roll_number: input.roll_number,
+    name: input.name,
+    malayalam_name: input.malayalamName || null,
+    class: input.class,
+    gender: input.gender,
+    category: input.category,
+    group_id: input.group_id,
+  };
+}
+
 export async function createStudent(input: StudentInput): Promise<ServiceResult<Student>> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("students")
-    .insert(input)
+    .insert(toRow(input))
     .select()
     .single();
 
@@ -101,7 +114,7 @@ export async function updateStudent(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("students")
-    .update(input)
+    .update(toRow(input))
     .eq("id", id)
     .select()
     .single();

@@ -1,4 +1,4 @@
-import { Playfair_Display } from "next/font/google";
+import { Playfair_Display, Noto_Sans_Malayalam } from "next/font/google";
 
 /**
  * Self-hosted here (rather than reusing the audience layout's --font-audience-display)
@@ -12,6 +12,13 @@ const displayFont = Playfair_Display({
   style: ["normal", "italic"],
 });
 
+// Playfair Display has no Malayalam glyphs, so the student's malayalam_name (added
+// 20260806080000_malayalam_names.sql) needs its own web font rather than falling back
+// to whatever Malayalam font (if any) happens to be installed on the machine printing
+// the certificate — that fallback would render fine on some admin laptops and as tofu
+// boxes on others.
+const malayalamFont = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["600"] });
+
 const POSITION_SUFFIXES: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
 
 function formatDate(date: Date): string {
@@ -22,6 +29,7 @@ function formatDate(date: Date): string {
 
 type CertificateTemplateProps = {
   studentName: string;
+  studentMalayalamName?: string | null;
   rollNumber?: string | null;
   className?: string | null;
   houseName?: string | null;
@@ -53,10 +61,12 @@ type CertificateTemplateProps = {
  * positioned in mm too rather than %, keeping the two in a single fixed, print-accurate
  * coordinate space instead of two unit systems that could drift apart.
  *
- * rollNumber/className/houseName/photoUrl are optional because the audience "Find My
- * Result" search (D-019, docs/decisions.md) deliberately never returns them — only a
- * student's own name and result — so a certificate printed from there leaves those
- * fields blank rather than showing "—" or a placeholder photo. signatoryName/sealUrl/
+ * rollNumber/className/houseName/photoUrl/studentMalayalamName are optional because the
+ * audience "Find My Result" search (D-019, docs/decisions.md) deliberately never returns
+ * them — only a student's own name and result — so a certificate printed from there
+ * leaves those fields blank rather than showing "—" or a placeholder photo.
+ * studentMalayalamName is additionally optional because most existing rows have no
+ * malayalam_name filled in yet (20260806080000_malayalam_names.sql). signatoryName/sealUrl/
  * signatureUrl come from certificate_settings (admin-configured in /admin/settings,
  * CertificateSettingsForm); all three are optional for the same reason — nothing here
  * should block printing a certificate before an admin has gotten around to uploading a
@@ -64,6 +74,7 @@ type CertificateTemplateProps = {
  */
 export function CertificateTemplate({
   studentName,
+  studentMalayalamName,
   rollNumber,
   className,
   houseName,
@@ -86,7 +97,15 @@ export function CertificateTemplate({
   return (
     <div className={`certificate-page ${displayFont.className}`}>
       <div className="certificate-frame">
-        <p className="cert-field cert-field-name">{studentName}</p>
+        <p className="cert-field cert-field-name">
+          {studentName}
+          {studentMalayalamName ? (
+            <span className={`cert-name-malayalam ${malayalamFont.className}`}>
+              {" "}
+              ({studentMalayalamName})
+            </span>
+          ) : null}
+        </p>
 
         <p className="cert-field cert-field-program" title={programLine}>
           {programLine}

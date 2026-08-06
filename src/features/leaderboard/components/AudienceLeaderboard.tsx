@@ -12,7 +12,7 @@ function PodiumCard({ group, isLeader }: { group: GroupLeaderboardRow; isLeader:
   return (
     <div
       className={cn(
-        "relative flex flex-1 flex-col items-center gap-1 rounded-2xl bg-(--stage-spotlight-card) px-2 pb-4 text-center",
+        "relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl bg-(--stage-spotlight-card) px-2 pb-4 text-center",
         isLeader ? "order-2 pt-14 pb-6 shadow-lg ring-1 ring-(--stage-spotlight-gold)/30" : "order-1 pt-10 last:order-3",
       )}
     >
@@ -40,7 +40,7 @@ function PodiumCard({ group, isLeader }: { group: GroupLeaderboardRow; isLeader:
       </span>
       <span
         className={cn(
-          "mt-1 truncate font-[family-name:var(--font-audience-display)] font-bold text-(--stage-spotlight-ink)",
+          "mt-1 w-full truncate font-[family-name:var(--font-audience-display)] font-bold text-(--stage-spotlight-ink)",
           isLeader ? "text-xl" : "text-sm",
         )}
       >

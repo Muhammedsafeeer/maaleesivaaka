@@ -31,5 +31,7 @@ export async function publishProgramAction(programId: string): Promise<ResultAct
 
   revalidatePath(`/admin/programs/${programId}`);
   revalidatePath("/admin/programs");
+  revalidatePath("/admin/fixture");
+  revalidatePath("/audience");
   return {};
 }

@@ -13,6 +13,7 @@ import {
   ImageIcon,
   Settings2Icon,
   SparklesIcon,
+  MegaphoneIcon,
 } from "lucide-react";
 import { NavMain, type NavMainItem } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -37,6 +38,7 @@ const ADMIN_NAV: NavMainItem[] = [
   { title: "Leaderboard", url: "/admin/leaderboard", icon: <TrophyIcon /> },
   { title: "Certificates", url: "/admin/certificates", icon: <AwardIcon /> },
   { title: "Results Poster", url: "/admin/results-poster", icon: <ImageIcon /> },
+  { title: "Ads", url: "/admin/ads", icon: <MegaphoneIcon /> },
   { title: "Settings", url: "/admin/settings", icon: <Settings2Icon /> },
 ];
 

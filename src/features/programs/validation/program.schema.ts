@@ -14,6 +14,10 @@ const stageTypeValues = STAGE_TYPES.map((s) => s.value) as [StageType, ...StageT
  */
 export const programSchema = z.object({
   name: z.string().min(1, "Name is required.").max(200),
+  malayalamName: z
+    .string()
+    .max(200, "Malayalam name must be 200 characters or fewer.")
+    .optional(),
   stage_type: z.enum(stageTypeValues, { error: "Select a stage type." }),
   category: z.enum(categoryValues, { error: "Select a category." }),
   /** Named scoring types (e.g. "Voice", "Performance"), each judged 0-10 — empty means

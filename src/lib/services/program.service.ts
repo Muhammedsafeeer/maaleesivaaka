@@ -75,6 +75,7 @@ export async function getProgram(id: string): Promise<Program | null> {
 /** No `status` here — Phase 17 made status fully system-managed (see program.schema.ts). */
 export type ProgramInput = {
   name: string;
+  malayalamName?: string;
   stage_type: StageType;
   category: Category;
 };
@@ -83,7 +84,12 @@ export async function createProgram(input: ProgramInput): Promise<ServiceResult<
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("programs")
-    .insert(input)
+    .insert({
+      name: input.name,
+      malayalam_name: input.malayalamName || null,
+      stage_type: input.stage_type,
+      category: input.category,
+    })
     .select()
     .single();
 
@@ -101,7 +107,12 @@ export async function updateProgram(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("programs")
-    .update(input)
+    .update({
+      name: input.name,
+      malayalam_name: input.malayalamName || null,
+      stage_type: input.stage_type,
+      category: input.category,
+    })
     .eq("id", id)
     .select()
     .single();

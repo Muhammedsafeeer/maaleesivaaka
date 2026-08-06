@@ -12,6 +12,10 @@ const classValues = CLASSES.map((c) => c.value) as [StudentClass, ...StudentClas
 export const studentSchema = z.object({
   roll_number: z.string().min(1, "Roll number is required.").max(50),
   name: z.string().min(1, "Name is required.").max(200),
+  malayalamName: z
+    .string()
+    .max(200, "Malayalam name must be 200 characters or fewer.")
+    .optional(),
   class: z.enum(classValues, { error: "Select a class." }),
   gender: z.enum(genderValues, { error: "Select a gender." }),
   category: z.enum(categoryValues, { error: "Select a category." }),

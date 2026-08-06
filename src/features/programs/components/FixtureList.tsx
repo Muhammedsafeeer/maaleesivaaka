@@ -20,12 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatusBadge";
 import {
   setProgramStatusAction,
   reorderUpcomingAction,
 } from "@/features/programs/actions/fixture.actions";
+import { publishProgramAction } from "@/features/programs/actions/result.actions";
 import { CATEGORIES, PROGRAM_STATUSES, type ProgramStatus, type StageType } from "@/constants/programs";
 import { cn } from "@/lib/utils";
 import type { Program } from "@/types/program";
@@ -56,6 +58,7 @@ function FixtureRow({
   onDragEnd: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [isPublishing, startPublish] = useTransition();
 
   function handleStatusChange(status: Exclude<ProgramStatus, "published">) {
     if (status === program.status) return;
@@ -65,6 +68,17 @@ function FixtureRow({
       if (result.error) {
         toast.error(result.error);
       }
+    });
+  }
+
+  function handlePublish() {
+    startPublish(async () => {
+      const result = await publishProgramAction(program.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`${program.name} published — visible to the audience now.`);
     });
   }
 
@@ -105,24 +119,31 @@ function FixtureRow({
         {program.status === "published" ? (
           <ProgramStatusBadge status={program.status} />
         ) : (
-          <Select
-            value={program.status}
-            onValueChange={(value) =>
-              handleStatusChange(value as Exclude<ProgramStatus, "published">)
-            }
-            disabled={isPending}
-          >
-            <SelectTrigger aria-label={`Status for ${program.name}`} className="h-8 w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {overridableStatuses.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <Select
+              value={program.status}
+              onValueChange={(value) =>
+                handleStatusChange(value as Exclude<ProgramStatus, "published">)
+              }
+              disabled={isPending}
+            >
+              <SelectTrigger aria-label={`Status for ${program.name}`} className="h-8 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {overridableStatuses.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {program.status === "completed" ? (
+              <Button size="sm" className="h-8" onClick={handlePublish} disabled={isPublishing}>
+                {isPublishing ? "Publishing…" : "Publish"}
+              </Button>
+            ) : null}
+          </div>
         )}
       </TableCell>
     </TableRow>

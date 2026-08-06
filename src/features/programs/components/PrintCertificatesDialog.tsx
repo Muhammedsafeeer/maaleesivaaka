@@ -112,6 +112,7 @@ export function PrintCertificatesDialog({
           <CertificateTemplate
             key={result.id}
             studentName={result.students?.name ?? ""}
+            studentMalayalamName={result.students?.malayalam_name}
             rollNumber={result.students?.roll_number}
             className={result.students?.class}
             houseName={result.students?.main_groups?.name}

@@ -20,6 +20,13 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number]["value"];
 
+/** Malayalam counterparts of CATEGORIES' labels, for audience-facing posters/certificates. */
+export const CATEGORY_MALAYALAM_LABELS: Record<Category, string> = {
+  kids: "കിഡ്സ്",
+  junior: "ജൂനിയർ",
+  senior: "സീനിയർ",
+};
+
 /** Whether a program is performed on stage or completed off stage. */
 export const STAGE_TYPES = [
   { value: "on_stage", label: "On Stage" },

@@ -2,8 +2,10 @@ import { createClient } from "@/lib/supabase/client";
 import {
   MAX_PHOTO_SIZE_BYTES,
   ALLOWED_PHOTO_MIME_TYPES,
+  MAX_AD_MEDIA_SIZE_BYTES,
   type PhotoBucket,
 } from "@/constants/storage";
+import { resolveAdMediaMimeType } from "@/lib/utils/adMediaType";
 
 export type StorageResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -63,4 +65,51 @@ export async function removePhoto(
   }
 
   return { success: true, data: null };
+}
+
+/**
+ * Ad media isn't compressed client-side like PhotoUpload's photos — posters are shown
+ * full-bleed and video can't be compressed in the browser at all — so
+ * MAX_AD_MEDIA_SIZE_BYTES is the only client-side check before the upload hits the
+ * bucket's own (real) limit.
+ *
+ * An ad can carry several media items (ad_media, one row per item), so unlike
+ * uploadPhoto's fixed per-entity key, `storageKey` must be unique per item — callers
+ * pass `${adId}/${crypto.randomUUID()}` so every item gets its own object under the
+ * ad's "folder" instead of overwriting a single per-ad file.
+ */
+export async function uploadAdMedia(
+  storageKey: string,
+  file: File,
+): Promise<StorageResult<string>> {
+  // Falls back to the filename's extension when the browser reports no usable
+  // File.type (see adMediaType.ts) — and that resolved type, not the possibly-empty
+  // file.type, is what gets sent as contentType below, since the ad-media bucket's own
+  // allowed_mime_types check (20260806020000_ads.sql) would otherwise reject the upload
+  // even after this validation passes.
+  const mimeType = resolveAdMediaMimeType(file);
+  if (!mimeType) {
+    return { success: false, error: "Ad media must be a JPEG, PNG, WebP image, or MP4/WebM video." };
+  }
+
+  if (file.size > MAX_AD_MEDIA_SIZE_BYTES) {
+    return { success: false, error: "Ad media must be 25 MB or smaller." };
+  }
+
+  const supabase = createClient();
+
+  const { error: uploadError } = await supabase.storage
+    .from("ad-media")
+    .upload(storageKey, file, { upsert: true, contentType: mimeType });
+
+  if (uploadError) {
+    console.error("[storage] ad-media upload error", uploadError);
+    return { success: false, error: "Could not upload the ad media. Please try again." };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("ad-media").getPublicUrl(storageKey);
+
+  return { success: true, data: publicUrl };
 }

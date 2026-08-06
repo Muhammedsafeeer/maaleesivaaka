@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Trophy, Award, Mic2, Activity, ListOrdered, Medal, Clock, Sparkles } from "lucide-react";
+import { Trophy, Award, Mic2, Activity, ListOrdered, Medal, Clock, Sparkles, LogIn } from "lucide-react";
 import { listPrograms, listCategoryStatus } from "@/lib/services/program.service";
 import { listGroupLeaderboard } from "@/lib/services/leaderboard.service";
 import {
@@ -29,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CATEGORIES, STAGE_TYPES } from "@/constants/programs";
 import { LOGIN_ROUTE } from "@/constants/roles";
+import { listAds } from "@/lib/services/ad.service";
+import { AdSlot } from "@/features/ads/components/AdSlot";
 
 export const metadata: Metadata = {
   title: "Maalee Sivaa Ka — Live",
@@ -59,6 +61,7 @@ export default async function AudiencePage() {
     programWinners,
     categoryStatus,
     certificateSettings,
+    ads,
   ] = await Promise.all([
     // Starting a program on the Fixture page goes straight to 'scoring' — that's the
     // only "on stage" status a program can have (the 'ongoing' status was removed).
@@ -69,6 +72,7 @@ export default async function AudiencePage() {
     listProgramWinners(),
     listCategoryStatus(),
     getCertificateSettings(),
+    listAds(),
   ]);
 
   // On-stage and off-stage each run independently (fixture.service.ts's
@@ -121,11 +125,16 @@ export default async function AudiencePage() {
         <Button
           asChild
           size="sm"
-          className="shrink-0 rounded-full bg-(--stage-spotlight-gold) text-(--stage-spotlight-deep) hover:bg-(--stage-spotlight-gold)/90"
+          className="shrink-0 gap-1 rounded-full bg-(--stage-spotlight-gold) px-2.5 text-(--stage-spotlight-deep) hover:bg-(--stage-spotlight-gold)/90 sm:px-3"
         >
-          <Link href={LOGIN_ROUTE}>Login</Link>
+          <Link href={LOGIN_ROUTE}>
+            <LogIn className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Login</span>
+          </Link>
         </Button>
       </div>
+
+      <AdSlot ad={ads[0] ?? null} />
 
       {/* Hero: dark podium, top 3 only — mirrors the reference's "Leading Districts"
           panel. The rest of the standings live in the light table further down
@@ -141,6 +150,8 @@ export default async function AudiencePage() {
         <AudienceLeaderboard rows={leaderboard} />
       </OrnateFrame>
 
+      <AdSlot ad={ads[1] ?? null} />
+
       <OrnateFrame tint="gold">
         <SectionHeading
           icon={<Award />}
@@ -151,6 +162,8 @@ export default async function AudiencePage() {
         />
         <LatestWinnerPodium results={latestProgramPodium} />
       </OrnateFrame>
+
+      <AdSlot ad={ads[2] ?? null} />
 
       <OrnateFrame tint="emerald">
         <SectionHeading icon={<Mic2 />} kicker="On Stage" title="Now Performing" tint="emerald" />
@@ -200,10 +213,14 @@ export default async function AudiencePage() {
         </div>
       </OrnateFrame>
 
+      <AdSlot ad={ads[3] ?? null} />
+
       <OrnateFrame tint="amber">
         <SectionHeading icon={<Activity />} kicker="Live Progress" title="Status of Festival" tint="amber" />
         <FestivalStatus statuses={categoryStatus} />
       </OrnateFrame>
+
+      <AdSlot ad={ads[4] ?? null} />
 
       {/* Dense three-column data section — the reference's "Leading Districts /
           Leading Schools / Latest Results" table row. No "schools" concept exists in
@@ -244,6 +261,8 @@ export default async function AudiencePage() {
         </OrnateFrame>
       </div>
 
+      <AdSlot ad={ads[5] ?? null} />
+
       {/* Colour-blocked category cards — echoes the reference's "Detailed Results"
           block. Its cards are navigation hubs into category sub-pages this app doesn't
           have, so these show the real per-category numbers instead. */}
@@ -257,6 +276,8 @@ export default async function AudiencePage() {
         />
         <CategoryHighlights statuses={categoryStatus} />
       </div>
+
+      <AdSlot ad={ads[6] ?? null} />
 
       <footer className="border-t border-(--stage-gold-dim)/40 pt-4 text-center text-xs text-(--stage-ink)/40">
         Live results, updating automatically.

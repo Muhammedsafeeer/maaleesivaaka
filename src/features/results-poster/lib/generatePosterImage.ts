@@ -20,7 +20,7 @@ export async function generatePosterImage(pageElement: HTMLElement, filename: st
   const canvas = await html2canvas(pageElement, {
     scale: CAPTURE_SCALE,
     useCORS: true,
-    backgroundColor: "#fdf8ec",
+    backgroundColor: "#ffffff",
   });
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));

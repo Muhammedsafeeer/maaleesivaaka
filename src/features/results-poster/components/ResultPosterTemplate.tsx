@@ -1,4 +1,4 @@
-import { Playfair_Display } from "next/font/google";
+import { Playfair_Display, Noto_Sans_Malayalam } from "next/font/google";
 import { UserRound } from "lucide-react";
 
 /**
@@ -13,49 +13,68 @@ const displayFont = Playfair_Display({
   style: ["normal", "italic"],
 });
 
-const POSITION_SUFFIXES: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
+// Same reasoning as CertificateTemplate's malayalamFont: Playfair Display has no
+// Malayalam glyphs, so studentName's malayalam_name counterpart needs its own font
+// rather than depending on whatever's installed on the machine downloading the poster.
+const malayalamFont = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["600"] });
 
-// One slot per podium box baked into public/poster.png, measured off that image —
-// see the .poster-* rules in globals.css for the shared field styling these top
-// offsets plug into. Row 4+ (position > 3) never occurs — results.actions caps a
+// One slot per numbered badge row baked into public/poster.jpg, measured off that
+// image — see the .poster-* rules in globals.css for the shared field styling these
+// top offsets plug into. Row 4+ (position > 3) never occurs — results.actions caps a
 // podium at three — so only three slots exist.
-const ROW_CENTER_Y: Record<number, number> = { 1: 519, 2: 686, 3: 854 };
+const ROW_CENTER_Y: Record<number, number> = { 1: 332, 2: 395, 3: 458 };
 
 type PodiumEntry = {
   position: number;
   studentName: string;
+  studentMalayalamName: string | null;
   groupName: string | null;
+  groupMalayalamName: string | null;
   photoUrl: string | null;
 };
 
 type ResultPosterTemplateProps = {
   programName: string;
+  programMalayalamName: string | null;
   categoryLabel: string;
+  categoryMalayalamLabel: string;
   podium: PodiumEntry[];
 };
 
 /**
  * One WhatsApp-shareable poster for one published program's podium — distinct from
  * CertificateTemplate (a per-student keepsake overlaid on the fixed certificate.jpeg
- * design), but built the same way as of v2: overlaid on the fixed public/poster.png
- * artwork (the mosque's own Noorul Huda Madrassa / Maalee Sivaa Ka design — emblem,
- * corner ribbons, lantern, three blank ornate boxes) rather than a hand-drawn
- * Tailwind frame, now that that artwork exists to align overlays against. Each box
- * gets a circular student photo on the left, a small gold position badge, and the
- * name/group to its right; the program name sits in the gap directly under the
- * "MAALEE SIVAA KA" banner.
+ * design), but built the same way as of v3: overlaid on the fixed public/poster.jpg
+ * artwork (the mosque's own Noorul Huda Madrassa / Maalee Sivaa Ka design, with its
+ * position badges pre-drawn) rather than a hand-drawn Tailwind frame, now that that
+ * artwork exists to align overlays against. Each row gets a circular student photo
+ * next to the artwork's own numbered badge, with the name/group to its right; the
+ * program name sits in the open box near the top.
  */
 export function ResultPosterTemplate({
   programName,
+  programMalayalamName,
   categoryLabel,
+  categoryMalayalamLabel,
   podium,
 }: ResultPosterTemplateProps) {
   return (
     <div className={`poster-page ${displayFont.className}`}>
       <div className="poster-frame">
-        <p className="poster-field poster-program-name" title={programName}>
-          {programName}
-        </p>
+        <div className="poster-field poster-header">
+          <p
+            className={`poster-category-malayalam ${malayalamFont.className}`}
+            title={categoryMalayalamLabel}
+          >
+            {categoryMalayalamLabel}
+          </p>
+          <p
+            className={`poster-program-name-malayalam ${malayalamFont.className}`}
+            title={programMalayalamName ?? programName}
+          >
+            {programMalayalamName ?? programName}
+          </p>
+        </div>
 
         {podium.length === 0 ? (
           <p className="poster-empty-note">Results coming soon</p>
@@ -81,20 +100,26 @@ export function ResultPosterTemplate({
                   )}
                 </div>
 
-                <div className="poster-badge" style={{ top: centerY }}>
-                  {entry.position}
-                  <span style={{ fontSize: 10, verticalAlign: "super" }}>
-                    {POSITION_SUFFIXES[entry.position] ?? "th"}
-                  </span>
-                </div>
-
                 <div className="poster-details" style={{ top: centerY }}>
                   <p className="poster-name" title={entry.studentName}>
                     {entry.studentName}
                   </p>
+                  {entry.studentMalayalamName ? (
+                    <p
+                      className={`poster-name-malayalam ${malayalamFont.className}`}
+                      title={entry.studentMalayalamName}
+                    >
+                      {entry.studentMalayalamName}
+                    </p>
+                  ) : null}
                   {entry.groupName ? (
-                    <p className="poster-group" title={`${entry.groupName} Group`}>
-                      {entry.groupName} Group · {categoryLabel}
+                    <p
+                      className="poster-group"
+                      title={`${entry.groupName} Group`}
+                    >
+                      {entry.groupName}
+                      {entry.groupMalayalamName ? ` (${entry.groupMalayalamName})` : ""} Group ·{" "}
+                      {categoryLabel}
                     </p>
                   ) : (
                     <p className="poster-group">{categoryLabel}</p>

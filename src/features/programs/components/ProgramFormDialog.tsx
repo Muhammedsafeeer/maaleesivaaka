@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { ListMusic, Plus, X } from "lucide-react";
@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/forms/SubmitButton";
+import { MalayalamSuggestion } from "@/components/forms/MalayalamSuggestion";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORIES, STAGE_TYPES } from "@/constants/programs";
 import {
@@ -47,6 +48,7 @@ type ProgramFormDialogProps = {
 
 const emptyDefaults: ProgramInput = {
   name: "",
+  malayalamName: "",
   stage_type: "on_stage",
   category: "kids",
   criteriaNames: [],
@@ -66,12 +68,14 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ProgramInput>({
     resolver: zodResolver(programSchema),
     defaultValues: program
       ? {
           name: program.name,
+          malayalamName: program.malayalam_name ?? "",
           stage_type: program.stage_type,
           category: program.category,
           criteriaNames: [],
@@ -79,6 +83,7 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
       : emptyDefaults,
   });
 
+  const malayalamNameValue = useWatch({ control, name: "malayalamName" });
   const { fields, append, remove } = useFieldArray({ control, name: "criteriaNames" });
 
   useEffect(() => {
@@ -86,6 +91,7 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
       program
         ? {
             name: program.name,
+            malayalamName: program.malayalam_name ?? "",
             stage_type: program.stage_type,
             category: program.category,
             criteriaNames: [],
@@ -105,6 +111,7 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
         setCriteriaLocked(locked);
         reset({
           name: program.name,
+          malayalamName: program.malayalam_name ?? "",
           stage_type: program.stage_type,
           category: program.category,
           criteriaNames: data.map((c) => ({ name: c.name })),
@@ -160,6 +167,28 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
             {errors.name ? (
               <p role="alert" className="text-sm text-destructive">
                 {errors.name.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="program-malayalam-name">Malayalam name</Label>
+            <Input
+              id="program-malayalam-name"
+              autoComplete="off"
+              lang="ml"
+              aria-invalid={errors.malayalamName ? true : undefined}
+              {...register("malayalamName")}
+            />
+            <MalayalamSuggestion
+              value={malayalamNameValue ?? ""}
+              onAccept={(text) =>
+                setValue("malayalamName", text, { shouldValidate: true, shouldDirty: true })
+              }
+            />
+            {errors.malayalamName ? (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.malayalamName.message}
               </p>
             ) : null}
           </div>
