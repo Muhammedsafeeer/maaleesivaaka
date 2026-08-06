@@ -1,0 +1,12 @@
+
+> school-function-judging@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://26.107.250.94:3000
+- Environments: .env.local
+✓ Ready in 547ms
+
+ GET /login 200 in 1930ms (next.js: 635ms, proxy.ts: 499ms, application-code: 796ms)
+[?25h

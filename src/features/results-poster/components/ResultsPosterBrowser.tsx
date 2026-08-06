@@ -15,8 +15,10 @@ import {
 import { EmptyState } from "@/components/tables/EmptyState";
 import { PosterDownloadPortal } from "@/features/results-poster/components/PosterDownloadPortal";
 import { ResultPosterTemplate } from "@/features/results-poster/components/ResultPosterTemplate";
+import { DynamicResultPosterTemplate } from "@/features/results-poster/components/DynamicResultPosterTemplate";
 import { CATEGORY_MALAYALAM_LABELS, type Category } from "@/constants/programs";
 import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
+import type { PosterSettings } from "@/lib/services/posterSettings.service";
 
 const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
 
@@ -34,9 +36,11 @@ function slugify(value: string): string {
 export function ResultsPosterBrowser({
   rows,
   categoryLabels,
+  posterSettings,
 }: {
   rows: PublishedProgramPodiumRow[];
   categoryLabels: Record<string, string>;
+  posterSettings: PosterSettings;
 }) {
   const [target, setTarget] = useState<PublishedProgramPodiumRow | null>(null);
 
@@ -106,15 +110,24 @@ export function ResultsPosterBrowser({
         filename={target ? `poster-${slugify(target.programName)}.png` : "poster.png"}
       >
         {target ? (
-          <ResultPosterTemplate
-            programName={target.programName}
-            programMalayalamName={target.programMalayalamName}
-            categoryLabel={categoryLabels[target.programCategory] ?? target.programCategory}
-            categoryMalayalamLabel={
-              CATEGORY_MALAYALAM_LABELS[target.programCategory as Category] ?? target.programCategory
-            }
-            podium={target.podium}
-          />
+          posterSettings.backgroundUrl ? (
+            <DynamicResultPosterTemplate
+              settings={posterSettings}
+              programName={target.programName}
+              categoryLabel={categoryLabels[target.programCategory] ?? target.programCategory}
+              podium={target.podium}
+            />
+          ) : (
+            <ResultPosterTemplate
+              programName={target.programName}
+              programMalayalamName={target.programMalayalamName}
+              categoryLabel={categoryLabels[target.programCategory] ?? target.programCategory}
+              categoryMalayalamLabel={
+                CATEGORY_MALAYALAM_LABELS[target.programCategory as Category] ?? target.programCategory
+              }
+              podium={target.podium}
+            />
+          )
         ) : null}
       </PosterDownloadPortal>
     </>

@@ -42,21 +42,37 @@ export type CurrentUser = Pick<Profile, "id" | "name" | "email" | "role">;
  * Wrapped in React's cache() because a protected route's layout AND its page both call
  * this on every request (layout to gate access, page to show "signed in as ..."); this
  * makes the second call free instead of a duplicate round trip to Supabase.
+ *
+ * [request] is optional and only ever passed from Route Handlers, not pages/Server
+ * Actions: those are hit by the Flutter mobile app too, which has no browser to hold
+ * the SSR cookie session — it sends its Supabase access token as a Bearer header
+ * instead. Falls back to it only when the cookie session resolved to nobody, so
+ * normal browser requests never take this path.
  */
-export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+export const getCurrentUser = cache(async (request?: Request): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  let resolvedUser = user;
+
+  if (!resolvedUser && request) {
+    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (token) {
+      const { data } = await supabase.auth.getUser(token);
+      resolvedUser = data.user;
+    }
+  }
+
+  if (!resolvedUser) {
     return null;
   }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, name, email, role")
-    .eq("id", user.id)
+    .eq("id", resolvedUser.id)
     .single();
 
   return profile;
@@ -92,8 +108,8 @@ export type AuthorizationResult = { ok: true } | { ok: false; error: string };
  * whether this check runs. A caller who somehow skipped this would still get rejected
  * by Postgres, just with a less friendly error.
  */
-export async function assertAdmin(): Promise<AuthorizationResult> {
-  const user = await getCurrentUser();
+export async function assertAdmin(request?: Request): Promise<AuthorizationResult> {
+  const user = await getCurrentUser(request);
 
   if (!user || user.role !== "admin") {
     return { ok: false, error: "You must be an admin to do that." };
@@ -104,8 +120,8 @@ export async function assertAdmin(): Promise<AuthorizationResult> {
 
 /** Judge-side mirror of assertAdmin() — same reasoning, first used by Phase 12's
  * scoring Server Action. Real enforcement is judge_scores' RLS policies (Phase 7). */
-export async function assertJudge(): Promise<AuthorizationResult> {
-  const user = await getCurrentUser();
+export async function assertJudge(request?: Request): Promise<AuthorizationResult> {
+  const user = await getCurrentUser(request);
 
   if (!user || user.role !== "judge") {
     return { ok: false, error: "You must be a judge to do that." };

@@ -3,6 +3,7 @@ import {
   MAX_PHOTO_SIZE_BYTES,
   ALLOWED_PHOTO_MIME_TYPES,
   MAX_AD_MEDIA_SIZE_BYTES,
+  MAX_POSTER_BACKGROUND_SIZE_BYTES,
   type PhotoBucket,
 } from "@/constants/storage";
 import { resolveAdMediaMimeType } from "@/lib/utils/adMediaType";
@@ -112,4 +113,39 @@ export async function uploadAdMedia(
   } = supabase.storage.from("ad-media").getPublicUrl(storageKey);
 
   return { success: true, data: publicUrl };
+}
+
+/**
+ * Poster designer background — fixed key ('background', same singleton shape as
+ * certificate-assets' 'seal'/'signature'), uncompressed like uploadAdMedia (shown
+ * full-bleed, not a small thumbnail like PhotoUpload's photos). A `?v=` cache-buster
+ * is appended to the returned URL so re-uploading over the same key doesn't keep
+ * serving a cached copy of the old background — same reasoning as the Flutter app's
+ * PosterRepository.uploadBackground.
+ */
+export async function uploadPosterBackground(file: File): Promise<StorageResult<string>> {
+  if (!ALLOWED_PHOTO_MIME_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_MIME_TYPES)[number])) {
+    return { success: false, error: "Background must be a JPEG, PNG, or WebP image." };
+  }
+
+  if (file.size > MAX_POSTER_BACKGROUND_SIZE_BYTES) {
+    return { success: false, error: "Background must be 5 MB or smaller." };
+  }
+
+  const supabase = createClient();
+  const key = "background";
+
+  const { error: uploadError } = await supabase.storage
+    .from("poster-assets")
+    .upload(key, file, { upsert: true, contentType: file.type });
+
+  if (uploadError) {
+    return { success: false, error: "Could not upload the background. Please try again." };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("poster-assets").getPublicUrl(key);
+
+  return { success: true, data: `${publicUrl}?v=${Date.now()}` };
 }

@@ -213,6 +213,30 @@ export type Database = {
         }
         Relationships: []
       }
+      poster_settings: {
+        Row: {
+          background_url: string | null
+          created_at: string
+          fields: Json
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          background_url?: string | null
+          created_at?: string
+          fields?: Json
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          background_url?: string | null
+          created_at?: string
+          fields?: Json
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

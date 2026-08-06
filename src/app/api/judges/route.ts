@@ -16,7 +16,7 @@ import type { Database } from "@/types/database.types";
  * service role key can call (see app/README.md § Route handlers vs Server Actions).
  */
 export async function POST(request: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertAdmin(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: 403 });
   }

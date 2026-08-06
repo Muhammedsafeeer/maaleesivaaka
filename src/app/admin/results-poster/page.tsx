@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { listPublishedProgramPodiums } from "@/lib/services/result.service";
+import { getPosterSettings } from "@/lib/services/posterSettings.service";
 import { CATEGORIES } from "@/constants/programs";
 import { ResultsPosterBrowser } from "@/features/results-poster/components/ResultsPosterBrowser";
 
@@ -10,10 +12,13 @@ const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.labe
 /**
  * Per-program "share this result" page — distinct from /admin/certificates (a
  * per-student keepsake): this generates one WhatsApp-sized poster image per
- * published program, listing its top three, for posting to a group chat.
+ * published program, listing its top three, for posting to a group chat. Uses the
+ * admin-designed layout from /admin/poster-settings once a background has been
+ * uploaded there; falls back to the fixed public/poster.jpg design otherwise (see
+ * ResultsPosterBrowser).
  */
 export default async function ResultsPosterPage() {
-  const rows = await listPublishedProgramPodiums();
+  const [rows, posterSettings] = await Promise.all([listPublishedProgramPodiums(), getPosterSettings()]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -22,10 +27,20 @@ export default async function ResultsPosterPage() {
         <p className="text-sm text-muted-foreground">
           Download a shareable poster image of a published program&apos;s top three, ready to post
           to WhatsApp.
+          {posterSettings.backgroundUrl ? null : (
+            <>
+              {" "}
+              No custom layout is set up yet — using the default design. Configure one in{" "}
+              <Link href="/admin/poster-settings" className="underline underline-offset-4">
+                Poster Settings
+              </Link>
+              .
+            </>
+          )}
         </p>
       </div>
 
-      <ResultsPosterBrowser rows={rows} categoryLabels={categoryLabels} />
+      <ResultsPosterBrowser rows={rows} categoryLabels={categoryLabels} posterSettings={posterSettings} />
     </div>
   );
 }

@@ -12,8 +12,8 @@ import type { Database } from "@/types/database.types";
  * would make the privileged client trivially reusable from anywhere, exactly what
  * D-006 exists to prevent.
  */
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await assertAdmin();
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await assertAdmin(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: 403 });
   }
@@ -51,7 +51,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
  * account with an admin-chosen password in the first place.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await assertAdmin();
+  const auth = await assertAdmin(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: 403 });
   }

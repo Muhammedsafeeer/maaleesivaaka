@@ -35,3 +35,10 @@ export const ALLOWED_AD_MEDIA_MIME_TYPES = [
 ] as const;
 
 export type AdMediaBucket = "ad-media";
+
+// poster-assets holds the poster designer's background image (Poster Settings) — shown
+// full-bleed like an ad, so like ad-media (not like PhotoUpload's photos) it isn't
+// client-side compressed; this cap is the real boundary the UI checks before upload.
+// Mirrors the Flutter app's PosterRepository._maxBackgroundBytes and the bucket's own
+// file_size_limit (supabase/migrations/20260806110000_poster_settings.sql).
+export const MAX_POSTER_BACKGROUND_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB

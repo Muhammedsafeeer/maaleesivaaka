@@ -203,6 +203,7 @@ export type PublishedProgramPodiumRow = {
   programCategory: string;
   podium: {
     position: number;
+    points: number;
     studentName: string;
     studentMalayalamName: string | null;
     groupName: string | null;
@@ -230,7 +231,7 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
   const { data, error } = await supabase
     .from("programs")
     .select(
-      "id, name, malayalam_name, category, results(position, students(name, malayalam_name, photo_url, main_groups(name, malayalam_name)))",
+      "id, name, malayalam_name, category, results(position, points, students(name, malayalam_name, photo_url, main_groups(name, malayalam_name)))",
     )
     .eq("status", "published")
     .lte("results.position", 3)
@@ -250,6 +251,7 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
       .filter((result) => result.students)
       .map((result) => ({
         position: result.position,
+        points: result.points,
         studentName: result.students!.name,
         studentMalayalamName: result.students!.malayalam_name,
         groupName: result.students!.main_groups?.name ?? null,
