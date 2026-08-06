@@ -114,7 +114,11 @@ export function ResultsPosterBrowser({
             <DynamicResultPosterTemplate
               settings={posterSettings}
               programName={target.programName}
+              programMalayalamName={target.programMalayalamName}
               categoryLabel={categoryLabels[target.programCategory] ?? target.programCategory}
+              categoryMalayalamLabel={
+                CATEGORY_MALAYALAM_LABELS[target.programCategory as Category] ?? target.programCategory
+              }
               podium={target.podium}
             />
           ) : (

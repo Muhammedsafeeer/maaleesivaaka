@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { Noto_Sans_Malayalam } from "next/font/google";
 import type { PosterField } from "@/constants/poster";
 import type { PosterSettings } from "@/lib/services/posterSettings.service";
 import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
+
+// Same reasoning as ResultPosterTemplate's malayalamFont: the admin-designed layout
+// has no guaranteed font of its own, so Malayalam-keyed fields need this loaded
+// explicitly rather than depending on whatever's installed on the machine
+// downloading the poster.
+const malayalamFont = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["600"] });
 
 // Output width is fixed for a crisp capture (generatePosterImage.ts captures this DOM
 // box pixel-for-pixel, same CAPTURE_SCALE reasoning as the certificate pipeline);
@@ -17,12 +24,21 @@ const FALLBACK_ASPECT_RATIO = 3 / 4;
 
 type PodiumEntry = PublishedProgramPodiumRow["podium"][number];
 
-function textFor(field: PosterField, programName: string, categoryLabel: string, podium: PodiumEntry[]): string | null {
+function textFor(
+  field: PosterField,
+  programName: string,
+  programMalayalamName: string | null,
+  categoryLabel: string,
+  categoryMalayalamLabel: string,
+  podium: PodiumEntry[],
+): string | null {
   if (field.key === "program_name") return programName;
+  if (field.key === "program_name_malayalam") return programMalayalamName;
   if (field.key === "category") return categoryLabel;
+  if (field.key === "category_malayalam") return categoryMalayalamLabel;
   if (field.key === "footer") return field.staticText ?? null;
 
-  const match = /^position_(\d)_(name|group|points)$/.exec(field.key);
+  const match = /^position_(\d)_(name|group|points|name_malayalam|group_malayalam)$/.exec(field.key);
   if (!match) return null;
   const position = Number(match[1]);
   const attr = match[2];
@@ -32,8 +48,12 @@ function textFor(field: PosterField, programName: string, categoryLabel: string,
   switch (attr) {
     case "name":
       return entry.studentName;
+    case "name_malayalam":
+      return entry.studentMalayalamName;
     case "group":
       return entry.groupName;
+    case "group_malayalam":
+      return entry.groupMalayalamName;
     case "points":
       return `${entry.points}`;
     default:
@@ -58,12 +78,16 @@ function photoFor(field: PosterField, podium: PodiumEntry[]): string | null {
 export function DynamicResultPosterTemplate({
   settings,
   programName,
+  programMalayalamName,
   categoryLabel,
+  categoryMalayalamLabel,
   podium,
 }: {
   settings: PosterSettings;
   programName: string;
+  programMalayalamName: string | null;
   categoryLabel: string;
+  categoryMalayalamLabel: string;
   podium: PodiumEntry[];
 }) {
   const [aspectRatio, setAspectRatio] = useState(FALLBACK_ASPECT_RATIO);
@@ -116,13 +140,14 @@ export function DynamicResultPosterTemplate({
             );
           }
 
-          const text = textFor(field, programName, categoryLabel, podium);
+          const text = textFor(field, programName, programMalayalamName, categoryLabel, categoryMalayalamLabel, podium);
           if (!text) return null;
+          const isMalayalam = field.key.endsWith("_malayalam");
 
           return (
             <p
               key={field.key}
-              className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap"
+              className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap ${isMalayalam ? malayalamFont.className : ""}`}
               style={{
                 left: `${field.x * 100}%`,
                 top: `${field.y * 100}%`,

@@ -31,7 +31,9 @@ export const POSTER_COLOR_SWATCHES = ["#FFFFFF", "#000000", "#0F5C33", "#C9A227"
 export function defaultPosterFields(): PosterField[] {
   const fields: PosterField[] = [
     { key: "program_name", label: "Program name", type: "text", x: 0.5, y: 0.08, fontSize: 26, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", visible: false },
+    { key: "program_name_malayalam", label: "Program name (Malayalam)", type: "text", x: 0.5, y: 0.11, fontSize: 20, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", visible: false },
     { key: "category", label: "Category", type: "text", x: 0.5, y: 0.15, fontSize: 14, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", visible: false },
+    { key: "category_malayalam", label: "Category (Malayalam)", type: "text", x: 0.5, y: 0.18, fontSize: 14, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", visible: false },
   ];
 
   for (const p of [1, 2, 3]) {
@@ -39,7 +41,9 @@ export function defaultPosterFields(): PosterField[] {
     fields.push(
       { key: `position_${p}_photo`, label: `Winner ${p} photo`, type: "photo", x: cx, y: 0.45, fontSize: 16, photoSize: 0.2, color: "#FFFFFF", bold: true, align: "center", visible: false },
       { key: `position_${p}_name`, label: `Winner ${p} name`, type: "text", x: cx, y: 0.6, fontSize: 15, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", visible: false },
+      { key: `position_${p}_name_malayalam`, label: `Winner ${p} name (Malayalam)`, type: "text", x: cx, y: 0.63, fontSize: 13, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", visible: false },
       { key: `position_${p}_group`, label: `Winner ${p} group`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, color: "#FFFFFF", bold: false, align: "center", visible: false },
+      { key: `position_${p}_group_malayalam`, label: `Winner ${p} group (Malayalam)`, type: "text", x: cx, y: 0.68, fontSize: 11, photoSize: 0.18, color: "#FFFFFF", bold: false, align: "center", visible: false },
       { key: `position_${p}_points`, label: `Winner ${p} points`, type: "text", x: cx, y: 0.7, fontSize: 12, photoSize: 0.18, color: "#FFFFFF", bold: false, align: "center", visible: false },
     );
   }
