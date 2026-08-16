@@ -26,7 +26,7 @@ function initials(name: string) {
 }
 
 export function NavUser({ user }: { user: { name: string; email: string } }) {
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
     <SidebarMenu>
@@ -67,7 +67,12 @@ export function NavUser({ user }: { user: { name: string; email: string } }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/audience" target="_blank" rel="noopener noreferrer">
+                <Link
+                  href="/audience"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpenMobile(false)}
+                >
                   <TvIcon />
                   Audience view
                 </Link>

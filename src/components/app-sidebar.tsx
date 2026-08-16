@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboardIcon,
   UsersIcon,
@@ -26,6 +28,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import type { Role } from "@/constants/roles";
 
@@ -57,6 +60,12 @@ export function AppSidebar({
   user: { name: string; email: string };
 } & React.ComponentProps<typeof Sidebar>) {
   const items = role === "admin" ? ADMIN_NAV : JUDGE_NAV;
+  const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -64,7 +73,10 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-1.5!">
-              <Link href={role === "admin" ? "/admin" : "/judge"}>
+              <Link
+                href={role === "admin" ? "/admin" : "/judge"}
+                onClick={() => setOpenMobile(false)}
+              >
                 <SparklesIcon className="size-5!" />
                 <span className="text-base font-semibold">
                   {role === "admin" ? "Admin" : "Judge"} Panel
