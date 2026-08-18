@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -71,6 +71,7 @@ const emptyDefaults: CreateStudentInput = {
   group_id: "",
   program_ids: [],
 };
+const EMPTY_PROGRAM_IDS: string[] = [];
 
 // students.class is a plain `text` column — a row saved before the dropdown existed
 // could hold anything. Falls back to "1" rather than a value the Select can't render.
@@ -98,7 +99,7 @@ export function StudentFormDialog({
   categories,
   onCategoriesChange,
   programs = [],
-  assignedProgramIds = [],
+  assignedProgramIds = EMPTY_PROGRAM_IDS,
   student,
 }: StudentFormDialogProps) {
   const isEditingExisting = student !== undefined;
@@ -121,6 +122,21 @@ export function StudentFormDialog({
     }
   }
 
+  const resetValues = useMemo(
+    () => (student ? valuesFromStudent(student, assignedProgramIds) : emptyDefaults),
+    [
+      student?.id,
+      student?.roll_number,
+      student?.name,
+      student?.malayalam_name,
+      student?.class,
+      student?.gender,
+      student?.category,
+      student?.group_id,
+      assignedProgramIds.join("|"),
+    ],
+  );
+
   const {
     register,
     control,
@@ -132,7 +148,7 @@ export function StudentFormDialog({
     formState: { errors },
   } = useForm<CreateStudentInput>({
     resolver: zodResolver(createStudentSchema),
-    defaultValues: student ? valuesFromStudent(student, assignedProgramIds) : emptyDefaults,
+    defaultValues: resetValues,
   });
 
   const malayalamNameValue = useWatch({ control, name: "malayalamName" });
@@ -146,9 +162,9 @@ export function StudentFormDialog({
   // to add student B left A's values still sitting in every field.
   useEffect(() => {
     if (open) {
-      reset(student ? valuesFromStudent(student, assignedProgramIds) : emptyDefaults);
+      reset(resetValues);
     }
-  }, [student, assignedProgramIds, open, reset]);
+  }, [open, reset, resetValues]);
 
   function onSubmit(values: CreateStudentInput) {
     if (matchingPrograms.length > 0 && values.program_ids.length === 0) {
