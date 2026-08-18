@@ -116,7 +116,7 @@ export function StudentCard({
           <div>
             <p className="font-heading font-medium leading-snug">{student.name}</p>
             <p className="text-sm text-muted-foreground tabular-nums">
-              Roll {student.roll_number} · Class {student.class}
+              Chest {student.roll_number} · Class {student.class}
             </p>
           </div>
 

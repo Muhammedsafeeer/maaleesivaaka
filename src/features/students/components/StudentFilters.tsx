@@ -42,7 +42,7 @@ export function StudentFilters({ groups, categories }: { groups: Group[]; catego
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <Input
-        placeholder="Search by name or roll number…"
+        placeholder="Search by name or chest number…"
         defaultValue={searchParams.get("q") ?? ""}
         onChange={(event) => setParam("q", event.target.value)}
         className="sm:max-w-64"

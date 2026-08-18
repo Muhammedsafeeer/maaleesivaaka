@@ -143,7 +143,6 @@ export function StudentFormDialog({
     handleSubmit,
     reset,
     setValue,
-    setError,
     getValues,
     formState: { errors },
   } = useForm<CreateStudentInput>({
@@ -167,11 +166,6 @@ export function StudentFormDialog({
   }, [open, reset, resetValues]);
 
   function onSubmit(values: CreateStudentInput) {
-    if (matchingPrograms.length > 0 && values.program_ids.length === 0) {
-      setError("program_ids", { message: "Assign at least one program." });
-      return;
-    }
-
     startTransition(async () => {
       if (isEditingExisting) {
         const result = await updateStudentAction(student.id, values);
@@ -242,7 +236,7 @@ export function StudentFormDialog({
               <DialogDescription>
                 {isEditingExisting
                   ? "Update this student's details and programs."
-                  : "Register a new student, assign a group, and add them to a program."}
+                  : "Register a new student, assign a group, and optionally add them to programs."}
               </DialogDescription>
             </div>
           </div>
@@ -251,7 +245,7 @@ export function StudentFormDialog({
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="student-roll-number">Roll number</Label>
+              <Label htmlFor="student-roll-number">Chest number</Label>
               <Input
                 id="student-roll-number"
                 autoComplete="off"

@@ -6,7 +6,7 @@ const classValues = CLASSES.map((c) => c.value) as [StudentClass, ...StudentClas
 
 /** Shared by the create/edit dialog's zodResolver and the Server Action's re-validation. */
 export const studentSchema = z.object({
-  roll_number: z.string().min(1, "Roll number is required.").max(50),
+  roll_number: z.string().min(1, "Chest number is required.").max(50),
   name: z.string().min(1, "Name is required.").max(200),
   malayalamName: z
     .string()

@@ -98,7 +98,7 @@ export async function createStudent(input: StudentInput): Promise<ServiceResult<
     // (20260805020000_roll_number_unique_per_class.sql) — same "translate the DB's raw
     // error into a friendly one" reasoning as assignment.service.ts's 23514 check.
     if (error.code === "23505") {
-      return { success: false, error: "That roll number is already in use in this class." };
+      return { success: false, error: "That chest number is already in use in this class." };
     }
     return { success: false, error: "Could not create the student. Please try again." };
   }
@@ -120,7 +120,7 @@ export async function updateStudent(
 
   if (error) {
     if (error.code === "23505") {
-      return { success: false, error: "That roll number is already in use in this class." };
+      return { success: false, error: "That chest number is already in use in this class." };
     }
     return { success: false, error: "Could not update the student. Please try again." };
   }

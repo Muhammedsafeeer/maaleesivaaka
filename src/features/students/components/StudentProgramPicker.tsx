@@ -45,7 +45,8 @@ export function StudentProgramPicker({
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            Only programs in this student&apos;s category are listed. Select one or more.
+            Only programs in this student&apos;s category are listed. This step is optional,
+            and you can assign programs later.
           </p>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
