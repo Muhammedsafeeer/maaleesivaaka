@@ -442,6 +442,7 @@ export function StudentFormDialog({
                 currentUrl={student.photo_url}
                 onPersist={(url) => updateStudentPhotoAction(student.id, url)}
                 alt={`${student.name} photo`}
+                enableCamera
               />
             ) : (
               <PendingPhotoPicker
@@ -452,6 +453,7 @@ export function StudentFormDialog({
                 }}
                 alt="New student photo"
                 error={photoError}
+                enableCamera
               />
             )}
           </div>
