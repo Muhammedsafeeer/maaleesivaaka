@@ -1,60 +1,87 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { studentSchema, type StudentInput } from "@/features/students/validation/student.schema";
+import {
+  createStudentSchema,
+  type CreateStudentInput,
+} from "@/features/students/validation/student.schema";
 import {
   createStudent,
   updateStudent,
   deleteStudent,
   updateStudentPhoto,
 } from "@/lib/services/student.service";
+import {
+  assignStudentToPrograms,
+  syncStudentPrograms,
+} from "@/lib/services/assignment.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 import type { Student } from "@/types/student";
 
-export type StudentActionResult = { error: string } | { error?: undefined };
+export type StudentActionResult =
+  | { error: string; assignmentError?: undefined }
+  | { error?: undefined; assignmentError?: string };
 
 /** Unlike StudentActionResult, this hands the created row back — the create dialog
  * needs the new id right away so it can unlock the photo-upload step in place
  * instead of making the admin reopen the dialog in edit mode. */
 export type CreateStudentActionResult =
-  | { error: string; student?: undefined }
-  | { error?: undefined; student: Student };
+  | { error: string; student?: undefined; assignmentError?: undefined }
+  | { error?: undefined; student: Student; assignmentError?: string };
 
 export async function createStudentAction(
-  input: StudentInput,
+  input: CreateStudentInput,
 ): Promise<CreateStudentActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
-  const parsed = studentSchema.safeParse(input);
+  const parsed = createStudentSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await createStudent(parsed.data);
+  const { program_ids, ...studentInput } = parsed.data;
+  const result = await createStudent(studentInput);
   if (!result.success) return { error: result.error };
+
+  let assignmentError: string | undefined;
+  if (program_ids.length > 0) {
+    const assigned = await assignStudentToPrograms(result.data.id, program_ids);
+    if (!assigned.success) {
+      assignmentError = assigned.error;
+    }
+  }
 
   revalidatePath("/admin/students");
   revalidatePath("/admin");
-  return { student: result.data };
+  revalidatePath("/admin/programs");
+  return { student: result.data, assignmentError };
 }
 
 export async function updateStudentAction(
   id: string,
-  input: StudentInput,
+  input: CreateStudentInput,
 ): Promise<StudentActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
-  const parsed = studentSchema.safeParse(input);
+  const parsed = createStudentSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await updateStudent(id, parsed.data);
+  const { program_ids, ...studentInput } = parsed.data;
+  const result = await updateStudent(id, studentInput);
   if (!result.success) return { error: result.error };
 
+  const assigned = await syncStudentPrograms(id, program_ids);
   revalidatePath("/admin/students");
+  revalidatePath("/admin/programs");
+
+  if (!assigned.success) {
+    return { assignmentError: assigned.error };
+  }
+
   return {};
 }
 

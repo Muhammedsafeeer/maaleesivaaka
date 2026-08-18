@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,33 +22,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { PhotoUpload } from "@/components/forms/PhotoUpload";
 import { PendingPhotoPicker } from "@/components/forms/PendingPhotoPicker";
 import { MalayalamSuggestion } from "@/components/forms/MalayalamSuggestion";
 import { uploadPhoto } from "@/lib/services/storage.service";
-import { CATEGORIES, CLASSES, GENDERS } from "@/constants/programs";
+import { CLASSES, GENDERS, type StudentClass } from "@/constants/programs";
+import { CategoryManagerDialog } from "@/features/students/components/CategoryManagerDialog";
 import {
-  studentSchema,
-  type StudentInput,
+  createStudentSchema,
+  type CreateStudentInput,
 } from "@/features/students/validation/student.schema";
 import {
   createStudentAction,
   updateStudentAction,
   updateStudentPhotoAction,
 } from "@/features/students/actions/student.actions";
+import { StudentProgramPicker } from "@/features/students/components/StudentProgramPicker";
 import type { Student } from "@/types/student";
 import type { Group } from "@/types/group";
+import type { Program } from "@/types/program";
+import type { CategoryRow } from "@/types/category";
 
 type StudentFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groups: Group[];
+  /** Admin-managed categories from the database. */
+  categories: CategoryRow[];
+  /** Callback when categories are added/edited/deleted in the manager dialog. */
+  onCategoriesChange?: (categories: CategoryRow[]) => void;
+  /** Programs offered so a student can be assigned on create and on edit. */
+  programs?: Program[];
+  /** Programs this student is already on — used to pre-check the picker when editing. */
+  assignedProgramIds?: string[];
   /** Omit to create a new student; pass an existing student to edit it. */
   student?: Student;
 };
 
-const emptyDefaults: StudentInput = {
+const emptyDefaults: CreateStudentInput = {
   roll_number: "",
   name: "",
   malayalamName: "",
@@ -56,28 +69,46 @@ const emptyDefaults: StudentInput = {
   gender: "male",
   category: "kids",
   group_id: "",
+  program_ids: [],
 };
 
 // students.class is a plain `text` column — a row saved before the dropdown existed
 // could hold anything. Falls back to "1" rather than a value the Select can't render.
-function toStudentClass(value: string): StudentInput["class"] {
-  return (CLASSES.some((c) => c.value === value) ? value : CLASSES[0].value) as StudentInput["class"];
+function toStudentClass(value: string): StudentClass {
+  return (CLASSES.some((c) => c.value === value) ? value : CLASSES[0].value) as StudentClass;
+}
+
+function valuesFromStudent(student: Student, programIds: string[]): CreateStudentInput {
+  return {
+    roll_number: student.roll_number,
+    name: student.name,
+    malayalamName: student.malayalam_name ?? "",
+    class: toStudentClass(student.class),
+    gender: student.gender,
+    category: student.category,
+    group_id: student.group_id,
+    program_ids: programIds,
+  };
 }
 
 export function StudentFormDialog({
   open,
   onOpenChange,
   groups,
+  categories,
+  onCategoriesChange,
+  programs = [],
+  assignedProgramIds = [],
   student,
 }: StudentFormDialogProps) {
   const isEditingExisting = student !== undefined;
   const [isPending, startTransition] = useTransition();
-  // A photo is required when creating (not when editing — an existing student can
-  // keep their current photo). Held locally until the row exists, then uploaded and
-  // persisted as part of the same submit.
+  // Optional photo when creating. Held locally until the row exists, then uploaded
+  // and persisted as part of the same submit if the admin picked one.
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoError, setPhotoError] = useState<string | undefined>(undefined);
   const [syncedOpen, setSyncedOpen] = useState(open);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   // Clear local state whenever the dialog opens fresh — adjusted during render rather
   // than in an Effect (React docs: "adjust state when a prop changes"), same pattern as
@@ -96,23 +127,18 @@ export function StudentFormDialog({
     handleSubmit,
     reset,
     setValue,
+    setError,
+    getValues,
     formState: { errors },
-  } = useForm<StudentInput>({
-    resolver: zodResolver(studentSchema),
-    defaultValues: student
-      ? {
-          roll_number: student.roll_number,
-          name: student.name,
-          malayalamName: student.malayalam_name ?? "",
-          class: toStudentClass(student.class),
-          gender: student.gender,
-          category: student.category,
-          group_id: student.group_id,
-        }
-      : emptyDefaults,
+  } = useForm<CreateStudentInput>({
+    resolver: zodResolver(createStudentSchema),
+    defaultValues: student ? valuesFromStudent(student, assignedProgramIds) : emptyDefaults,
   });
 
   const malayalamNameValue = useWatch({ control, name: "malayalamName" });
+  const selectedCategory = useWatch({ control, name: "category" });
+  const selectedProgramIds = useWatch({ control, name: "program_ids" }) ?? [];
+  const matchingPrograms = programs.filter((program) => program.category === selectedCategory);
 
   // `open` is in the deps, not just `student` — this dialog stays mounted between
   // opens (CreateStudentButton toggles `open` rather than remounting), so without it
@@ -120,25 +146,13 @@ export function StudentFormDialog({
   // to add student B left A's values still sitting in every field.
   useEffect(() => {
     if (open) {
-      reset(
-        student
-          ? {
-              roll_number: student.roll_number,
-              name: student.name,
-              malayalamName: student.malayalam_name ?? "",
-              class: toStudentClass(student.class),
-              gender: student.gender,
-              category: student.category,
-              group_id: student.group_id,
-            }
-          : emptyDefaults,
-      );
+      reset(student ? valuesFromStudent(student, assignedProgramIds) : emptyDefaults);
     }
-  }, [student, open, reset]);
+  }, [student, assignedProgramIds, open, reset]);
 
-  function onSubmit(values: StudentInput) {
-    if (!isEditingExisting && !photoFile) {
-      setPhotoError("A photo is required.");
+  function onSubmit(values: CreateStudentInput) {
+    if (matchingPrograms.length > 0 && values.program_ids.length === 0) {
+      setError("program_ids", { message: "Assign at least one program." });
       return;
     }
 
@@ -149,7 +163,11 @@ export function StudentFormDialog({
           toast.error(result.error);
           return;
         }
-        toast.success("Student updated.");
+        if (result.assignmentError) {
+          toast.error(`Student updated, but program assignment failed: ${result.assignmentError}`);
+        } else {
+          toast.success("Student updated.");
+        }
         onOpenChange(false);
         return;
       }
@@ -160,35 +178,44 @@ export function StudentFormDialog({
         return;
       }
 
-      const uploadResult = await uploadPhoto(
-        "student-photos",
-        createResult.student.id,
-        photoFile!,
-      );
-      if (!uploadResult.success) {
-        toast.error(`Student created, but the photo failed to upload: ${uploadResult.error}`);
-        onOpenChange(false);
-        return;
+      if (photoFile) {
+        const uploadResult = await uploadPhoto(
+          "student-photos",
+          createResult.student.id,
+          photoFile,
+        );
+        if (!uploadResult.success) {
+          toast.error(`Student created, but the photo failed to upload: ${uploadResult.error}`);
+          onOpenChange(false);
+          return;
+        }
+
+        const persistResult = await updateStudentPhotoAction(
+          createResult.student.id,
+          uploadResult.data,
+        );
+        if (persistResult.error) {
+          toast.error(`Student created, but the photo failed to save: ${persistResult.error}`);
+          onOpenChange(false);
+          return;
+        }
       }
 
-      const persistResult = await updateStudentPhotoAction(
-        createResult.student.id,
-        uploadResult.data,
-      );
-      if (persistResult.error) {
-        toast.error(`Student created, but the photo failed to save: ${persistResult.error}`);
-        onOpenChange(false);
-        return;
+      if (createResult.assignmentError) {
+        toast.error(
+          `Student created, but program assignment failed: ${createResult.assignmentError}`,
+        );
+      } else {
+        toast.success("Student created.");
       }
-
-      toast.success("Student created.");
       onOpenChange(false);
     });
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-house-blue/15 text-house-blue">
@@ -198,8 +225,8 @@ export function StudentFormDialog({
               <DialogTitle>{isEditingExisting ? "Edit student" : "Add student"}</DialogTitle>
               <DialogDescription>
                 {isEditingExisting
-                  ? "Update this student's details."
-                  : "Register a new student and assign them to a group."}
+                  ? "Update this student's details and programs."
+                  : "Register a new student, assign a group, and add them to a program."}
               </DialogDescription>
             </div>
           </div>
@@ -314,24 +341,49 @@ export function StudentFormDialog({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="student-category">Category</Label>
-              <Controller
-                control={control}
-                name="category"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="student-category" aria-invalid={errors.category ? true : undefined}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+              <div className="flex gap-1.5">
+                <Controller
+                  control={control}
+                  name="category"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        const allowed = new Set(
+                          programs
+                            .filter((program) => program.category === value)
+                            .map((program) => program.id),
+                        );
+                        const next = (getValues("program_ids") ?? []).filter((id) =>
+                          allowed.has(id),
+                        );
+                        setValue("program_ids", next, { shouldValidate: true });
+                      }}
+                    >
+                      <SelectTrigger id="student-category" aria-invalid={errors.category ? true : undefined}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCategoryManagerOpen(true)}
+                  aria-label="Manage categories"
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -362,8 +414,17 @@ export function StudentFormDialog({
             ) : null}
           </div>
 
+          <StudentProgramPicker
+            programs={matchingPrograms}
+            selectedIds={selectedProgramIds}
+            onChange={(ids) =>
+              setValue("program_ids", ids, { shouldValidate: true, shouldDirty: true })
+            }
+            error={errors.program_ids?.message}
+          />
+
           <div className="flex flex-col gap-2">
-            <Label>Photo{isEditingExisting ? "" : " (required)"}</Label>
+            <Label>Photo</Label>
             {isEditingExisting ? (
               <PhotoUpload
                 bucket="student-photos"
@@ -393,5 +454,13 @@ export function StudentFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <CategoryManagerDialog
+      open={categoryManagerOpen}
+      onOpenChange={setCategoryManagerOpen}
+      categories={categories}
+      onCategoriesChange={onCategoriesChange ?? (() => {})}
+    />
+  </>
   );
 }

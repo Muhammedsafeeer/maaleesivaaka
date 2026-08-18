@@ -1,10 +1,6 @@
 import { z } from "zod";
-import { CATEGORIES, GENDERS, CLASSES, type Category, type Gender, type StudentClass } from "@/constants/programs";
+import { GENDERS, CLASSES, type Gender, type StudentClass } from "@/constants/programs";
 
-// Cast to the literal union (not [string, ...string[]]) so z.infer below produces
-// "kids" | "junior" | "senior", not a widened `string` — a widened type here silently
-// breaks assignability into StudentInput at every call site.
-const categoryValues = CATEGORIES.map((c) => c.value) as [Category, ...Category[]];
 const genderValues = GENDERS.map((g) => g.value) as [Gender, ...Gender[]];
 const classValues = CLASSES.map((c) => c.value) as [StudentClass, ...StudentClass[]];
 
@@ -18,8 +14,15 @@ export const studentSchema = z.object({
     .optional(),
   class: z.enum(classValues, { error: "Select a class." }),
   gender: z.enum(genderValues, { error: "Select a gender." }),
-  category: z.enum(categoryValues, { error: "Select a category." }),
+  category: z.string().min(1, "Select a category."),
   group_id: z.uuid("Select a group."),
 });
 
 export type StudentInput = z.infer<typeof studentSchema>;
+
+/** Create flow also assigns the new student to one or more category-matched programs. */
+export const createStudentSchema = studentSchema.extend({
+  program_ids: z.array(z.uuid()),
+});
+
+export type CreateStudentInput = z.infer<typeof createStudentSchema>;

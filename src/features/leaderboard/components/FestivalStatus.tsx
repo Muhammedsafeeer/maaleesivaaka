@@ -21,7 +21,7 @@ export function FestivalStatus({ statuses }: { statuses: CategoryStatus[] }) {
   const overallPct = pct(totalDeclared, totalAll);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {statuses.map((status) => {
         const isEmpty = status.total === 0;
         const complete = !isEmpty && status.declared === status.total;
@@ -58,7 +58,7 @@ export function FestivalStatus({ statuses }: { statuses: CategoryStatus[] }) {
 
       <div
         className={cn(
-          "col-span-2 flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-(--stage-spotlight) to-(--stage-spotlight-deep) p-4 text-center shadow-lg sm:col-span-1",
+          "col-span-2 flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-(--stage-spotlight) to-(--stage-spotlight-deep) p-4 text-center shadow-lg sm:col-span-3 lg:col-span-4",
         )}
       >
         <p className="text-[0.65rem] font-semibold tracking-wide text-(--stage-spotlight-gold)/80 uppercase">

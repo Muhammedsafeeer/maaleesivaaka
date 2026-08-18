@@ -1,12 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 import type { Student, StudentWithGroup } from "@/types/student";
-import type { Category, Gender } from "@/constants/programs";
-
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
 export type StudentFilters = {
   q?: string;
-  category?: Category;
+  category?: string;
   groupId?: string;
 };
 
@@ -25,7 +24,7 @@ export async function listStudents(
     query = query.or(`name.ilike.%${filters.q}%,roll_number.ilike.%${filters.q}%`);
   }
   if (filters.category) {
-    query = query.eq("category", filters.category);
+    query = query.eq("category", filters.category as Database["public"]["Enums"]["participant_category"]);
   }
   if (filters.groupId) {
     query = query.eq("group_id", filters.groupId);
@@ -69,8 +68,8 @@ export type StudentInput = {
   name: string;
   malayalamName?: string;
   class: string;
-  gender: Gender;
-  category: Category;
+  gender: string;
+  category: string;
   group_id: string;
 };
 
@@ -80,8 +79,8 @@ function toRow(input: StudentInput) {
     name: input.name,
     malayalam_name: input.malayalamName || null,
     class: input.class,
-    gender: input.gender,
-    category: input.category,
+    gender: input.gender as Database["public"]["Enums"]["gender"],
+    category: input.category as Database["public"]["Enums"]["participant_category"],
     group_id: input.group_id,
   };
 }

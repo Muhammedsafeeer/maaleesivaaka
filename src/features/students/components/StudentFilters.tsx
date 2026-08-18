@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CATEGORIES } from "@/constants/programs";
 import type { Group } from "@/types/group";
+import type { CategoryRow } from "@/types/category";
 
 const ALL = "all";
 
@@ -21,7 +21,7 @@ const ALL = "all";
  * order: Server Components before any client-side data layer). This component only
  * ever reads/writes the URL; it never holds the filtered list itself.
  */
-export function StudentFilters({ groups }: { groups: Group[] }) {
+export function StudentFilters({ groups, categories }: { groups: Group[]; categories: CategoryRow[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -58,7 +58,7 @@ export function StudentFilters({ groups }: { groups: Group[] }) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={ALL}>All categories</SelectItem>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <SelectItem key={c.value} value={c.value}>
               {c.label}
             </SelectItem>

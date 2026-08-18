@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { ListMusic } from "lucide-react";
 import { listPrograms } from "@/lib/services/program.service";
-import { ProgramsTable } from "@/features/programs/components/ProgramsTable";
 import { CreateProgramButton } from "@/features/programs/components/CreateProgramButton";
 import { ProgramFilters } from "@/features/programs/components/ProgramFilters";
+import { ProgramStageTabs } from "@/features/programs/components/ProgramStageTabs";
 import type { ProgramStatus } from "@/constants/programs";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 type ProgramsPageProps = {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; stage?: string }>;
 };
 
 export default async function ProgramsPage({ searchParams }: ProgramsPageProps) {
@@ -41,7 +41,7 @@ export default async function ProgramsPage({ searchParams }: ProgramsPageProps) 
 
       <ProgramFilters />
 
-      <ProgramsTable programs={programs} />
+      <ProgramStageTabs programs={programs} />
     </div>
   );
 }

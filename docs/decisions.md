@@ -25,6 +25,7 @@ Format: context → decision → consequences. Newest decisions are appended at 
 | [D-018](#d-018-latest-winner-podium-is-a-narrow-confirmed-exception-to-d-017) | "Latest Winner" podium is a narrow, confirmed exception to D-017 | 2026-08-02 | Accepted |
 | [D-019](#d-019-find-my-result-student-search-is-a-lookup-only-exception-to-d-017) | "Find My Result" student search is a lookup-only exception to D-017 | 2026-08-04 | Accepted |
 | [D-020](#d-020-latest-results-widens-the-student-detail-exception-to-every-podium-finish) | "Latest Results" widens the student-detail exception to every podium finish | 2026-08-05 | Accepted |
+| [D-021](#d-021-participant-categories-and-assign-on-create) | Categories include Sub Junior, Super Senior, and General; creating a student also assigns programs | 2026-08-18 | Accepted |
 
 ---
 
@@ -967,3 +968,42 @@ feed rather than a fixed 3-name panel.
 - If this needs to be reverted, it's reverting `listLatestPublishedResults` and
   `LatestResultsList` to their pre-D-020 (group-based) versions — the underlying anon
   grant stays in place either way, since D-018 still depends on it.
+
+---
+
+## D-021: Participant categories and assign-on-create
+
+**Date:** 2026-08-18 · **Status:** Accepted
+
+### Context
+
+`project.md` §Programs lists three categories: Kids, Junior, Senior. The school needs
+three more — Sub Junior, Super Senior, and General — and wants a student assigned to
+program(s) in the same dialog that creates them, instead of a second trip to the
+program roster.
+
+### Decision
+
+1. **`participant_category` is extended** with `sub_junior`, `super_senior`, and
+   `general`. Display order is Kids → Sub Junior → Junior → Senior → Super Senior →
+   General. D-007 still applies: a student may only be assigned to a program of the
+   **same** category. General is a category of its own, not a bypass of that match.
+2. **Creating a student also assigns programs.** The add-student form lists programs in
+   the chosen category; at least one must be selected when any exist. Assignment is
+   validated in the Server Action and still enforced by the existing category-match
+   trigger. Editing a student does not change program assignments — that stays on the
+   program page.
+
+**Follow-up 2026-08-18:** the user asked for the same program picker on edit. The edit
+dialog now lists category-matched programs, pre-checks current assignments, and saves
+adds/removes with `syncStudentPrograms`. A program that already has scores still cannot
+be removed (same rule as the program roster).
+
+### Consequences
+
+- Existing Kids/Junior/Senior rows are unchanged; the new labels are additive.
+- Audience "Status of Festival" and category highlight grids render six tiles instead of
+  three.
+- If no program exists yet in the student's category, the student can still be created
+  and assigned later from the program roster.
+

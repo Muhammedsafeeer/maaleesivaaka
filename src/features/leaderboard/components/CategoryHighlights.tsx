@@ -1,4 +1,4 @@
-import { Baby, Music2, GraduationCap } from "lucide-react";
+import { Baby, Music2, GraduationCap, Users, Award, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORIES } from "@/constants/programs";
 import type { CategoryStatus } from "@/lib/services/program.service";
@@ -29,11 +29,11 @@ const TINTS = [
   },
 ] as const;
 
-const ICONS = [Baby, Music2, GraduationCap];
+const ICONS = [Baby, Users, Music2, GraduationCap, Award, Sparkles];
 
 /**
  * One gradient-header card per category — echoes the Kerala Kalolsavam reference's
- * "Detailed Results" block (four vivid full-bleed-header cards). The reference's cards
+ * "Detailed Results" block (vivid full-bleed-header cards, one per category). The reference's cards
  * are navigation hubs into category sub-pages (Results Declared / District Points /
  * School Points) this app doesn't have, so this shows the same real per-category
  * numbers already computed for `FestivalStatus` instead of fabricating links to pages
@@ -41,7 +41,7 @@ const ICONS = [Baby, Music2, GraduationCap];
  */
 export function CategoryHighlights({ statuses }: { statuses: CategoryStatus[] }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {statuses.map((status, index) => {
         const tint = TINTS[index % TINTS.length];
         const Icon = ICONS[index % ICONS.length];

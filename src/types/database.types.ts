@@ -39,6 +39,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          id: string
+          value: string
+          label: string
+          malayalam_label: string | null
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          value: string
+          label: string
+          malayalam_label?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          value?: string
+          label?: string
+          malayalam_label?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ad_media: {
         Row: {
           ad_id: string
@@ -606,7 +636,13 @@ export type Database = {
     }
     Enums: {
       gender: "male" | "female"
-      participant_category: "kids" | "junior" | "senior"
+      participant_category:
+        | "kids"
+        | "sub_junior"
+        | "junior"
+        | "senior"
+        | "super_senior"
+        | "general"
       program_status:
         | "draft"
         | "upcoming"
@@ -746,7 +782,14 @@ export const Constants = {
   public: {
     Enums: {
       gender: ["male", "female"],
-      participant_category: ["kids", "junior", "senior"],
+      participant_category: [
+        "kids",
+        "sub_junior",
+        "junior",
+        "senior",
+        "super_senior",
+        "general",
+      ],
       program_status: [
         "draft",
         "upcoming",

@@ -384,7 +384,7 @@ export async function listLatestPublishedResults(limit = 10): Promise<LatestResu
  * published program's 1st-place winner, one row per program — the audience page's
  * "Program Winners" section. Distinct from the latest-activity feed above, which is
  * recency-sorted and includes every podium position, not just firsts. Sorted by
- * category (in the app's kids/junior/senior order, not alphabetical) then program
+ * category (in the app's CATEGORIES order, not alphabetical) then program
  * name in JS rather than at the DB level — PostgREST only honors `.order()` on a
  * joined table when that join is `!inner` (this one deliberately isn't, so a program
  * missing a group/photo is skipped via flatMap below rather than dropping the row).

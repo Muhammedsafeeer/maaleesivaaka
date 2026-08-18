@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { GraduationCap } from "lucide-react";
 import { listStudents } from "@/lib/services/student.service";
 import { listGroups } from "@/lib/services/group.service";
+import { listPrograms } from "@/lib/services/program.service";
+import { listProgramIdsByStudent } from "@/lib/services/assignment.service";
+import { listCategories } from "@/lib/services/category.service";
 import { StudentsGrid } from "@/features/students/components/StudentsGrid";
 import { CreateStudentButton } from "@/features/students/components/CreateStudentButton";
 import { StudentFilters } from "@/features/students/components/StudentFilters";
-import type { Category } from "@/constants/programs";
 
 export const metadata: Metadata = {
   title: "Students",
@@ -18,13 +20,16 @@ type StudentsPageProps = {
 export default async function StudentsPage({ searchParams }: StudentsPageProps) {
   const params = await searchParams;
 
-  const [students, groups] = await Promise.all([
+  const [students, groups, programs, programIdsByStudent, categories] = await Promise.all([
     listStudents({
       q: params.q,
-      category: params.category as Category | undefined,
+      category: params.category,
       groupId: params.group,
     }),
     listGroups(),
+    listPrograms(),
+    listProgramIdsByStudent(),
+    listCategories(),
   ]);
 
   return (
@@ -41,12 +46,18 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
             </p>
           </div>
         </div>
-        <CreateStudentButton groups={groups} />
+        <CreateStudentButton groups={groups} programs={programs} categories={categories} />
       </div>
 
-      <StudentFilters groups={groups} />
+      <StudentFilters groups={groups} categories={categories} />
 
-      <StudentsGrid students={students} groups={groups} />
+      <StudentsGrid
+        students={students}
+        groups={groups}
+        programs={programs}
+        programIdsByStudent={programIdsByStudent}
+        categories={categories}
+      />
     </div>
   );
 }

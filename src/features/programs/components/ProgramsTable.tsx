@@ -17,7 +17,7 @@ import type { Program } from "@/types/program";
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 const stageTypeLabels = Object.fromEntries(STAGE_TYPES.map((s) => [s.value, s.label]));
 
-export function ProgramsTable({ programs }: { programs: Program[] }) {
+export function ProgramsTable({ programs, hideStageType = false }: { programs: Program[]; hideStageType?: boolean }) {
   if (programs.length === 0) {
     return (
       <EmptyState
@@ -33,8 +33,7 @@ export function ProgramsTable({ programs }: { programs: Program[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Stage type</TableHead>
-            <TableHead>Category</TableHead>
+            {!hideStageType && <TableHead>Stage type</TableHead>}
             <TableHead>Status</TableHead>
             <TableHead className="w-px">
               <span className="sr-only">Actions</span>
@@ -47,12 +46,12 @@ export function ProgramsTable({ programs }: { programs: Program[] }) {
               <TableCell className="font-medium whitespace-nowrap">
                 <Link href={`/admin/programs/${program.id}`} className="hover:underline">
                   {program.name}
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    ({categoryLabels[program.category]})
+                  </span>
                 </Link>
               </TableCell>
-              <TableCell className="whitespace-nowrap">{stageTypeLabels[program.stage_type]}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{categoryLabels[program.category]}</Badge>
-              </TableCell>
+              {!hideStageType && <TableCell className="whitespace-nowrap">{stageTypeLabels[program.stage_type]}</TableCell>}
               <TableCell>
                 <ProgramStatusBadge status={program.status} />
               </TableCell>

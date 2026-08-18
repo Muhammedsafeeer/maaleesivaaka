@@ -25,11 +25,12 @@ import {
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import { StudentFormDialog } from "@/features/students/components/StudentFormDialog";
 import { deleteStudentAction } from "@/features/students/actions/student.actions";
-import { CATEGORIES, GENDERS } from "@/constants/programs";
+import { GENDERS } from "@/constants/programs";
 import type { StudentWithGroup } from "@/types/student";
 import type { Group } from "@/types/group";
+import type { Program } from "@/types/program";
+import type { CategoryRow } from "@/types/category";
 
-const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 const genderLabels = Object.fromEntries(GENDERS.map((g) => [g.value, g.label]));
 
 /** Card view of a student: every field the table showed, plus a hover-lift and
@@ -37,10 +38,19 @@ const genderLabels = Object.fromEntries(GENDERS.map((g) => [g.value, g.label]));
 export function StudentCard({
   student,
   groups,
+  categories,
+  onCategoriesChange,
+  programs,
+  assignedProgramIds,
 }: {
   student: StudentWithGroup;
   groups: Group[];
+  categories: CategoryRow[];
+  onCategoriesChange: (categories: CategoryRow[]) => void;
+  programs: Program[];
+  assignedProgramIds: string[];
 }) {
+  const categoryLabels = Object.fromEntries(categories.map((c) => [c.value, c.label]));
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -122,6 +132,10 @@ export function StudentCard({
         open={editOpen}
         onOpenChange={setEditOpen}
         groups={groups}
+        categories={categories}
+        onCategoriesChange={onCategoriesChange}
+        programs={programs}
+        assignedProgramIds={assignedProgramIds}
         student={student}
       />
 

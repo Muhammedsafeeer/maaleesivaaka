@@ -16,10 +16,10 @@ type PendingPhotoPickerProps = {
 };
 
 /**
- * Required-photo picker for CREATE flows. Unlike PhotoUpload, there's no row id yet to
+ * Photo picker for CREATE flows. Unlike PhotoUpload, there's no row id yet to
  * upload against — this only holds the (already-compressed) file locally and hands it
  * back via onChange; the caller uploads it itself once the create Server Action
- * returns the new row's id.
+ * returns the new row's id. The photo is optional.
  */
 export function PendingPhotoPicker({ file, onChange, alt, error }: PendingPhotoPickerProps) {
   // Derived straight from `file`, not synced via useState+Effect — the Effect below

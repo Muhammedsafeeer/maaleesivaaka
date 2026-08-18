@@ -14,8 +14,11 @@
  */
 export const CATEGORIES = [
   { value: "kids", label: "Kids" },
+  { value: "sub_junior", label: "Sub Junior" },
   { value: "junior", label: "Junior" },
   { value: "senior", label: "Senior" },
+  { value: "super_senior", label: "Super Senior" },
+  { value: "general", label: "General" },
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number]["value"];
@@ -23,8 +26,11 @@ export type Category = (typeof CATEGORIES)[number]["value"];
 /** Malayalam counterparts of CATEGORIES' labels, for audience-facing posters/certificates. */
 export const CATEGORY_MALAYALAM_LABELS: Record<Category, string> = {
   kids: "കിഡ്സ്",
+  sub_junior: "സബ് ജൂനിയർ",
   junior: "ജൂനിയർ",
   senior: "സീനിയർ",
+  super_senior: "സൂപ്പർ സീനിയർ",
+  general: "ജനറൽ",
 };
 
 /** Whether a program is performed on stage or completed off stage. */
