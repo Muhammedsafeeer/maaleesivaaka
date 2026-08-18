@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Manjari, Noto_Sans_Malayalam } from "next/font/google";
 import { toast } from "sonner";
 import { Upload, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,12 @@ import {
   updatePosterBackgroundAction,
   updatePosterFieldsAction,
 } from "@/features/poster-settings/actions/posterSettings.actions";
-import { POSTER_COLOR_SWATCHES, type PosterAlign, type PosterField } from "@/constants/poster";
+import {
+  POSTER_COLOR_SWATCHES,
+  POSTER_FONT_OPTIONS,
+  type PosterAlign,
+  type PosterField,
+} from "@/constants/poster";
 import type { PosterSettings } from "@/lib/services/posterSettings.service";
 import { cn } from "@/lib/utils/index";
 
@@ -27,6 +33,23 @@ import { cn } from "@/lib/utils/index";
 // Fallback while the background's real dimensions are still loading — never what
 // actually gets used once an image is set, just avoids a zero-height flash.
 const FALLBACK_ASPECT_RATIO = 3 / 4;
+const malayalamSans = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["400", "700"] });
+const malayalamSerif = Manjari({ subsets: ["malayalam"], weight: ["400", "700"] });
+
+function fontFamilyFor(field: PosterField) {
+  switch (field.fontFamily) {
+    case "serif":
+      return "Georgia, 'Times New Roman', serif";
+    case "mono":
+      return "var(--font-geist-mono), monospace";
+    case "malayalam_sans":
+      return `${malayalamSans.style.fontFamily}, var(--font-geist-sans), sans-serif`;
+    case "malayalam_serif":
+      return `${malayalamSerif.style.fontFamily}, Georgia, serif`;
+    default:
+      return "var(--font-geist-sans), sans-serif";
+  }
+}
 
 export function PosterSettingsDesigner({ settings }: { settings: PosterSettings }) {
   const [backgroundUrl, setBackgroundUrl] = useState(settings.backgroundUrl);
@@ -226,6 +249,7 @@ export function PosterSettingsDesigner({ settings }: { settings: PosterSettings 
                       fontSize: field.fontSize,
                       fontWeight: field.bold ? 700 : 400,
                       textAlign: field.align,
+                      fontFamily: fontFamilyFor(field),
                     }}
                   >
                     {field.staticText || field.label}
@@ -270,6 +294,22 @@ export function PosterSettingsDesigner({ settings }: { settings: PosterSettings 
                     onCheckedChange={(v) => updateField(selected.key, { bold: v === true })}
                   />
                 </label>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-muted-foreground">Font</span>
+                  <div className="flex flex-wrap gap-1">
+                    {POSTER_FONT_OPTIONS.map((font) => (
+                      <Button
+                        key={font.value}
+                        type="button"
+                        size="sm"
+                        variant={selected.fontFamily === font.value ? "default" : "outline"}
+                        onClick={() => updateField(selected.key, { fontFamily: font.value })}
+                      >
+                        {font.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex gap-1">
                   {(["left", "center", "right"] as PosterAlign[]).map((align) => (
                     <Button

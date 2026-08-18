@@ -10,10 +10,13 @@ import {
   TrophyIcon,
 } from "lucide-react";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
+import { listLiveJudgeActivity } from "@/lib/services/judgeActivity.service";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
 import { StudentsPreviewList } from "@/components/dashboard/StudentsPreviewList";
 import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
+import { RealtimeJudgeScoresListener } from "@/components/dashboard/RealtimeJudgeScoresListener";
+import { LiveJudgesPanel } from "@/features/judges/components/LiveJudgesPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 
@@ -22,11 +25,15 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminDashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, judgeActivity] = await Promise.all([
+    getDashboardStats(),
+    listLiveJudgeActivity(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <RealtimeLeaderboardListener />
+      <RealtimeJudgeScoresListener />
       <div>
         <h1 className="font-heading text-xl font-medium">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
@@ -72,6 +79,8 @@ export default async function AdminDashboardPage() {
           icon={<ClockIcon className="size-4" />}
         />
       </div>
+
+      <LiveJudgesPanel activity={judgeActivity} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card

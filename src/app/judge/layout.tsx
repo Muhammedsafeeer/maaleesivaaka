@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/services/auth.service";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { JudgePresenceTracker } from "@/components/dashboard/JudgePresenceTracker";
 
 /**
  * Same sidebar shell as /admin (src/components/app-sidebar.tsx), just with a
@@ -30,6 +31,7 @@ export default async function JudgeLayout({
       <AppSidebar role="judge" user={user} variant="inset" />
       <SidebarInset>
         <SiteHeader />
+        <JudgePresenceTracker user={user} />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>

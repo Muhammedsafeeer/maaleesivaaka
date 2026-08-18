@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Noto_Sans_Malayalam } from "next/font/google";
+import { Manjari, Noto_Sans_Malayalam } from "next/font/google";
 import type { PosterField } from "@/constants/poster";
 import type { PosterSettings } from "@/lib/services/posterSettings.service";
 import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
@@ -11,6 +11,7 @@ import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
 // explicitly rather than depending on whatever's installed on the machine
 // downloading the poster.
 const malayalamFont = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["600"] });
+const malayalamSerifFont = Manjari({ subsets: ["malayalam"], weight: ["400", "700"] });
 
 // Output width is fixed for a crisp capture (generatePosterImage.ts captures this DOM
 // box pixel-for-pixel, same CAPTURE_SCALE reasoning as the certificate pipeline);
@@ -21,6 +22,27 @@ const malayalamFont = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["60
 // <img> below fires onLoad.
 const POSTER_WIDTH = 1080;
 const FALLBACK_ASPECT_RATIO = 3 / 4;
+
+function fontFamilyFor(fontFamily: PosterField["fontFamily"], isMalayalam: boolean) {
+  if (isMalayalam) {
+    switch (fontFamily) {
+      case "malayalam_serif":
+        return malayalamSerifFont.style.fontFamily;
+      case "malayalam_sans":
+      default:
+        return malayalamFont.style.fontFamily;
+    }
+  }
+
+  switch (fontFamily) {
+    case "serif":
+      return "Georgia, 'Times New Roman', serif";
+    case "mono":
+      return "var(--font-geist-mono), monospace";
+    default:
+      return "var(--font-geist-sans), sans-serif";
+  }
+}
 
 type PodiumEntry = PublishedProgramPodiumRow["podium"][number];
 
@@ -147,7 +169,7 @@ export function DynamicResultPosterTemplate({
           return (
             <p
               key={field.key}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap ${isMalayalam ? malayalamFont.className : ""}`}
+              className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap"
               style={{
                 left: `${field.x * 100}%`,
                 top: `${field.y * 100}%`,
@@ -155,6 +177,7 @@ export function DynamicResultPosterTemplate({
                 fontSize: field.fontSize * 2.5,
                 fontWeight: field.bold ? 700 : 400,
                 textAlign: field.align,
+                fontFamily: fontFamilyFor(field.fontFamily, isMalayalam),
                 textShadow: "0 2px 6px rgba(0,0,0,0.6)",
               }}
             >

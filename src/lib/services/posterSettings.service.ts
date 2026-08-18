@@ -32,7 +32,7 @@ export async function getPosterSettings(): Promise<PosterSettings> {
 
   const saved = (data.fields as PosterField[] | null) ?? [];
   const byKey = new Map(saved.map((f) => [f.key, f]));
-  const merged = defaultPosterFields().map((f) => byKey.get(f.key) ?? f);
+  const merged = defaultPosterFields().map((f) => ({ ...f, ...(byKey.get(f.key) ?? {}) }));
 
   return { backgroundUrl: data.background_url, fields: merged };
 }

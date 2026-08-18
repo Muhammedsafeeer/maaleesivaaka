@@ -1007,3 +1007,22 @@ be removed (same rule as the program roster).
 - If no program exists yet in the student's category, the student can still be created
   and assigned later from the program roster.
 
+---
+
+## D-023 — Live logged-in judges on the admin dashboard (2026-08-18)
+
+The original dashboard listed judge *counts*, not who is actually signed in. The admin
+needs to see logged-in judges in real time and what they are scoring.
+
+### Decision
+
+1. **Presence, not a table.** Judges track themselves on a Realtime Presence channel
+   (`judge-presence`) from the judge layout. There is no `last_seen` column — Presence
+   already drops a client when the tab closes, which is the right "logged in now"
+   signal. Auth session rows are not queryable from the app role.
+2. **Scoring details stay in Postgres.** Progress (scored / assigned students, latest
+   score) is read by an admin-only service from `program_judges` + `judge_scores` and
+   refreshed via the existing `judge_scores` Realtime publication (no new RLS).
+3. **Admin dashboard is the surface.** The panel lists only currently present judges,
+   each with the program they are on, last submitted score, and per-program progress.
+
