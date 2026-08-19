@@ -35,8 +35,10 @@ export const PROTECTED_PREFIXES: Record<string, Role> = {
  *
  * `/audience` is deliberately public — the audience never logs in, which is the defining
  * security constraint of this project. Row Level Security must grant the PostgreSQL
- * `anon` role a narrow read slice covering published results only.
+ * `anon` role a narrow read slice covering published results only. `/tv` (unattended
+ * lobby/hall display) and `/g/[id]` (a house's QR-scan destination) share that same
+ * anon-RLS contract — house-only, no student names, same as `/audience`.
  */
-export const PUBLIC_ROUTES = ["/", "/login", "/audience"] as const;
+export const PUBLIC_ROUTES = ["/", "/login", "/audience", "/tv", "/g"] as const;
 
 export const LOGIN_ROUTE = "/login";

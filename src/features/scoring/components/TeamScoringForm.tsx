@@ -31,6 +31,7 @@ import { submitTeamScoresAction } from "@/features/scoring/actions/scoring.actio
 import type { ScorableTeam, TeamScoreInput } from "@/lib/services/scoring.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
 import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore } from "@/constants/scoring";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_CRITERION: ScoringCriterion = { id: "__default__", name: "Score" };
 
@@ -44,11 +45,15 @@ export function TeamScoringForm({
   teams,
   criteria,
   canEdit,
+  tiedIds,
 }: {
   programId: string;
   teams: ScorableTeam[];
   criteria: ScoringCriterion[];
   canEdit: boolean;
+  /** group_entry_ids currently tied with another team (TiedPositionsBanner above
+   * already names them) — highlighted here so they're easy to find. */
+  tiedIds?: Set<string>;
 }) {
   const [isPending, startTransition] = useTransition();
   const hasCriteria = criteria.length > 0;
@@ -164,9 +169,22 @@ export function TeamScoringForm({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
         {teams.map((team, index) => (
-          <div key={team.id} className="flex items-center gap-3 p-3">
+          <div
+            key={team.id}
+            className={cn(
+              "flex items-center gap-3 p-3",
+              tiedIds?.has(team.id) && "bg-destructive/5",
+            )}
+          >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{team.groupName}</p>
+              <p className="truncate text-sm font-medium">
+                {team.groupName}
+                {tiedIds?.has(team.id) ? (
+                  <Badge variant="destructive" className="ml-1.5 align-middle text-[0.65rem]">
+                    Tied
+                  </Badge>
+                ) : null}
+              </p>
               <Badge variant="secondary" className="mt-1 tabular-nums">
                 Chest {team.chestNumber}
               </Badge>

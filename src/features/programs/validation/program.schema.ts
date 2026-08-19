@@ -41,6 +41,23 @@ export const programSchema = z.object({
       }),
     )
     .max(10, "Up to 10 scoring types."),
+  /** Optional cap on how many students can be in one team/set — only meaningful for a
+   * group program (dialog only renders this field then), but kept on the shared schema
+   * so both the create flow and editing an already-group program (including one that
+   * got there via ConvertToGroupButton) use the same validation. A form-level string
+   * (empty = no limit) rather than a number, same "allow blank, coerce server-side"
+   * pattern as criterionFieldSchema. */
+  maxTeamSize: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || (/^\d+$/.test(value) && Number(value) >= 1), {
+      message: "Enter a whole number of at least 1, or leave blank for no limit.",
+    })
+    .optional(),
+  /** Keeps this program's results off every public/anon-facing surface (audience
+   * pages, leaderboard total, "Find My Result" search) even once otherwise
+   * publishable — admin and judges are unaffected. Defaults false. */
+  hideResults: z.boolean().optional(),
 });
 
 export type ProgramInput = z.infer<typeof programSchema>;

@@ -9,6 +9,7 @@ import {
   reorderAds,
   addAdMediaItem,
   removeAdMediaItem,
+  setAdTvVisibility,
 } from "@/lib/services/ad.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 import type { Ad, AdMedia, AdMediaType } from "@/types/ad";
@@ -23,6 +24,7 @@ export type CreateAdActionResult = { error: string; ad?: undefined } | { error?:
 function revalidateAdPaths() {
   revalidatePath("/admin/ads");
   revalidatePath("/audience");
+  revalidatePath("/tv");
 }
 
 export async function createAdAction(input: AdInput): Promise<CreateAdActionResult> {
@@ -83,6 +85,20 @@ export async function removeAdMediaAction(mediaId: string): Promise<AdActionResu
   if (!auth.ok) return { error: auth.error };
 
   const result = await removeAdMediaItem(mediaId);
+  if (!result.success) return { error: result.error };
+
+  revalidateAdPaths();
+  return {};
+}
+
+export async function setAdTvVisibilityAction(
+  id: string,
+  showOnTv: boolean,
+): Promise<AdActionResult> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { error: auth.error };
+
+  const result = await setAdTvVisibility(id, showOnTv);
   if (!result.success) return { error: result.error };
 
   revalidateAdPaths();

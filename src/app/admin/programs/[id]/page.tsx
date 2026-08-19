@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getProgram } from "@/lib/services/program.service";
 import {
   listAssignedStudents,
+  listAssignedGroupMembers,
   listAssignableStudents,
   listAssignedJudges,
   listAssignableJudges,
@@ -50,6 +51,7 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
 
   const [
     assignedStudents,
+    groupMembers,
     assignableStudents,
     assignedJudges,
     assignableJudges,
@@ -61,7 +63,8 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     groups,
     scored,
   ] = await Promise.all([
-    listAssignedStudents(id),
+    program.participation_type === "group" ? Promise.resolve([]) : listAssignedStudents(id),
+    program.participation_type === "group" ? listAssignedGroupMembers(id) : Promise.resolve([]),
     listAssignableStudents(id),
     listAssignedJudges(id),
     listAssignableJudges(id),
@@ -101,8 +104,9 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
           programId={id}
           entries={groupEntries}
           groups={groups}
-          assignedStudents={assignedStudents}
+          assignedStudents={groupMembers}
           assignableStudents={assignableStudents}
+          maxTeamSize={program.max_team_size}
         />
       ) : (
         <div className="flex flex-col gap-4">

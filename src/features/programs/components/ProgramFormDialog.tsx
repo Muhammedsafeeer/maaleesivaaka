@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,8 @@ const emptyDefaults: CreateProgramInput = {
   category: "kids",
   participation_type: "individual",
   criteriaNames: [],
+  maxTeamSize: "",
+  hideResults: false,
 };
 
 export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDialogProps) {
@@ -85,12 +88,21 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
           category: program.category,
           participation_type: program.participation_type,
           criteriaNames: [],
+          maxTeamSize: program.max_team_size ? String(program.max_team_size) : "",
+          hideResults: program.hide_results,
         }
       : emptyDefaults,
   });
 
   const malayalamNameValue = useWatch({ control, name: "malayalamName" });
+  // Only relevant while creating: editing reads participation_type straight off
+  // `program` instead (it's immutable, shown read-only below), so this watch is unused
+  // — but harmless — once isEditing is true.
+  const selectedParticipationType = useWatch({ control, name: "participation_type" });
   const { fields, append, remove } = useFieldArray({ control, name: "criteriaNames" });
+  const isGroup = program
+    ? program.participation_type === "group"
+    : selectedParticipationType === "group";
 
   useEffect(() => {
     reset(
@@ -102,6 +114,8 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
             category: program.category,
             participation_type: program.participation_type,
             criteriaNames: [],
+            maxTeamSize: program.max_team_size ? String(program.max_team_size) : "",
+            hideResults: program.hide_results,
           }
         : emptyDefaults,
     );
@@ -123,6 +137,8 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
           category: program.category,
           participation_type: program.participation_type,
           criteriaNames: data.map((c) => ({ name: c.name })),
+          maxTeamSize: program.max_team_size ? String(program.max_team_size) : "",
+          hideResults: program.hide_results,
         });
       });
     }
@@ -284,6 +300,58 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
               Group programs are team events — a house&apos;s team gets one shared chest
               number, assigned from the program page after creation.
             </p>
+          </div>
+
+          {isGroup ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="program-max-team-size">Max team size (optional)</Label>
+              <Input
+                id="program-max-team-size"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                autoComplete="off"
+                placeholder="No limit"
+                aria-invalid={errors.maxTeamSize ? true : undefined}
+                {...register("maxTeamSize")}
+              />
+              <p className="text-xs text-muted-foreground">
+                Blocks adding more than this many students to one team/set. Leave blank
+                for no limit. Lowering this later doesn&apos;t remove anyone already over
+                the new limit — it only blocks adding more.
+              </p>
+              {errors.maxTeamSize ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors.maxTeamSize.message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-2">
+            <Controller
+              control={control}
+              name="hideResults"
+              render={({ field }) => (
+                <label className="flex cursor-pointer items-start gap-2">
+                  <Checkbox
+                    id="program-hide-results"
+                    checked={field.value ?? false}
+                    onCheckedChange={(value) => field.onChange(value === true)}
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">
+                      Hide results from the public
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      Keeps this program off audience pages, the public leaderboard
+                      total, and student result search — even once published. Admin
+                      and judges are unaffected.
+                    </span>
+                  </span>
+                </label>
+              )}
+            />
           </div>
 
           <div className="flex flex-col gap-2">

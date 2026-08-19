@@ -18,6 +18,58 @@ export type GroupLeaderboardRow = {
   rank: number;
 };
 
+export type GroupPublicResult = {
+  id: string;
+  programName: string;
+  programCategory: string;
+  position: number;
+  points: number;
+};
+
+/**
+ * One house's own published results — the public QR-scan page's "recent results" list
+ * (src/app/g/[id]/page.tsx). House-only, no student names (D-017's same contract as
+ * every other public surface): individual-program rows reached via the scored
+ * student's house, group-program rows via the team entry's house, same two-source
+ * split group_leaderboard/listGroupPointContributions already use. Runs through the
+ * regular (RLS-scoped) client, so an anonymous caller only ever sees rows
+ * is_program_published() already allows (published AND not hide_results) — no
+ * additional filtering needed here.
+ */
+export async function listGroupPublicResults(groupId: string): Promise<GroupPublicResult[]> {
+  const supabase = await createClient();
+
+  const [{ data: individualRows }, { data: teamRows }] = await Promise.all([
+    supabase
+      .from("results")
+      .select("id, position, points, updated_at, programs(name, category), students!inner(group_id)")
+      .eq("students.group_id", groupId),
+    supabase
+      .from("results")
+      .select(
+        "id, position, points, updated_at, programs(name, category), program_group_entries!inner(group_id)",
+      )
+      .eq("program_group_entries.group_id", groupId),
+  ]);
+
+  const rows = [...(individualRows ?? []), ...(teamRows ?? [])].sort((a, b) =>
+    a.updated_at < b.updated_at ? 1 : -1,
+  );
+
+  return rows.flatMap((row) => {
+    if (!row.programs) return [];
+    return [
+      {
+        id: row.id,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        position: row.position,
+        points: row.points,
+      },
+    ];
+  });
+}
+
 /** Reads the group_leaderboard view (D-002) — never stored, always derived from
  * results.points on read, so this is correct-by-construction even right after a score
  * correction. Pass `limit` for a preview (e.g. the dashboard's top 5); omit it for the

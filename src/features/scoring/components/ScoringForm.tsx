@@ -31,6 +31,8 @@ import { submitScoresAction } from "@/features/scoring/actions/scoring.actions";
 import type { ScorableStudent, ScoreInput } from "@/lib/services/scoring.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
 import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore } from "@/constants/scoring";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_CRITERION: ScoringCriterion = { id: "__default__", name: "Score" };
 
@@ -46,11 +48,15 @@ export function ScoringForm({
   students,
   criteria,
   canEdit,
+  tiedIds,
 }: {
   programId: string;
   students: ScorableStudent[];
   criteria: ScoringCriterion[];
   canEdit: boolean;
+  /** student ids currently tied with someone else (TiedPositionsBanner above already
+   * names them) — highlighted here so they're easy to find in a long roster. */
+  tiedIds?: Set<string>;
 }) {
   const [isPending, startTransition] = useTransition();
   const hasCriteria = criteria.length > 0;
@@ -168,10 +174,23 @@ export function ScoringForm({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
         {students.map((student, index) => (
-          <div key={student.id} className="flex items-center gap-3 p-3">
+          <div
+            key={student.id}
+            className={cn(
+              "flex items-center gap-3 p-3",
+              tiedIds?.has(student.id) && "bg-destructive/5",
+            )}
+          >
             <PhotoThumbnail url={student.photo_url} alt={`${student.name} photo`} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{student.name}</p>
+              <p className="truncate text-sm font-medium">
+                {student.name}
+                {tiedIds?.has(student.id) ? (
+                  <Badge variant="destructive" className="ml-1.5 align-middle text-[0.65rem]">
+                    Tied
+                  </Badge>
+                ) : null}
+              </p>
               <p className="truncate text-xs text-muted-foreground tabular-nums">
                 {student.roll_number} · {student.class}
               </p>

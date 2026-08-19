@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
@@ -17,6 +18,7 @@ import {
   recalculateResultsAction,
   publishProgramAction,
 } from "@/features/programs/actions/result.actions";
+import { setProgramStatusAction } from "@/features/programs/actions/fixture.actions";
 import { PrintCertificatesDialog } from "@/features/programs/components/PrintCertificatesDialog";
 import type { listResults, listProgramPodiumForCertificates } from "@/lib/services/result.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
@@ -48,6 +50,21 @@ export function ResultsPanel({
 }) {
   const [isRecalculating, startRecalculate] = useTransition();
   const [isPublishing, startPublish] = useTransition();
+  const [isAcceptingTie, startAcceptTie] = useTransition();
+
+  // Derived, never stored (D-002 precedent) — the same duplicate-position check
+  // finalize_program_results (SQL) already used to decide not to auto-complete this
+  // program. status === "scoring" with results already populated only happens this
+  // way (a fully-scored, still-open program) once a tie blocked the normal
+  // scoring -> completed transition.
+  const tiedPositions = new Map<number, typeof results>();
+  for (const result of results) {
+    const list = tiedPositions.get(result.position) ?? [];
+    list.push(result);
+    tiedPositions.set(result.position, list);
+  }
+  const ties = Array.from(tiedPositions.values()).filter((group) => group.length > 1);
+  const hasUnresolvedTie = status === "scoring" && ties.length > 0;
 
   function handleRecalculate() {
     startRecalculate(async () => {
@@ -68,6 +85,17 @@ export function ResultsPanel({
         return;
       }
       toast.success("Results published — visible to the audience now.");
+    });
+  }
+
+  function handleAcceptTie() {
+    startAcceptTie(async () => {
+      const result = await setProgramStatusAction(programId, "completed");
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Tie accepted — results finalized as-is.");
     });
   }
 
@@ -109,6 +137,23 @@ export function ResultsPanel({
         </div>
       </div>
 
+      {hasUnresolvedTie ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
+            <p className="text-sm text-destructive">
+              Scoring is complete, but {ties.length === 1 ? "a position is" : "positions are"} tied
+              — held back from finalizing. Ask the judge to revise a score, or accept the
+              tie to finalize it as-is (tied participants share the position and both
+              get full points).
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleAcceptTie} disabled={isAcceptingTie}>
+            {isAcceptingTie ? "Accepting…" : "Accept tie & finalize"}
+          </Button>
+        </div>
+      ) : null}
+
       {results.length === 0 ? (
         <EmptyState
           title="No results yet"
@@ -136,12 +181,17 @@ export function ResultsPanel({
                 criteriaAverages.map((c) => [c.criterion_id, c.average]),
               );
 
+              const isTied = (tiedPositions.get(result.position)?.length ?? 0) > 1;
+
               return (
-                <TableRow key={result.id}>
+                <TableRow key={result.id} className={isTied ? "bg-destructive/5" : undefined}>
                   <TableCell>
-                    <Badge variant={result.position <= 3 ? "default" : "outline"}>
-                      {result.position}
-                    </Badge>
+                    <span className="flex items-center gap-1.5">
+                      <Badge variant={result.position <= 3 ? "default" : "outline"}>
+                        {result.position}
+                      </Badge>
+                      {isTied ? <Badge variant="destructive">Tied</Badge> : null}
+                    </span>
                   </TableCell>
                   <TableCell className="font-medium">
                     {result.students ? (

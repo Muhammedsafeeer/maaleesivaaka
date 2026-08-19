@@ -10,8 +10,12 @@ export const assignStudentSchema = z.object({
 export type AssignStudentInput = z.infer<typeof assignStudentSchema>;
 
 /** Bulk variant for the group-entry "Add student" tick-list — add several team members
- * from one house in one go instead of reopening the dialog per student. */
+ * to one specific set/entry in one go instead of reopening the dialog per student.
+ * `group_entry_id` pins every ticked student to that exact set — required now that a
+ * house can have more than one (D-025 follow-up), so membership can't be inferred from
+ * house alone. */
 export const assignStudentsSchema = z.object({
+  group_entry_id: z.uuid(),
   student_ids: z.array(z.uuid()).min(1, "Select at least one student."),
 });
 

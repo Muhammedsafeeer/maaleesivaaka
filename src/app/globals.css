@@ -301,9 +301,32 @@
   animation: lantern-glow 3.2s ease-in-out infinite;
 }
 
+/* TV slideshow (src/features/tv) — a per-slide progress bar that fills over the
+   rotation interval, remounted (via a `key`) each time the active slide changes so the
+   animation restarts from 0% instead of jumping. Duration is set inline per-instance
+   (TvSlideshow's SLIDE_DURATION_MS) via the `animation-duration` style prop. */
+@keyframes tv-slide-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.tv-slide-progress {
+  animation-name: tv-slide-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lantern-glow {
     animation: none;
+  }
+  .tv-slide-progress {
+    animation: none;
+    width: 100%;
   }
 }
 

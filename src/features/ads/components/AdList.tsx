@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { GripVertical, MoreHorizontal, Megaphone } from "lucide-react";
+import { GripVertical, MoreHorizontal, Megaphone, Tv } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -31,7 +31,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { AdFormDialog } from "@/features/ads/components/AdFormDialog";
-import { reorderAdsAction, deleteAdAction } from "@/features/ads/actions/ad.actions";
+import {
+  reorderAdsAction,
+  deleteAdAction,
+  setAdTvVisibilityAction,
+} from "@/features/ads/actions/ad.actions";
 import { AD_SLOTS, AD_SLOT_COUNT } from "@/constants/ads";
 import { cn } from "@/lib/utils";
 import type { AdWithMedia } from "@/types/ad";
@@ -56,6 +60,7 @@ function AdRow({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
+  const [isTogglingTv, startTvTransition] = useTransition();
 
   function handleDelete() {
     startDeleteTransition(async () => {
@@ -66,6 +71,18 @@ function AdRow({
       }
       toast.success("Ad deleted.");
       setDeleteOpen(false);
+    });
+  }
+
+  function handleToggleTv() {
+    const next = !ad.show_on_tv;
+    startTvTransition(async () => {
+      const result = await setAdTvVisibilityAction(ad.id, next);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(next ? "Pushed to the TV slideshow." : "Removed from the TV slideshow.");
     });
   }
 
@@ -116,6 +133,16 @@ function AdRow({
             </span>
           )}
         </TableCell>
+        <TableCell>
+          {ad.show_on_tv ? (
+            <Badge className="bg-house-blue/15 text-house-blue">
+              <Tv className="size-3" data-icon="inline-start" />
+              On TV
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </TableCell>
         <TableCell className="w-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -125,6 +152,10 @@ function AdRow({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem disabled={isTogglingTv} onSelect={handleToggleTv}>
+                <Tv className="size-4" data-icon="inline-start" />
+                {ad.show_on_tv ? "Remove from TV" : "Push to TV"}
+              </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
                 Delete
               </DropdownMenuItem>
@@ -222,6 +253,7 @@ export function AdList({ ads }: { ads: AdWithMedia[] }) {
             <TableHead>Type</TableHead>
             <TableHead>Timing</TableHead>
             <TableHead>Slot</TableHead>
+            <TableHead>TV</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>

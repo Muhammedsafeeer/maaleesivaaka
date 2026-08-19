@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { MoreHorizontal, UsersRound } from "lucide-react";
+import { MoreHorizontal, QrCode, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import { GroupFormDialog } from "@/features/groups/components/GroupFormDialog";
+import { GroupQrDialog } from "@/features/groups/components/GroupQrDialog";
 import { deleteGroupAction } from "@/features/groups/actions/group.actions";
 import { cn } from "@/lib/utils";
 import type { Group } from "@/types/group";
@@ -39,6 +40,7 @@ const HOUSE_ACCENTS = [
 export function GroupCard({ group, index }: { group: Group; index: number }) {
   const accent = HOUSE_ACCENTS[index % HOUSE_ACCENTS.length];
   const [editOpen, setEditOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
 
@@ -89,6 +91,10 @@ export function GroupCard({ group, index }: { group: Group; index: number }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setQrOpen(true)}>
+                <QrCode className="size-4" data-icon="inline-start" />
+                QR code
+              </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
                 Delete
               </DropdownMenuItem>
@@ -117,6 +123,7 @@ export function GroupCard({ group, index }: { group: Group; index: number }) {
       </Card>
 
       <GroupFormDialog open={editOpen} onOpenChange={setEditOpen} group={group} />
+      <GroupQrDialog group={group} open={qrOpen} onOpenChange={setQrOpen} />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

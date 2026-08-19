@@ -30,7 +30,7 @@ export default async function JudgeLayout({
     >
       <AppSidebar role="judge" user={user} variant="inset" />
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader role="judge" />
         <JudgePresenceTracker user={user} />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>

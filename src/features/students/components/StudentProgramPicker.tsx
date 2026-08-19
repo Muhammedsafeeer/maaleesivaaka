@@ -5,10 +5,11 @@ import { Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { STAGE_TYPES } from "@/constants/programs";
+import { CATEGORIES, STAGE_TYPES } from "@/constants/programs";
 import type { Program } from "@/types/program";
 
 const stageLabels = Object.fromEntries(STAGE_TYPES.map((s) => [s.value, s.label]));
+const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 
 export function StudentProgramPicker({
   programs,
@@ -81,7 +82,12 @@ export function StudentProgramPicker({
                         onChange(selectedIds.filter((id) => id !== program.id));
                       }}
                     />
-                    <span className="min-w-0 flex-1 truncate">{program.name}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {program.name}{" "}
+                      <span className="text-muted-foreground">
+                        ({categoryLabels[program.category]})
+                      </span>
+                    </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {stageLabels[program.stage_type]}
                     </span>
@@ -105,7 +111,12 @@ export function StudentProgramPicker({
                         onChange(selectedIds.filter((id) => id !== program.id));
                       }}
                     />
-                    <span className="min-w-0 flex-1 truncate">{program.name}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {program.name}{" "}
+                      <span className="text-muted-foreground">
+                        ({categoryLabels[program.category]})
+                      </span>
+                    </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {stageLabels[program.stage_type]}
                     </span>

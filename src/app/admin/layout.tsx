@@ -1,14 +1,19 @@
 import { requireRole } from "@/lib/services/auth.service";
+import { listUnresolvedTies } from "@/lib/services/result.service";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireRole("admin");
+  const [user, unresolvedTies] = await Promise.all([
+    requireRole("admin"),
+    listUnresolvedTies(),
+  ]);
 
   return (
     <SidebarProvider
@@ -22,7 +27,8 @@ export default async function AdminLayout({
     >
       <AppSidebar role="admin" user={user} variant="inset" />
       <SidebarInset>
-        <SiteHeader />
+        <RealtimeLeaderboardListener />
+        <SiteHeader role="admin" unresolvedTies={unresolvedTies} />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>

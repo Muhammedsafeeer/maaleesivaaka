@@ -24,6 +24,7 @@ import { StudentSearchBar } from "@/features/leaderboard/components/StudentSearc
 import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
 import { RealtimePublishAnnouncer } from "@/components/dashboard/RealtimePublishAnnouncer";
+import { RealtimeAdsListener } from "@/components/dashboard/RealtimeAdsListener";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ export default async function AudiencePage() {
       <RealtimeLeaderboardListener />
       <RealtimeProgramsListener />
       <RealtimePublishAnnouncer />
+      <RealtimeAdsListener />
 
       <div className="overflow-hidden rounded-2xl border-2 border-(--stage-gold)">
         <Image

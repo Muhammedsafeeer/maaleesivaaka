@@ -84,6 +84,10 @@ export type ProgramInput = {
   malayalamName?: string;
   stage_type: StageType;
   category: Category;
+  /** Raw form string (empty = no limit), same shape as the schema field — converted to
+   * a number or null right where it's written (createProgram/updateProgram below). */
+  maxTeamSize?: string;
+  hideResults?: boolean;
 };
 
 /** Set at creation (D-025); updateProgram never touches it — the only path to change
@@ -104,6 +108,8 @@ export async function createProgram(
       stage_type: input.stage_type,
       category: input.category,
       participation_type: input.participation_type,
+      max_team_size: input.maxTeamSize ? Number(input.maxTeamSize) : null,
+      hide_results: input.hideResults ?? false,
     })
     .select()
     .single();
@@ -127,6 +133,8 @@ export async function updateProgram(
       malayalam_name: input.malayalamName || null,
       stage_type: input.stage_type,
       category: input.category,
+      max_team_size: input.maxTeamSize ? Number(input.maxTeamSize) : null,
+      hide_results: input.hideResults ?? false,
     })
     .eq("id", id)
     .select()

@@ -143,6 +143,127 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
   return { success: true, data: null };
 }
 
+export type TiedParticipant = {
+  resultId: string;
+  name: string;
+  studentId: string | null;
+  groupEntryId: string | null;
+};
+export type TiedPositionGroup = { position: number; points: number; participants: TiedParticipant[] };
+
+/**
+ * A program's tied positions (two or more results sharing one `position`) — always
+ * derived from `results` on read, never stored (D-002 precedent), so it's
+ * correct-by-construction the moment a judge revises a score. Callable by an assigned
+ * judge (new "judges can read results for their assigned programs" RLS policy,
+ * 20260819050000) as well as admin — finalize_program_results (SQL) already refuses to
+ * flip a tied program to 'completed', so this is what actually surfaces the block to
+ * whoever's looking.
+ */
+export async function listTiedPositions(programId: string): Promise<TiedPositionGroup[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, student_id, group_entry_id, students(name), program_group_entries(chest_number, main_groups(name))",
+    )
+    .eq("program_id", programId)
+    .order("position", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  const byPosition = new Map<number, typeof data>();
+  for (const row of data) {
+    const list = byPosition.get(row.position) ?? [];
+    list.push(row);
+    byPosition.set(row.position, list);
+  }
+
+  return Array.from(byPosition.entries())
+    .filter(([, rows]) => rows.length > 1)
+    .map(([position, rows]) => ({
+      position,
+      points: rows[0].points,
+      participants: rows.map((row) => ({
+        resultId: row.id,
+        studentId: row.student_id,
+        groupEntryId: row.group_entry_id,
+        name:
+          row.students?.name ??
+          `${row.program_group_entries?.main_groups?.name ?? "Team"} · Chest ${row.program_group_entries?.chest_number ?? "?"}`,
+      })),
+    }));
+}
+
+export type UnresolvedTieProgram = {
+  programId: string;
+  programName: string;
+  programCategory: string;
+  groups: TiedPositionGroup[];
+};
+
+/**
+ * Every program across the whole festival currently blocked on a tie — the admin
+ * dashboard's "needs a decision" panel. Admin-only in practice (full `results` access),
+ * scoped to `status = 'scoring'` since a resolved/accepted tie's program has already
+ * moved to 'completed' and stops needing attention.
+ */
+export async function listUnresolvedTies(): Promise<UnresolvedTieProgram[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, program_id, position, points, student_id, group_entry_id, programs!inner(name, category, status), students(name), program_group_entries(chest_number, main_groups(name))",
+    )
+    .eq("programs.status", "scoring");
+
+  if (error || !data) {
+    return [];
+  }
+
+  const byProgramPosition = new Map<string, typeof data>();
+  for (const row of data) {
+    const key = `${row.program_id}:${row.position}`;
+    const list = byProgramPosition.get(key) ?? [];
+    list.push(row);
+    byProgramPosition.set(key, list);
+  }
+
+  const byProgram = new Map<string, UnresolvedTieProgram>();
+  for (const rows of byProgramPosition.values()) {
+    if (rows.length < 2) continue;
+
+    const first = rows[0];
+    if (!first.programs) continue;
+
+    const entry = byProgram.get(first.program_id) ?? {
+      programId: first.program_id,
+      programName: first.programs.name,
+      programCategory: first.programs.category,
+      groups: [],
+    };
+
+    entry.groups.push({
+      position: first.position,
+      points: first.points,
+      participants: rows.map((row) => ({
+        resultId: row.id,
+        studentId: row.student_id,
+        groupEntryId: row.group_entry_id,
+        name:
+          row.students?.name ??
+          `${row.program_group_entries?.main_groups?.name ?? "Team"} · Chest ${row.program_group_entries?.chest_number ?? "?"}`,
+      })),
+    });
+
+    byProgram.set(first.program_id, entry);
+  }
+
+  return Array.from(byProgram.values());
+}
+
 /**
  * Results for a program, joined with the student's name for the admin review table.
  * Also carries class and house (main_groups) — not used by the review table itself, but

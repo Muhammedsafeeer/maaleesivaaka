@@ -59,6 +59,9 @@ export async function submitScoresAction(
   revalidatePath(`/judge/programs/${programId}`);
   revalidatePath("/judge");
   revalidatePath(`/admin/programs/${programId}`);
+  // A revision that broke (or created) a tie changes what the dashboard's "needs a
+  // decision" panel shows — keep it in sync with whatever finalizeIfComplete just did.
+  revalidatePath("/admin");
   return {};
 }
 
@@ -99,5 +102,8 @@ export async function submitTeamScoresAction(
   revalidatePath(`/judge/programs/${programId}`);
   revalidatePath("/judge");
   revalidatePath(`/admin/programs/${programId}`);
+  // A revision that broke (or created) a tie changes what the dashboard's "needs a
+  // decision" panel shows — keep it in sync with whatever finalizeIfComplete just did.
+  revalidatePath("/admin");
   return {};
 }

@@ -59,28 +59,22 @@ import {
 } from "@/features/programs/actions/groupEntry.actions";
 import { unassignStudentAction } from "@/features/programs/actions/assignment.actions";
 import type { Group } from "@/types/group";
+import type { AssignedGroupMember } from "@/lib/services/assignment.service";
 import type { Student } from "@/types/student";
 import type { ProgramGroupEntryWithGroup } from "@/types/programGroupEntry";
 
-function CreateGroupEntryDialog({
-  programId,
-  availableGroups,
-}: {
-  programId: string;
-  availableGroups: Group[];
-}) {
+function CreateGroupEntryDialog({ programId, groups }: { programId: string; groups: Group[] }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const {
     control,
-    register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<CreateGroupEntryInput>({
     resolver: zodResolver(createGroupEntrySchema),
-    defaultValues: { group_id: "", chest_number: "" },
+    defaultValues: { group_id: "" },
   });
 
   function onSubmit(values: CreateGroupEntryInput) {
@@ -91,14 +85,14 @@ function CreateGroupEntryDialog({
         return;
       }
       toast.success("Team added.");
-      reset({ group_id: "", chest_number: "" });
+      reset({ group_id: "" });
       setOpen(false);
     });
   }
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} disabled={availableGroups.length === 0}>
+      <Button onClick={() => setOpen(true)} disabled={groups.length === 0}>
         <Plus className="size-4" data-icon="inline-start" />
         Add team
       </Button>
@@ -108,8 +102,10 @@ function CreateGroupEntryDialog({
           <DialogHeader>
             <DialogTitle>Add a team</DialogTitle>
             <DialogDescription>
-              Pick a house and give its team one chest number, shared by everyone added
-              to it.
+              Pick a house. A house can have more than one team here — each becomes its
+              own numbered set, scored independently. The chest number is generated
+              automatically (house + category initials + set number) — rename it
+              afterwards if you need to.
             </DialogDescription>
           </DialogHeader>
 
@@ -128,7 +124,7 @@ function CreateGroupEntryDialog({
                       <SelectValue placeholder="Select a house" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableGroups.map((group) => (
+                      {groups.map((group) => (
                         <SelectItem key={group.id} value={group.id}>
                           {group.name}
                         </SelectItem>
@@ -140,21 +136,6 @@ function CreateGroupEntryDialog({
               {errors.group_id ? (
                 <p role="alert" className="text-sm text-destructive">
                   {errors.group_id.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="group-entry-chest-number">Chest number</Label>
-              <Input
-                id="group-entry-chest-number"
-                autoComplete="off"
-                aria-invalid={errors.chest_number ? true : undefined}
-                {...register("chest_number")}
-              />
-              {errors.chest_number ? (
-                <p role="alert" className="text-sm text-destructive">
-                  {errors.chest_number.message}
                 </p>
               ) : null}
             </div>
@@ -243,18 +224,23 @@ function AddTeamMemberDialog({
   programId,
   entry,
   assignableStudents,
+  remainingSlots,
   open,
   onOpenChange,
 }: {
   programId: string;
   entry: ProgramGroupEntryWithGroup;
   assignableStudents: Student[];
+  /** Admin-set max_team_size minus this team's current member count, or null for no
+   * limit — caps how many more can be ticked here before hitting the limit. */
+  remainingSlots: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
+  const atLimit = remainingSlots !== null && selectedIds.length >= remainingSlots;
 
   function toggle(studentId: string, checked: boolean) {
     setSelectedIds((prev) =>
@@ -278,6 +264,7 @@ function AddTeamMemberDialog({
     setError(undefined);
     startTransition(async () => {
       const result = await assignStudentsToGroupEntryAction(programId, {
+        group_entry_id: entry.id,
         student_ids: selectedIds,
       });
       if (result.error) {
@@ -299,7 +286,10 @@ function AddTeamMemberDialog({
           <DialogTitle>Add students to {entry.group_name ?? "this team"}</DialogTitle>
           <DialogDescription>
             Only students from this house who match the program&apos;s category and
-            aren&apos;t already assigned are listed. Tick as many as you need.
+            aren&apos;t already assigned are listed.{" "}
+            {remainingSlots !== null
+              ? `This team allows at most ${remainingSlots} more, based on its max team size.`
+              : "Tick as many as you need."}
           </DialogDescription>
         </DialogHeader>
 
@@ -311,10 +301,11 @@ function AddTeamMemberDialog({
               return (
                 <label
                   key={student.id}
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-muted/60"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-muted/60 has-disabled:cursor-not-allowed has-disabled:opacity-50"
                 >
                   <Checkbox
                     checked={checked}
+                    disabled={!checked && atLimit}
                     onCheckedChange={(value) => toggle(student.id, value === true)}
                   />
                   <span className="min-w-0 flex-1 truncate">
@@ -327,6 +318,7 @@ function AddTeamMemberDialog({
           {selectedIds.length > 0 ? (
             <p className="text-xs text-muted-foreground">
               {selectedIds.length} {selectedIds.length === 1 ? "student" : "students"} selected
+              {atLimit ? " — team limit reached" : ""}
             </p>
           ) : null}
           {error ? (
@@ -452,21 +444,32 @@ function TeamCard({
   entry,
   members,
   assignableStudents,
+  maxTeamSize,
 }: {
   programId: string;
   entry: ProgramGroupEntryWithGroup;
   members: Student[];
   assignableStudents: Student[];
+  maxTeamSize: number | null;
 }) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const houseAssignable = assignableStudents.filter((s) => s.group_id === entry.group_id);
+  const remainingSlots = maxTeamSize !== null ? Math.max(maxTeamSize - members.length, 0) : null;
+  const atCap = remainingSlots === 0;
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle>{entry.group_name ?? "Unknown house"}</CardTitle>
+          <div>
+            <CardTitle>{entry.group_name ?? "Unknown house"}</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Set {entry.set_number} · {members.length}
+              {maxTeamSize !== null ? ` / ${maxTeamSize}` : ""}{" "}
+              {members.length === 1 ? "member" : "members"}
+            </p>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="size-7" aria-label="Team actions">
@@ -516,11 +519,11 @@ function TeamCard({
           variant="outline"
           size="sm"
           className="self-start"
-          disabled={houseAssignable.length === 0}
+          disabled={houseAssignable.length === 0 || atCap}
           onClick={() => setAddMemberOpen(true)}
         >
           <Plus className="size-4" data-icon="inline-start" />
-          Add student
+          {atCap ? "Team full" : "Add student"}
         </Button>
       </CardContent>
 
@@ -534,6 +537,7 @@ function TeamCard({
         programId={programId}
         entry={entry}
         assignableStudents={houseAssignable}
+        remainingSlots={remainingSlots}
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
       />
@@ -547,17 +551,15 @@ export function GroupRosterPanel({
   groups,
   assignedStudents,
   assignableStudents,
+  maxTeamSize,
 }: {
   programId: string;
   entries: ProgramGroupEntryWithGroup[];
   groups: Group[];
-  assignedStudents: Student[];
+  assignedStudents: AssignedGroupMember[];
   assignableStudents: Student[];
+  maxTeamSize: number | null;
 }) {
-  const availableGroups = groups.filter(
-    (group) => !entries.some((entry) => entry.group_id === group.id),
-  );
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
@@ -566,16 +568,16 @@ export function GroupRosterPanel({
           <p className="text-sm text-muted-foreground">
             {entries.length} {entries.length === 1 ? "team" : "teams"},{" "}
             {assignedStudents.length} {assignedStudents.length === 1 ? "student" : "students"}{" "}
-            total.
+            total{maxTeamSize !== null ? ` (max ${maxTeamSize} per team)` : ""}.
           </p>
         </div>
-        <CreateGroupEntryDialog programId={programId} availableGroups={availableGroups} />
+        <CreateGroupEntryDialog programId={programId} groups={groups} />
       </div>
 
       {entries.length === 0 ? (
         <EmptyState
           title="No teams yet"
-          description="Add a team (house + chest number) to start building this program's roster."
+          description="Add a team — pick a house, and its chest number and set number are generated automatically. A house can have more than one team (set)."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -584,8 +586,9 @@ export function GroupRosterPanel({
               key={entry.id}
               programId={programId}
               entry={entry}
-              members={assignedStudents.filter((s) => s.group_id === entry.group_id)}
+              members={assignedStudents.filter((s) => s.group_entry_id === entry.id)}
               assignableStudents={assignableStudents}
+              maxTeamSize={maxTeamSize}
             />
           ))}
         </div>

@@ -39,6 +39,8 @@ export async function setProgramStatusAction(
   revalidatePath("/admin/fixture");
   revalidatePath("/admin/programs");
   revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath("/admin");
+  revalidatePath(`/judge/programs/${programId}`);
   revalidatePath("/audience");
   return {};
 }

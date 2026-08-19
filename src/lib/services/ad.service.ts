@@ -36,6 +36,52 @@ export async function listAds(): Promise<AdWithMedia[]> {
   return adsResult.data.map((ad) => ({ ...ad, media: mediaByAdId.get(ad.id) ?? [] }));
 }
 
+/** Ads pushed to the TV slideshow (ads.show_on_tv) — independent of /audience slot
+ * assignment (an ad's `position` still only controls its /audience gap). Same public
+ * read as listAds(): "anyone can read ads" already grants anon full access. */
+export async function listTvAds(): Promise<AdWithMedia[]> {
+  const supabase = await createClient();
+  const [adsResult, mediaResult] = await Promise.all([
+    supabase
+      .from("ads")
+      .select("*")
+      .eq("show_on_tv", true)
+      .order("position", { ascending: true }),
+    supabase.from("ad_media").select("*").order("position", { ascending: true }),
+  ]);
+
+  if (adsResult.error) {
+    return [];
+  }
+
+  const mediaByAdId = new Map<string, AdMedia[]>();
+  for (const row of mediaResult.data ?? []) {
+    const media = asAdMedia(row);
+    const existing = mediaByAdId.get(media.ad_id);
+    if (existing) existing.push(media);
+    else mediaByAdId.set(media.ad_id, [media]);
+  }
+
+  return adsResult.data.map((ad) => ({ ...ad, media: mediaByAdId.get(ad.id) ?? [] }));
+}
+
+/** Toggled from the admin ads list's "Push to TV" / "Remove from TV" action. */
+export async function setAdTvVisibility(id: string, showOnTv: boolean): Promise<ServiceResult<Ad>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("ads")
+    .update({ show_on_tv: showOnTv })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error: "Could not update the ad. Please try again." };
+  }
+
+  return { success: true, data };
+}
+
 export type AdInput = {
   name: string;
   playDurationSeconds: number;

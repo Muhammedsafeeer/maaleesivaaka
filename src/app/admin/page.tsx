@@ -11,10 +11,11 @@ import {
 } from "lucide-react";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { listLiveJudgeActivity } from "@/lib/services/judgeActivity.service";
+import { listUnresolvedTies } from "@/lib/services/result.service";
+import { TiesReviewPanel } from "@/features/programs/components/TiesReviewPanel";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeaderboardList } from "@/components/dashboard/LeaderboardList";
 import { StudentsPreviewList } from "@/components/dashboard/StudentsPreviewList";
-import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 import { RealtimeJudgeScoresListener } from "@/components/dashboard/RealtimeJudgeScoresListener";
 import { LiveJudgesPanel } from "@/features/judges/components/LiveJudgesPanel";
 import { Button } from "@/components/ui/button";
@@ -25,14 +26,20 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminDashboardPage() {
-  const [stats, judgeActivity] = await Promise.all([
+  const [stats, judgeActivity, unresolvedTies] = await Promise.all([
     getDashboardStats(),
     listLiveJudgeActivity(),
+    listUnresolvedTies(),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
-      <RealtimeLeaderboardListener />
+      {/* No RealtimeLeaderboardListener here — AdminLayout already mounts one for the
+          whole admin section (needed to keep the header's tie bell live everywhere).
+          A second instance on this page would throw: Supabase's realtime client keys
+          channels by name, and useRealtimeLeaderboard always uses the same channel
+          name ("results-changes"), so two mounted instances collide on the same
+          channel object instead of subscribing independently. */}
       <RealtimeJudgeScoresListener />
       <div>
         <h1 className="font-heading text-xl font-medium">Dashboard</h1>
@@ -79,6 +86,8 @@ export default async function AdminDashboardPage() {
           icon={<ClockIcon className="size-4" />}
         />
       </div>
+
+      <TiesReviewPanel ties={unresolvedTies} />
 
       <LiveJudgesPanel activity={judgeActivity} />
 

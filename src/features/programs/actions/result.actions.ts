@@ -19,6 +19,7 @@ export async function recalculateResultsAction(programId: string): Promise<Resul
   if (!result.success) return { error: result.error };
 
   revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath("/admin");
   return {};
 }
 

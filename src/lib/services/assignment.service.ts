@@ -25,6 +25,40 @@ export async function listAssignedStudents(programId: string): Promise<Student[]
   });
 }
 
+export type AssignedGroupMember = Student & { group_entry_id: string | null };
+
+/**
+ * Same as listAssignedStudents, plus each member's group_entry_id (D-025 follow-up) —
+ * the group roster panel needs this to know which SET a member belongs to, now that a
+ * house can have more than one entry in the same program. Kept as a separate function
+ * rather than widening listAssignedStudents' return shape, since every other caller
+ * (individual-program roster, fixture, certificates, etc.) has no use for it.
+ */
+export async function listAssignedGroupMembers(programId: string): Promise<AssignedGroupMember[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("program_students")
+    .select("group_entry_id, students(*, student_categories(category))")
+    .eq("program_id", programId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    return [];
+  }
+
+  return data.flatMap((row) => {
+    if (!row.students) return [];
+    const { student_categories, ...student } = row.students;
+    return [
+      {
+        ...student,
+        categories: student_categories.map((c) => c.category),
+        group_entry_id: row.group_entry_id,
+      },
+    ];
+  });
+}
+
 /**
  * Students eligible to be added: matching the program's category (D-007) and not
  * already assigned. Two round trips rather than a single NOT-IN-subquery filter —
@@ -99,11 +133,12 @@ export async function listAssignableStudentsForGroupEntry(
 export async function assignStudent(
   programId: string,
   studentId: string,
+  groupEntryId?: string,
 ): Promise<ServiceResult<null>> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("program_students")
-    .insert({ program_id: programId, student_id: studentId });
+    .insert({ program_id: programId, student_id: studentId, group_entry_id: groupEntryId ?? null });
 
   if (error) {
     // errcode 23514 (check_violation) is the D-007 category-match trigger. The UI only
@@ -131,6 +166,7 @@ export async function assignStudent(
 export async function assignStudents(
   programId: string,
   studentIds: string[],
+  groupEntryId?: string,
 ): Promise<ServiceResult<null>> {
   const uniqueIds = [...new Set(studentIds)];
   if (uniqueIds.length === 0) {
@@ -138,8 +174,38 @@ export async function assignStudents(
   }
 
   const supabase = await createClient();
+
+  // Admin-configured cap on team/set size (programs.max_team_size), only relevant for
+  // the group-entry tick-list — enforced going forward only: this blocks adding PAST
+  // the limit, it never evicts anyone already over it if the cap is lowered later.
+  if (groupEntryId) {
+    const [{ data: program }, { count: currentCount }] = await Promise.all([
+      supabase.from("programs").select("max_team_size").eq("id", programId).single(),
+      supabase
+        .from("program_students")
+        .select("id", { count: "exact", head: true })
+        .eq("group_entry_id", groupEntryId),
+    ]);
+
+    const maxTeamSize = program?.max_team_size;
+    if (maxTeamSize && (currentCount ?? 0) + uniqueIds.length > maxTeamSize) {
+      const remaining = Math.max(maxTeamSize - (currentCount ?? 0), 0);
+      return {
+        success: false,
+        error:
+          remaining === 0
+            ? `This team is already at its limit of ${maxTeamSize} members.`
+            : `This team allows at most ${maxTeamSize} members — only ${remaining} more can be added.`,
+      };
+    }
+  }
+
   const { error } = await supabase.from("program_students").insert(
-    uniqueIds.map((studentId) => ({ program_id: programId, student_id: studentId })),
+    uniqueIds.map((studentId) => ({
+      program_id: programId,
+      student_id: studentId,
+      group_entry_id: groupEntryId ?? null,
+    })),
   );
 
   if (error) {
@@ -300,36 +366,31 @@ export async function unassignStudent(
   }
 
   // D-025 follow-up: a group program's judge_scores rows are keyed by group_entry_id,
-  // not student_id (a team is scored once, not once per member), so the check above
+  // not student_id (a team/set is scored once, not once per member), so the check above
   // never finds anything for a group program — without this, a student could be pulled
-  // off an already-scored team's roster with no protection at all.
-  const { data: student } = await supabase
-    .from("students")
-    .select("group_id")
-    .eq("id", studentId)
-    .single();
+  // off an already-scored set's roster with no protection at all. Read the STUDENT'S OWN
+  // assignment row for its group_entry_id rather than re-deriving "the" entry from their
+  // house: a house can now have more than one set in the same program, so house alone
+  // no longer identifies a single entry.
+  const { data: assignment } = await supabase
+    .from("program_students")
+    .select("group_entry_id")
+    .eq("program_id", programId)
+    .eq("student_id", studentId)
+    .maybeSingle();
 
-  if (student) {
-    const { data: entry } = await supabase
-      .from("program_group_entries")
-      .select("id")
+  if (assignment?.group_entry_id) {
+    const { count: teamScoreCount } = await supabase
+      .from("judge_scores")
+      .select("*", { count: "exact", head: true })
       .eq("program_id", programId)
-      .eq("group_id", student.group_id)
-      .maybeSingle();
+      .eq("group_entry_id", assignment.group_entry_id);
 
-    if (entry) {
-      const { count: teamScoreCount } = await supabase
-        .from("judge_scores")
-        .select("*", { count: "exact", head: true })
-        .eq("program_id", programId)
-        .eq("group_entry_id", entry.id);
-
-      if (teamScoreCount && teamScoreCount > 0) {
-        return {
-          success: false,
-          error: "This student's team already has scores recorded for this program and can't be removed.",
-        };
-      }
+    if (teamScoreCount && teamScoreCount > 0) {
+      return {
+        success: false,
+        error: "This student's team already has scores recorded for this program and can't be removed.",
+      };
     }
   }
 

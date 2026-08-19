@@ -111,6 +111,7 @@ export type Database = {
           name: string
           play_duration_seconds: number
           position: number
+          show_on_tv: boolean
           transition_duration_ms: number
           updated_at: string
         }
@@ -120,6 +121,7 @@ export type Database = {
           name: string
           play_duration_seconds?: number
           position: number
+          show_on_tv?: boolean
           transition_duration_ms?: number
           updated_at?: string
         }
@@ -129,6 +131,7 @@ export type Database = {
           name?: string
           play_duration_seconds?: number
           position?: number
+          show_on_tv?: boolean
           transition_duration_ms?: number
           updated_at?: string
         }
@@ -346,6 +349,7 @@ export type Database = {
       program_students: {
         Row: {
           created_at: string
+          group_entry_id: string | null
           id: string
           program_id: string
           student_id: string
@@ -353,6 +357,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          group_entry_id?: string | null
           id?: string
           program_id: string
           student_id: string
@@ -360,6 +365,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          group_entry_id?: string | null
           id?: string
           program_id?: string
           student_id?: string
@@ -380,14 +386,23 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "program_students_group_entry_id_fkey"
+            columns: ["group_entry_id"]
+            isOneToOne: false
+            referencedRelation: "program_group_entries"
+            referencedColumns: ["id"]
+          },
         ]
       }
       programs: {
         Row: {
           category: Database["public"]["Enums"]["participant_category"]
           created_at: string
+          hide_results: boolean
           id: string
           malayalam_name: string | null
+          max_team_size: number | null
           name: string
           participation_type: Database["public"]["Enums"]["participation_type"]
           serial_number: number | null
@@ -398,8 +413,10 @@ export type Database = {
         Insert: {
           category: Database["public"]["Enums"]["participant_category"]
           created_at?: string
+          hide_results?: boolean
           id?: string
           malayalam_name?: string | null
+          max_team_size?: number | null
           name: string
           participation_type?: Database["public"]["Enums"]["participation_type"]
           serial_number?: number | null
@@ -410,8 +427,10 @@ export type Database = {
         Update: {
           category?: Database["public"]["Enums"]["participant_category"]
           created_at?: string
+          hide_results?: boolean
           id?: string
           malayalam_name?: string | null
+          max_team_size?: number | null
           name?: string
           participation_type?: Database["public"]["Enums"]["participation_type"]
           serial_number?: number | null
@@ -428,6 +447,7 @@ export type Database = {
           group_id: string
           id: string
           program_id: string
+          set_number: number
           updated_at: string
         }
         Insert: {
@@ -436,6 +456,7 @@ export type Database = {
           group_id: string
           id?: string
           program_id: string
+          set_number?: number
           updated_at?: string
         }
         Update: {
@@ -444,6 +465,7 @@ export type Database = {
           group_id?: string
           id?: string
           program_id?: string
+          set_number?: number
           updated_at?: string
         }
         Relationships: [

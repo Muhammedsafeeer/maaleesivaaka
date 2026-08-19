@@ -33,7 +33,7 @@ export async function createGroupEntryAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await createGroupEntry(programId, parsed.data.group_id, parsed.data.chest_number);
+  const result = await createGroupEntry(programId, parsed.data.group_id);
   if (!result.success) return { error: result.error };
 
   revalidatePath(`/admin/programs/${programId}`);
@@ -88,7 +88,7 @@ export async function assignStudentsToGroupEntryAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const result = await assignStudents(programId, parsed.data.student_ids);
+  const result = await assignStudents(programId, parsed.data.student_ids, parsed.data.group_entry_id);
   if (!result.success) return { error: result.error };
 
   revalidatePath(`/admin/programs/${programId}`);

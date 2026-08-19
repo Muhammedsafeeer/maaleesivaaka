@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 import { getProgram } from "@/lib/services/program.service";
 import { listScorableStudents, listScorableTeams } from "@/lib/services/scoring.service";
 import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
+import { listTiedPositions } from "@/lib/services/result.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { ScoringForm } from "@/features/scoring/components/ScoringForm";
 import { TeamScoringForm } from "@/features/scoring/components/TeamScoringForm";
+import { TiedPositionsBanner } from "@/features/scoring/components/TiedPositionsBanner";
 import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
 import { RealtimeProgramJudgesListener } from "@/components/dashboard/RealtimeProgramJudgesListener";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
@@ -44,12 +46,18 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
 
   const isGroup = program.participation_type === "group";
 
-  const [students, teams, criteria] = await Promise.all([
+  const [students, teams, criteria, ties] = await Promise.all([
     isGroup ? Promise.resolve([]) : listScorableStudents(id),
     isGroup ? listScorableTeams(id) : Promise.resolve([]),
     listScoringCriteria(id),
+    listTiedPositions(id),
   ]);
   const canEdit = program.status === "scoring";
+  const tiedIds = new Set(
+    ties.flatMap((group) =>
+      group.participants.flatMap((p) => (isGroup ? (p.groupEntryId ? [p.groupEntryId] : []) : p.studentId ? [p.studentId] : [])),
+    ),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,6 +85,8 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
         ) : null}
       </div>
 
+      <TiedPositionsBanner ties={ties} />
+
       {isGroup ? (
         teams.length === 0 ? (
           <EmptyState
@@ -84,7 +94,13 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
             description="An admin hasn't added any teams to this program."
           />
         ) : (
-          <TeamScoringForm programId={id} teams={teams} criteria={criteria} canEdit={canEdit} />
+          <TeamScoringForm
+            programId={id}
+            teams={teams}
+            criteria={criteria}
+            canEdit={canEdit}
+            tiedIds={tiedIds}
+          />
         )
       ) : students.length === 0 ? (
         <EmptyState
@@ -97,6 +113,7 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
           students={students}
           criteria={criteria}
           canEdit={canEdit}
+          tiedIds={tiedIds}
         />
       )}
     </div>
