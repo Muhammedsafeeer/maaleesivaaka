@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CrescentStar, DomeSilhouette } from "@/features/leaderboard/components/MotifIcons";
+import { TvStage } from "@/features/tv/components/TvStage";
 import { TvHeader } from "@/features/tv/components/TvHeader";
 import { StandingsSlide } from "@/features/tv/components/StandingsSlide";
 import { LatestWinnerSlide } from "@/features/tv/components/LatestWinnerSlide";
@@ -104,11 +105,11 @@ export function TvSlideshow({
 
   if (slides.length === 0) {
     return (
-      <div className="fixed inset-0 overflow-hidden bg-(--stage-spotlight-deep)">
+      <TvStage>
         <TvHeader />
         <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full text-(--stage-spotlight-gold)/10" />
         <IntermissionSlide />
-      </div>
+      </TvStage>
     );
   }
 
@@ -116,7 +117,7 @@ export function TvSlideshow({
   const active = slides[activeIndex];
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-(--stage-spotlight-deep)">
+    <TvStage>
       {/* Soft ambient sparkle, matching OrnateFrame's "spotlight" surface treatment —
           keeps the background feeling alive during a long-running unattended display. */}
       <span aria-hidden="true" className="pointer-events-none absolute inset-0">
@@ -165,6 +166,6 @@ export function TvSlideshow({
           ))}
         </div>
       ) : null}
-    </div>
+    </TvStage>
   );
 }
