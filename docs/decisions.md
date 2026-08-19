@@ -1026,3 +1026,45 @@ needs to see logged-in judges in real time and what they are scoring.
 3. **Admin dashboard is the surface.** The panel lists only currently present judges,
    each with the program they are on, last submitted score, and per-program progress.
 
+---
+
+## D-024: Students can hold multiple categories
+
+**Date:** 2026-08-19 · **Status:** Accepted
+
+### Context
+
+D-007/D-021 modeled category as a single value per student (`students.category`), with
+a DB trigger enforcing exact equality against a program's category. The user needs a
+student to be eligible for more than one category — e.g. a Junior student who should
+also be able to perform in General-category programs — and explicitly asked for true
+multi-category assignment rather than treating General as an automatic bypass for
+every student.
+
+### Decision
+
+1. **`students.category` is replaced by a `student_categories` join table**
+   (`student_id`, `category participant_category`, unique per pair). `programs.category`
+   is unchanged — a program still targets exactly one category; only students go
+   multi-category. The D-007 trigger is rewritten from equality to a membership check:
+   a `program_students` insert/update is allowed if the program's category exists among
+   the student's `student_categories` rows.
+2. **One-time backfill, not an ongoing rule.** The migration backfills every existing
+   student's prior single category into `student_categories`, and additionally grants
+   every existing student the `general` category (since before this migration no
+   student could do General programs at all, and the ask was "all students can also
+   perform in general"). This is a one-time data migration, not app behavior — students
+   created after this migration do **not** auto-get General; an admin ticks it
+   explicitly in the multi-select, same as any other category.
+3. **UI**: the student form's single category `<Select>` becomes a checkbox group
+   (admin picks one or more `CategoryRow`s). Program eligibility in the form is the
+   union of programs across all selected categories, not a single category's programs.
+
+### Consequences
+
+- `assignment.service.ts`'s category-match checks (`listAssignableStudents`,
+  `assignStudentToPrograms`) now check set membership instead of equality.
+- `category.service.ts`'s `deleteCategory` usage check queries `student_categories`
+  instead of `students.category`.
+- Existing single-category program-matching behavior for **programs** is unchanged —
+  this decision only affects students.

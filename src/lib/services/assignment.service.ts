@@ -10,7 +10,7 @@ export async function listAssignedStudents(programId: string): Promise<Student[]
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("program_students")
-    .select("students(*)")
+    .select("students(*, student_categories(category))")
     .eq("program_id", programId)
     .order("created_at", { ascending: true });
 
@@ -18,7 +18,11 @@ export async function listAssignedStudents(programId: string): Promise<Student[]
     return [];
   }
 
-  return data.flatMap((row) => (row.students ? [row.students] : []));
+  return data.flatMap((row) => {
+    if (!row.students) return [];
+    const { student_categories, ...student } = row.students;
+    return [{ ...student, categories: student_categories.map((c) => c.category) }];
+  });
 }
 
 /**
@@ -47,17 +51,35 @@ export async function listAssignableStudents(programId: string): Promise<Student
 
   const assignedIds = new Set((assigned ?? []).map((row) => row.student_id));
 
+  // Two round trips rather than a single subquery filter — students now hold multiple
+  // categories (D-024), so "matches this program's category" is a membership check,
+  // not a column equality PostgREST can filter directly.
+  const { data: categoryMatches } = await supabase
+    .from("student_categories")
+    .select("student_id")
+    .eq("category", program.category);
+
+  const candidateIds = (categoryMatches ?? []).map((row) => row.student_id);
+  if (candidateIds.length === 0) {
+    return [];
+  }
+
   const { data: candidates, error: candidatesError } = await supabase
     .from("students")
-    .select("*")
-    .eq("category", program.category)
+    .select("*, student_categories(category)")
+    .in("id", candidateIds)
     .order("name", { ascending: true });
 
   if (candidatesError) {
     return [];
   }
 
-  return candidates.filter((student) => !assignedIds.has(student.id));
+  return candidates
+    .filter((student) => !assignedIds.has(student.id))
+    .map(({ student_categories, ...student }) => ({
+      ...student,
+      categories: student_categories.map((row) => row.category),
+    }));
 }
 
 export async function assignStudent(
@@ -102,15 +124,16 @@ export async function assignStudentToPrograms(
 
   const supabase = await createClient();
 
-  const { data: student, error: studentError } = await supabase
-    .from("students")
+  const { data: studentCategoryRows, error: studentError } = await supabase
+    .from("student_categories")
     .select("category")
-    .eq("id", studentId)
-    .single();
+    .eq("student_id", studentId);
 
-  if (studentError || !student) {
+  if (studentError) {
     return { success: false, error: "Could not assign programs. Please try again." };
   }
+
+  const studentCategories = new Set((studentCategoryRows ?? []).map((row) => row.category));
 
   const { data: programs, error: programsError } = await supabase
     .from("programs")
@@ -121,10 +144,10 @@ export async function assignStudentToPrograms(
     return { success: false, error: "One or more selected programs could not be found." };
   }
 
-  if (programs.some((program) => program.category !== student.category)) {
+  if (programs.some((program) => !studentCategories.has(program.category))) {
     return {
       success: false,
-      error: "This student's category doesn't match one of the selected programs.",
+      error: "This student's categories don't include one of the selected programs' category.",
     };
   }
 

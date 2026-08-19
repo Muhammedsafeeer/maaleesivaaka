@@ -39,13 +39,13 @@ export function StudentProgramPicker({
       <Label>Programs</Label>
       {programs.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No programs in this category yet. You can still create the student and assign
+          No programs in these categories yet. You can still create the student and assign
           a program later.
         </p>
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            Only programs in this student&apos;s category are listed. This step is optional,
+            Only programs in this student&apos;s selected categories are listed. This step is optional,
             and you can assign programs later.
           </p>
           <div className="relative">

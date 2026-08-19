@@ -35,9 +35,17 @@ export function StudentsPreviewList({ students }: { students: StudentWithGroup[]
               </span>
             </span>
           </span>
-          <Badge variant="outline" className="shrink-0 border-house-blue/30 text-house-blue">
-            {categoryLabels[student.category]}
-          </Badge>
+          <span className="flex shrink-0 flex-wrap justify-end gap-1">
+            {student.categories.map((category) => (
+              <Badge
+                key={category}
+                variant="outline"
+                className="border-house-blue/30 text-house-blue"
+              >
+                {categoryLabels[category] ?? category}
+              </Badge>
+            ))}
+          </span>
         </li>
       ))}
     </ol>

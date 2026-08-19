@@ -14,7 +14,7 @@ export const studentSchema = z.object({
     .optional(),
   class: z.enum(classValues, { error: "Select a class." }),
   gender: z.enum(genderValues, { error: "Select a gender." }),
-  category: z.string().min(1, "Select a category."),
+  categories: z.array(z.string()).min(1, "Select at least one category."),
   group_id: z.uuid("Select a group."),
 });
 

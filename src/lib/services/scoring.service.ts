@@ -110,7 +110,7 @@ export async function listScorableStudents(programId: string): Promise<ScorableS
 
   const { data: assigned, error } = await supabase
     .from("program_students")
-    .select("students(*)")
+    .select("students(*, student_categories(category))")
     .eq("program_id", programId)
     .order("created_at", { ascending: true });
 
@@ -119,7 +119,11 @@ export async function listScorableStudents(programId: string): Promise<ScorableS
     return [];
   }
 
-  const students = assigned.flatMap((row) => (row.students ? [row.students] : []));
+  const students = assigned.flatMap((row) => {
+    if (!row.students) return [];
+    const { student_categories, ...student } = row.students;
+    return [{ ...student, categories: student_categories.map((c) => c.category) }];
+  });
 
   const { data: scores } = await supabase
     .from("judge_scores")

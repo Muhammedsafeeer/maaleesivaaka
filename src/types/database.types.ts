@@ -521,9 +521,37 @@ export type Database = {
           },
         ]
       }
-      students: {
+      student_categories: {
         Row: {
           category: Database["public"]["Enums"]["participant_category"]
+          created_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["participant_category"]
+          created_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["participant_category"]
+          created_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_categories_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
           class: string
           created_at: string
           gender: Database["public"]["Enums"]["gender"]
@@ -536,7 +564,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category: Database["public"]["Enums"]["participant_category"]
           class: string
           created_at?: string
           gender: Database["public"]["Enums"]["gender"]
@@ -549,7 +576,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category?: Database["public"]["Enums"]["participant_category"]
           class?: string
           created_at?: string
           gender?: Database["public"]["Enums"]["gender"]

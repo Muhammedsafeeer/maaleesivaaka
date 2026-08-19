@@ -87,7 +87,7 @@ export async function deleteCategory(id: string): Promise<ServiceResult<null>> {
 
   // Cannot delete if students or programs reference this value
   const { count: studentCount } = await supabase
-    .from("students")
+    .from("student_categories")
     .select("*", { count: "exact", head: true })
     .eq("category", cat.value);
 

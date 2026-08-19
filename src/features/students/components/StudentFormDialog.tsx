@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { PhotoUpload } from "@/components/forms/PhotoUpload";
 import { PendingPhotoPicker } from "@/components/forms/PendingPhotoPicker";
@@ -67,7 +68,7 @@ const emptyDefaults: CreateStudentInput = {
   malayalamName: "",
   class: "1",
   gender: "male",
-  category: "kids",
+  categories: [],
   group_id: "",
   program_ids: [],
 };
@@ -86,7 +87,7 @@ function valuesFromStudent(student: Student, programIds: string[]): CreateStuden
     malayalamName: student.malayalam_name ?? "",
     class: toStudentClass(student.class),
     gender: student.gender,
-    category: student.category,
+    categories: student.categories,
     group_id: student.group_id,
     program_ids: programIds,
   };
@@ -122,6 +123,8 @@ export function StudentFormDialog({
     }
   }
 
+  const studentCategoriesKey = student?.categories.join("|");
+  const assignedProgramIdsKey = assignedProgramIds.join("|");
   const resetValues = useMemo(
     () => (student ? valuesFromStudent(student, assignedProgramIds) : emptyDefaults),
     [
@@ -131,9 +134,9 @@ export function StudentFormDialog({
       student?.malayalam_name,
       student?.class,
       student?.gender,
-      student?.category,
+      studentCategoriesKey,
       student?.group_id,
-      assignedProgramIds.join("|"),
+      assignedProgramIdsKey,
     ],
   );
 
@@ -151,9 +154,11 @@ export function StudentFormDialog({
   });
 
   const malayalamNameValue = useWatch({ control, name: "malayalamName" });
-  const selectedCategory = useWatch({ control, name: "category" });
+  const selectedCategories = useWatch({ control, name: "categories" }) ?? [];
   const selectedProgramIds = useWatch({ control, name: "program_ids" }) ?? [];
-  const matchingPrograms = programs.filter((program) => program.category === selectedCategory);
+  const matchingPrograms = programs.filter((program) =>
+    selectedCategories.includes(program.category),
+  );
 
   // `open` is in the deps, not just `student` — this dialog stays mounted between
   // opens (CreateStudentButton toggles `open` rather than remounting), so without it
@@ -350,38 +355,47 @@ export function StudentFormDialog({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="student-category">Category</Label>
+              <Label>Categories</Label>
               <div className="flex gap-1.5">
                 <Controller
                   control={control}
-                  name="category"
+                  name="categories"
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        const allowed = new Set(
-                          programs
-                            .filter((program) => program.category === value)
-                            .map((program) => program.id),
-                        );
-                        const next = (getValues("program_ids") ?? []).filter((id) =>
-                          allowed.has(id),
-                        );
-                        setValue("program_ids", next, { shouldValidate: true });
-                      }}
+                    <div
+                      className="flex max-h-32 flex-1 flex-col gap-1.5 overflow-y-auto rounded-md border border-input px-2.5 py-2"
+                      aria-invalid={errors.categories ? true : undefined}
                     >
-                      <SelectTrigger id="student-category" aria-invalid={errors.category ? true : undefined}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
+                      {categories.map((c) => {
+                        const checked = field.value.includes(c.value);
+                        return (
+                          <label
+                            key={c.value}
+                            className="flex cursor-pointer items-center gap-2 text-sm"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(value) => {
+                                const next =
+                                  value === true
+                                    ? [...field.value, c.value]
+                                    : field.value.filter((v) => v !== c.value);
+                                field.onChange(next);
+                                const allowed = new Set(
+                                  programs
+                                    .filter((program) => next.includes(program.category))
+                                    .map((program) => program.id),
+                                );
+                                const nextProgramIds = (getValues("program_ids") ?? []).filter(
+                                  (id) => allowed.has(id),
+                                );
+                                setValue("program_ids", nextProgramIds, { shouldValidate: true });
+                              }}
+                            />
                             {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </label>
+                        );
+                      })}
+                    </div>
                   )}
                 />
                 <Button
@@ -394,6 +408,11 @@ export function StudentFormDialog({
                   <Plus className="size-4" />
                 </Button>
               </div>
+              {errors.categories ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors.categories.message}
+                </p>
+              ) : null}
             </div>
           </div>
 

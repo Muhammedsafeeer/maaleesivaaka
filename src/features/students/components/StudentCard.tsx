@@ -121,7 +121,11 @@ export function StudentCard({
           </div>
 
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant="outline">{categoryLabels[student.category]}</Badge>
+            {student.categories.map((category) => (
+              <Badge key={category} variant="outline">
+                {categoryLabels[category] ?? category}
+              </Badge>
+            ))}
             <Badge variant="secondary">{genderLabels[student.gender]}</Badge>
             {student.group_name ? <Badge variant="outline">{student.group_name}</Badge> : null}
           </div>
