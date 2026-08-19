@@ -21,6 +21,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatusBadge";
 import {
@@ -193,6 +203,14 @@ export function FixtureList({
   const [order, setOrder] = useState(programs);
   const [syncedPrograms, setSyncedPrograms] = useState(programs);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  // Reordering changes the live running order of an in-progress event — staged here
+  // and only applied on explicit confirmation, rather than immediately on drag/drop or
+  // a button tap, so an accidental touch (easy on a phone) can't silently reshuffle the
+  // fixture.
+  const [pendingReorder, setPendingReorder] = useState<{
+    description: string;
+    reorderedUpcomingIds: string[];
+  } | null>(null);
   const [, startTransition] = useTransition();
 
   // Adjusting state on a prop change during render (not in an Effect) — the pattern
@@ -249,7 +267,12 @@ export function FixtureList({
     reorderedUpcomingIds.splice(fromIndex, 1);
     reorderedUpcomingIds.splice(toIndex, 0, dragged);
 
-    applyReorder(reorderedUpcomingIds);
+    const draggedName = order.find((p) => p.id === dragged)?.name ?? "This program";
+    const targetName = order.find((p) => p.id === targetId)?.name ?? "this position";
+    setPendingReorder({
+      description: `Move "${draggedName}" next to "${targetName}" in the running order?`,
+      reorderedUpcomingIds,
+    });
   }
 
   // Touch-friendly alternative to drag-and-drop (native HTML5 DnD never fires on
@@ -269,7 +292,17 @@ export function FixtureList({
       reorderedUpcomingIds[fromIndex],
     ];
 
-    applyReorder(reorderedUpcomingIds);
+    const name = order.find((p) => p.id === id)?.name ?? "This program";
+    setPendingReorder({
+      description: `Move "${name}" ${direction} in the running order?`,
+      reorderedUpcomingIds,
+    });
+  }
+
+  function confirmReorder() {
+    if (!pendingReorder) return;
+    applyReorder(pendingReorder.reorderedUpcomingIds);
+    setPendingReorder(null);
   }
 
   return (
@@ -312,6 +345,31 @@ export function FixtureList({
           })()}
         </TableBody>
       </Table>
+
+      <AlertDialog
+        open={pendingReorder !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingReorder(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change the running order?</AlertDialogTitle>
+            <AlertDialogDescription>{pendingReorder?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                confirmReorder();
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
