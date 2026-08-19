@@ -2,8 +2,15 @@
 
 import { useMemo, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CATEGORIES, STAGE_TYPES } from "@/constants/programs";
 import { ProgramsTable } from "@/features/programs/components/ProgramsTable";
 import type { Program } from "@/types/program";
@@ -92,24 +99,22 @@ export function ProgramStageTabs({ programs }: { programs: Program[] }) {
       </Tabs>
 
       {visibleCategories.length > 1 && (
-        <Tabs value={activeCategory} onValueChange={(v) => setParam("category", v)}>
-          <TabsList variant="line">
-            <TabsTrigger value={ALL}>
-              All
-              <Badge variant="secondary" className="ml-1 tabular-nums">
-                {categoryCounts[ALL]}
-              </Badge>
-            </TabsTrigger>
+        // A tab strip stopped fitting once categories grew to six (D-021) — up to 7
+        // entries (All + 6) overflowed TabsList's `w-fit inline-flex` on mobile with no
+        // wrap/scroll handling. A Select never overflows regardless of category count.
+        <Select value={activeCategory} onValueChange={(v) => setParam("category", v)}>
+          <SelectTrigger aria-label="Filter by category" className="w-full sm:w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All categories ({categoryCounts[ALL]})</SelectItem>
             {visibleCategories.map((c) => (
-              <TabsTrigger key={c.value} value={c.value}>
-                {c.label}
-                <Badge variant="secondary" className="ml-1 tabular-nums">
-                  {categoryCounts[c.value]}
-                </Badge>
-              </TabsTrigger>
+              <SelectItem key={c.value} value={c.value}>
+                {c.label} ({categoryCounts[c.value]})
+              </SelectItem>
             ))}
-          </TabsList>
-        </Tabs>
+          </SelectContent>
+        </Select>
       )}
 
       <ProgramsTable programs={fullyFiltered} hideStageType={activeStage !== ALL} />

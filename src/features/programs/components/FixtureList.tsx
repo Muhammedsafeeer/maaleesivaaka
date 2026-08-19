@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { GripVertical } from "lucide-react";
+import { GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -48,6 +48,10 @@ function FixtureRow({
   onDragOver,
   onDrop,
   onDragEnd,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
 }: {
   program: Program;
   draggable: boolean;
@@ -56,6 +60,10 @@ function FixtureRow({
   onDragOver: (event: React.DragEvent) => void;
   onDrop: () => void;
   onDragEnd: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [isPublishing, startPublish] = useTransition();
@@ -94,13 +102,38 @@ function FixtureRow({
         isDragging && "opacity-40",
       )}
     >
-      <TableCell className="w-20">
-        <div className="flex items-center gap-1.5">
+      <TableCell className="w-24">
+        <div className="flex items-center gap-1">
           {draggable ? (
-            <GripVertical
-              aria-label={`Drag to reorder ${program.name}`}
-              className="size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
-            />
+            <>
+              {/* Native HTML5 drag-and-drop doesn't fire on touch (mouse-events-only
+                  API) — these buttons are the reorder path on mobile, and work fine
+                  alongside the drag handle on desktop too. */}
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  aria-label={`Move ${program.name} up`}
+                  disabled={!canMoveUp}
+                  onClick={onMoveUp}
+                  className="text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <ChevronUp className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${program.name} down`}
+                  disabled={!canMoveDown}
+                  onClick={onMoveDown}
+                  className="text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <ChevronDown className="size-3.5" />
+                </button>
+              </div>
+              <GripVertical
+                aria-label={`Drag to reorder ${program.name}`}
+                className="hidden size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing sm:block"
+              />
+            </>
           ) : (
             <span className="size-4 shrink-0" aria-hidden />
           )}
@@ -180,21 +213,7 @@ export function FixtureList({
     );
   }
 
-  function handleDrop(targetId: string) {
-    const dragged = draggedId;
-    setDraggedId(null);
-
-    if (!dragged || dragged === targetId) return;
-
-    const upcomingIds = order.filter((p) => p.status === "upcoming").map((p) => p.id);
-    const fromIndex = upcomingIds.indexOf(dragged);
-    const toIndex = upcomingIds.indexOf(targetId);
-    if (fromIndex === -1 || toIndex === -1) return;
-
-    const reorderedUpcomingIds = [...upcomingIds];
-    reorderedUpcomingIds.splice(fromIndex, 1);
-    reorderedUpcomingIds.splice(toIndex, 0, dragged);
-
+  function applyReorder(reorderedUpcomingIds: string[]) {
     setOrder((current) => {
       const byId = new Map(current.map((p) => [p.id, p]));
       let cursor = 0;
@@ -215,6 +234,44 @@ export function FixtureList({
     });
   }
 
+  function handleDrop(targetId: string) {
+    const dragged = draggedId;
+    setDraggedId(null);
+
+    if (!dragged || dragged === targetId) return;
+
+    const upcomingIds = order.filter((p) => p.status === "upcoming").map((p) => p.id);
+    const fromIndex = upcomingIds.indexOf(dragged);
+    const toIndex = upcomingIds.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const reorderedUpcomingIds = [...upcomingIds];
+    reorderedUpcomingIds.splice(fromIndex, 1);
+    reorderedUpcomingIds.splice(toIndex, 0, dragged);
+
+    applyReorder(reorderedUpcomingIds);
+  }
+
+  // Touch-friendly alternative to drag-and-drop (native HTML5 DnD never fires on
+  // mobile touch browsers) — swaps the program one slot up or down within the
+  // upcoming-only order, same target shape reorderUpcomingAction already expects.
+  function handleMove(id: string, direction: "up" | "down") {
+    const upcomingIds = order.filter((p) => p.status === "upcoming").map((p) => p.id);
+    const fromIndex = upcomingIds.indexOf(id);
+    if (fromIndex === -1) return;
+
+    const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+    if (toIndex < 0 || toIndex >= upcomingIds.length) return;
+
+    const reorderedUpcomingIds = [...upcomingIds];
+    [reorderedUpcomingIds[fromIndex], reorderedUpcomingIds[toIndex]] = [
+      reorderedUpcomingIds[toIndex],
+      reorderedUpcomingIds[fromIndex],
+    ];
+
+    applyReorder(reorderedUpcomingIds);
+  }
+
   return (
     <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
       <Table>
@@ -227,21 +284,32 @@ export function FixtureList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {order.map((program) => {
-            const draggable = program.status === "upcoming";
-            return (
-              <FixtureRow
-                key={program.id}
-                program={program}
-                draggable={draggable}
-                isDragging={draggedId === program.id}
-                onDragStart={() => setDraggedId(program.id)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => handleDrop(program.id)}
-                onDragEnd={() => setDraggedId(null)}
-              />
-            );
-          })}
+          {(() => {
+            const upcomingIds = order
+              .filter((p) => p.status === "upcoming")
+              .map((p) => p.id);
+
+            return order.map((program) => {
+              const draggable = program.status === "upcoming";
+              const upcomingIndex = upcomingIds.indexOf(program.id);
+              return (
+                <FixtureRow
+                  key={program.id}
+                  program={program}
+                  draggable={draggable}
+                  isDragging={draggedId === program.id}
+                  onDragStart={() => setDraggedId(program.id)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => handleDrop(program.id)}
+                  onDragEnd={() => setDraggedId(null)}
+                  canMoveUp={draggable && upcomingIndex > 0}
+                  canMoveDown={draggable && upcomingIndex < upcomingIds.length - 1}
+                  onMoveUp={() => handleMove(program.id, "up")}
+                  onMoveDown={() => handleMove(program.id, "down")}
+                />
+              );
+            });
+          })()}
         </TableBody>
       </Table>
     </div>
