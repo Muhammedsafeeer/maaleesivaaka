@@ -164,10 +164,20 @@ export async function addAdMediaItem(
   media: { mediaType: "image" | "video"; mediaUrl: string },
 ): Promise<ServiceResult<AdMedia>> {
   const supabase = await createClient();
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from("ad_media")
     .select("*", { count: "exact", head: true })
     .eq("ad_id", adId);
+
+  if (countError) {
+    // Previously ignored entirely — a failed count silently fell back to `position: 1`
+    // via `count ?? 0` below, which would then collide with the unique(ad_id, position)
+    // constraint on any ad that already has a first item, producing the exact same
+    // generic "Could not add the media" error but for a completely different reason
+    // than the insert itself failing.
+    console.error("addAdMediaItem count query failed:", countError.code, countError.message);
+    return { success: false, error: "Could not add the media. Please try again." };
+  }
 
   const { data, error } = await supabase
     .from("ad_media")
@@ -181,6 +191,11 @@ export async function addAdMediaItem(
     .single();
 
   if (error) {
+    // Unlike most services here, this one had no server-side logging at all — the
+    // client only ever saw the generic message below, with no way to tell an RLS
+    // rejection from a constraint violation from anything else. Logged now so the next
+    // failure is diagnosable from the dev server's own terminal output.
+    console.error("addAdMediaItem failed:", error.code, error.message);
     return { success: false, error: "Could not add the media. Please try again." };
   }
 
@@ -192,6 +207,7 @@ export async function removeAdMediaItem(mediaId: string): Promise<ServiceResult<
   const { error } = await supabase.from("ad_media").delete().eq("id", mediaId);
 
   if (error) {
+    console.error("removeAdMediaItem failed:", error.code, error.message);
     return { success: false, error: "Could not remove the media. Please try again." };
   }
 
