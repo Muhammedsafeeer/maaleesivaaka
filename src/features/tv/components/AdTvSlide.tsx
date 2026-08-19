@@ -70,7 +70,7 @@ export function AdTvSlide({ ad }: { ad: AdWithMedia }) {
   if (ad.media.length === 0) return null;
 
   return (
-    <div className="relative h-full w-full p-16">
+    <div className="relative h-full w-full p-(--tv-64)">
       {ad.media.map((item, index) => (
         <AdMediaFrame
           key={item.id}

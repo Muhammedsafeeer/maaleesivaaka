@@ -238,6 +238,62 @@
 }
 
 /*
+ * TV fluid scale — scoped to `.tv-shell` (src/app/tv/layout.tsx) only, so /audience's
+ * fixed rem sizing is untouched (Requirement: a dedicated display mode, not a global
+ * change). Every /tv slide was originally built with plain fixed-px Tailwind steps
+ * (text-2xl, gap-10, size-16, ...), which don't respond to the actual screen at all —
+ * on a real TV that's either much wider or narrower (in CSS px) than the ~1920 the
+ * design was eyeballed at, content is either cramped or comically oversized. An
+ * earlier attempt fixed this in JS instead (measure the viewport, transform: scale()
+ * the whole page to fit) — that depends on the browser accurately reporting its own
+ * rendered size, which is exactly what several real TV browsers get wrong (missing
+ * `visualViewport` support, a DPR that doesn't match what's physically painted, ...),
+ * so it worked in a desktop devtools size simulation and not on real hardware.
+ *
+ * These tokens replace that with plain CSS: each is `clamp(min, Nvw, max)` where the
+ * vw term is tuned so it equals the *original* fixed-px value exactly at a 1920px-wide
+ * viewport (so the reference design is pixel-identical to before), `min` is roughly
+ * that value at 1280px width (the floor — nothing clips on the smallest supported TV
+ * resolution), and `max` gives modest headroom above the 1920 baseline for 2560/3840
+ * screens without letting anything grow to a literal, cartoonish 2x. Because this is
+ * all resolved by the browser's own layout engine from the true visual viewport, it
+ * can't be fooled by a TV browser's JS-API gaps or DPR-reporting quirks the way the
+ * transform:scale(window.innerWidth) approach could. Named by the original Tailwind
+ * step's pixel value (e.g. `--tv-24` for what used to be text-2xl AND gap-6 AND
+ * size-6 — they're all 24px, and all need the same fluid treatment), so every
+ * component below just swaps `text-2xl` for `text-[length:var(--tv-24)]`, `gap-6` for
+ * `gap-[var(--tv-24)]`, etc. — same design, same numbers, now fluid.
+ */
+.tv-shell {
+  --tv-4: clamp(0.17rem, 0.208vw, 0.362rem);
+  --tv-6: clamp(0.255rem, 0.313vw, 0.544rem);
+  --tv-8: clamp(0.34rem, 0.417vw, 0.725rem);
+  --tv-10: clamp(0.425rem, 0.521vw, 0.906rem);
+  --tv-12: clamp(0.51rem, 0.625vw, 1.087rem);
+  --tv-14: clamp(0.595rem, 0.729vw, 1.269rem);
+  --tv-16: clamp(0.68rem, 0.833vw, 1.45rem);
+  --tv-18: clamp(0.765rem, 0.938vw, 1.631rem);
+  --tv-20: clamp(0.85rem, 1.042vw, 1.813rem);
+  --tv-24: clamp(1.02rem, 1.25vw, 2.175rem);
+  --tv-28: clamp(1.19rem, 1.458vw, 2.538rem);
+  --tv-30: clamp(1.275rem, 1.563vw, 2.719rem);
+  --tv-32: clamp(1.36rem, 1.667vw, 2.9rem);
+  --tv-36: clamp(1.53rem, 1.875vw, 3.262rem);
+  --tv-40: clamp(1.7rem, 2.083vw, 3.625rem);
+  --tv-48: clamp(2.04rem, 2.5vw, 4.35rem);
+  --tv-56: clamp(2.38rem, 2.917vw, 5.075rem);
+  --tv-60: clamp(2.55rem, 3.125vw, 5.438rem);
+  --tv-64: clamp(2.72rem, 3.333vw, 5.8rem);
+  --tv-72: clamp(3.06rem, 3.75vw, 6.525rem);
+  --tv-80: clamp(3.4rem, 4.167vw, 7.25rem);
+  --tv-96: clamp(4.08rem, 5vw, 8.7rem);
+  --tv-128: clamp(5.44rem, 6.667vw, 11.6rem);
+  --tv-256: clamp(10.88rem, 13.333vw, 23.2rem);
+  --tv-288: clamp(12.24rem, 15vw, 26.1rem);
+  --tv-384: clamp(16.32rem, 20vw, 34.8rem);
+}
+
+/*
  * Admin/judge dashboard theme — scoped to `.dashboard-shell` (src/app/admin/layout.tsx,
  * src/app/judge/layout.tsx), never applied globally (login stays on the plain neutral
  * shadcn theme). Warm cream ground + a vivid chartreuse accent + near-black contrast

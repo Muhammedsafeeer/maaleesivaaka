@@ -22,43 +22,46 @@ export function LatestWinnerSlide({ results }: { results: LatestWinnerStudentRow
   const programName = results[0].programName;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-10 px-16 py-12">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <p className="text-2xl font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
+    <div className="flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
+      <div className="flex flex-col items-center gap-(--tv-8) text-center">
+        <p className="text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
           Just Declared
         </p>
-        <p className="font-[family-name:var(--font-audience-display)] text-3xl font-bold text-(--stage-spotlight-ink)">
+        <p className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-30)] font-bold text-(--stage-spotlight-ink)">
           {programName}
         </p>
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex gap-(--tv-32)">
         {results.map((result, i) => (
           <div
             key={result.id}
-            className="animate-in fade-in zoom-in-95 flex w-72 flex-col overflow-hidden rounded-3xl bg-(--stage-spotlight-card) shadow-2xl fill-mode-both"
+            className="animate-in fade-in zoom-in-95 flex w-(--tv-288) flex-col overflow-hidden rounded-3xl bg-(--stage-spotlight-card) shadow-2xl fill-mode-both"
             style={{ animationDelay: `${i * 200}ms`, animationDuration: "700ms" }}
           >
             <PhotoThumbnail
               url={result.studentPhotoUrl}
               alt={`${result.studentName} photo`}
-              className="h-64 w-full rounded-none"
+              className="h-(--tv-256) w-full rounded-none"
             />
-            <div className="flex flex-1 flex-col gap-2 p-5">
+            <div className="flex flex-1 flex-col gap-(--tv-8) p-(--tv-20)">
               <span
-                className="w-fit rounded-full px-3 py-1 text-xs font-bold tracking-wide text-(--stage-ink) uppercase"
+                className="w-fit rounded-full px-(--tv-12) py-(--tv-4) text-[length:var(--tv-12)] font-bold tracking-wide text-(--stage-ink) uppercase"
                 style={{ background: RANK_MEDAL[result.position] }}
               >
                 {POSITION_LABELS[result.position] ?? `#${result.position}`} ·{" "}
                 {categoryLabels[result.programCategory] ?? result.programCategory}
               </span>
-              <p className="font-[family-name:var(--font-audience-display)] text-2xl font-bold text-(--stage-spotlight-ink)">
+              <p className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-24)] font-bold text-(--stage-spotlight-ink)">
                 {result.studentName}
               </p>
             </div>
-            <div className="flex items-center gap-2 bg-(--stage-spotlight-gold)/15 px-5 py-3">
-              <Trophy className="size-4 shrink-0 text-(--stage-spotlight-gold)" aria-hidden="true" />
-              <span className="text-sm font-semibold text-(--stage-spotlight-gold)">
+            <div className="flex items-center gap-(--tv-8) bg-(--stage-spotlight-gold)/15 px-(--tv-20) py-(--tv-12)">
+              <Trophy
+                className="size-(--tv-16) shrink-0 text-(--stage-spotlight-gold)"
+                aria-hidden="true"
+              />
+              <span className="text-[length:var(--tv-14)] font-semibold text-(--stage-spotlight-gold)">
                 {result.points} points
               </span>
             </div>

@@ -40,12 +40,12 @@ function slideKey(slide: Slide): string {
 
 function IntermissionSlide() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-      <CrescentStar className="lantern-glow size-16 text-(--stage-spotlight-gold)" />
-      <p className="font-[family-name:var(--font-audience-display)] text-4xl font-bold text-(--stage-spotlight-ink)">
+    <div className="flex h-full flex-col items-center justify-center gap-(--tv-16) text-center">
+      <CrescentStar className="lantern-glow size-(--tv-64) text-(--stage-spotlight-gold)" />
+      <p className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-36)] font-bold text-(--stage-spotlight-ink)">
         Maalee Sivaaka
       </p>
-      <p className="text-lg text-(--stage-spotlight-ink-dim)">
+      <p className="text-[length:var(--tv-18)] text-(--stage-spotlight-ink-dim)">
         Live results appear here as the festival gets underway.
       </p>
     </div>
@@ -107,7 +107,7 @@ export function TvSlideshow({
     return (
       <TvStage>
         <TvHeader />
-        <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full text-(--stage-spotlight-gold)/10" />
+        <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10" />
         <IntermissionSlide />
       </TvStage>
     );
@@ -121,13 +121,13 @@ export function TvSlideshow({
       {/* Soft ambient sparkle, matching OrnateFrame's "spotlight" surface treatment —
           keeps the background feeling alive during a long-running unattended display. */}
       <span aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <span className="lantern-glow absolute top-[10%] left-[8%] size-2 rounded-full bg-(--stage-spotlight-gold) opacity-30" />
-        <span className="lantern-glow absolute top-[20%] left-[88%] size-1.5 rounded-full bg-(--stage-spotlight-gold) opacity-40 [animation-delay:0.8s]" />
-        <span className="lantern-glow absolute top-[75%] left-[5%] size-1.5 rounded-full bg-(--stage-spotlight-gold) opacity-30 [animation-delay:1.6s]" />
-        <span className="lantern-glow absolute top-[85%] left-[92%] size-2 rounded-full bg-(--stage-spotlight-gold) opacity-25 [animation-delay:2.2s]" />
+        <span className="lantern-glow absolute top-[10%] left-[8%] size-(--tv-8) rounded-full bg-(--stage-spotlight-gold) opacity-30" />
+        <span className="lantern-glow absolute top-[20%] left-[88%] size-(--tv-6) rounded-full bg-(--stage-spotlight-gold) opacity-40 [animation-delay:0.8s]" />
+        <span className="lantern-glow absolute top-[75%] left-[5%] size-(--tv-6) rounded-full bg-(--stage-spotlight-gold) opacity-30 [animation-delay:1.6s]" />
+        <span className="lantern-glow absolute top-[85%] left-[92%] size-(--tv-8) rounded-full bg-(--stage-spotlight-gold) opacity-25 [animation-delay:2.2s]" />
       </span>
 
-      <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full text-(--stage-spotlight-gold)/10" />
+      <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10" />
 
       <TvHeader />
 
@@ -147,11 +147,11 @@ export function TvSlideshow({
       </div>
 
       {slides.length > 1 ? (
-        <div className="absolute inset-x-0 bottom-6 flex justify-center gap-2 px-16">
+        <div className="absolute inset-x-0 bottom-(--tv-24) flex justify-center gap-(--tv-8) px-(--tv-64)">
           {slides.map((slide, i) => (
             <div
               key={slideKey(slide)}
-              className="h-1.5 max-w-24 flex-1 overflow-hidden rounded-full bg-(--stage-spotlight-gold)/20"
+              className="h-(--tv-6) max-w-(--tv-96) flex-1 overflow-hidden rounded-full bg-(--stage-spotlight-gold)/20"
             >
               {i === activeIndex ? (
                 <div

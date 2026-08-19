@@ -7,9 +7,9 @@ import { Playfair_Display, DM_Sans } from "next/font/google";
  * with no pinch-zoom-worthy interaction (see the page-level comment on TvPage) —
  * elsewhere in the app users may legitimately want to pinch-zoom, so this isn't
  * applied globally. Some TV browsers apply their own default zoom via the same
- * pinch-zoom mechanism `userScalable`/`maximumScale` govern; locking it removes
- * one source of the layout-viewport-vs-visual-viewport mismatch TvStage otherwise
- * has to compensate for via `visualViewport`.
+ * pinch-zoom mechanism `userScalable`/`maximumScale` govern; locking it out removes
+ * one possible source of size drift independent of the fluid `.tv-shell` sizing
+ * (globals.css) that now does the actual scaling work via CSS, not JS.
  */
 export const viewport: Viewport = {
   width: "device-width",
@@ -35,7 +35,7 @@ const uiFont = DM_Sans({
 export default function TvLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`audience-shell h-full ${displayFont.variable} ${uiFont.variable}`}
+      className={`audience-shell tv-shell h-full ${displayFont.variable} ${uiFont.variable}`}
       style={{ fontFamily: "var(--font-audience-ui)" }}
     >
       {children}

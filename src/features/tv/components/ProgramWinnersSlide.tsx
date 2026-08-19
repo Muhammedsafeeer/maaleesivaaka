@@ -19,31 +19,31 @@ export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] })
     .slice(0, MAX_SHOWN);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-10 px-16 py-12">
-      <p className="text-2xl font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
+    <div className="flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
+      <p className="text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
         Recently Published
       </p>
 
-      <div className="grid max-w-5xl grid-cols-2 gap-5">
+      <div className="grid w-[min(92vw,64rem)] grid-cols-2 gap-(--tv-20)">
         {recent.map((winner, i) => (
           <div
             key={winner.id}
-            className="animate-in fade-in slide-in-from-left-4 flex items-center gap-4 rounded-2xl bg-(--stage-spotlight-card) px-5 py-4 fill-mode-both"
+            className="animate-in fade-in slide-in-from-left-4 flex items-center gap-(--tv-16) rounded-2xl bg-(--stage-spotlight-card) px-(--tv-20) py-(--tv-16) fill-mode-both"
             style={{ animationDelay: `${i * 90}ms`, animationDuration: "500ms" }}
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--stage-spotlight-gold)/15 text-(--stage-spotlight-gold)">
-              <Medal className="size-5" />
+            <span className="flex size-(--tv-40) shrink-0 items-center justify-center rounded-xl bg-(--stage-spotlight-gold)/15 text-(--stage-spotlight-gold)">
+              <Medal className="size-(--tv-20)" />
             </span>
             <PhotoThumbnail
               url={winner.groupPhotoUrl}
               alt={`${winner.groupName} photo`}
-              className="size-12 rounded-full"
+              className="size-(--tv-48) rounded-full"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-lg font-bold text-(--stage-spotlight-ink)">
+              <p className="truncate text-[length:var(--tv-18)] font-bold text-(--stage-spotlight-ink)">
                 {winner.groupName}
               </p>
-              <p className="truncate text-sm text-(--stage-spotlight-ink-dim)">
+              <p className="truncate text-[length:var(--tv-14)] text-(--stage-spotlight-ink-dim)">
                 {winner.programName}
               </p>
             </div>
