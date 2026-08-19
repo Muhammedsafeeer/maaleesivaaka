@@ -10,8 +10,18 @@ export type RosterStudent = {
   scoredJudgeCount: number;
 };
 
+/** A group program's "performing now" unit (D-025 follow-up) — one team entry, not one
+ * student, since scoring happens once per team. */
+export type RosterTeam = {
+  id: string;
+  groupName: string;
+  chestNumber: string;
+  scoredJudgeCount: number;
+};
+
 export type ProgramRoster = {
   students: RosterStudent[];
+  teams: RosterTeam[];
   totalJudges: number;
 };
 
@@ -312,29 +322,63 @@ export async function reorderUpcoming(
  * currently performing — there's no dedicated "on stage" flag per student, scoring
  * progress is the only live signal available.
  */
-export async function listProgramRoster(programId: string): Promise<ProgramRoster> {
+export async function listProgramRoster(programId: string, isGroup = false): Promise<ProgramRoster> {
   const supabase = await createClient();
 
-  const [{ data: assigned, error: assignedError }, { count: totalJudges }, { data: scores }] =
-    await Promise.all([
-      supabase
-        .from("program_students")
-        .select("students(id, name, roll_number, photo_url)")
-        .eq("program_id", programId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("program_judges")
-        .select("judge_id", { count: "exact", head: true })
-        .eq("program_id", programId),
-      supabase.from("judge_scores").select("student_id").eq("program_id", programId),
-    ]);
+  const [{ count: totalJudges }, { data: scores }] = await Promise.all([
+    supabase
+      .from("program_judges")
+      .select("judge_id", { count: "exact", head: true })
+      .eq("program_id", programId),
+    supabase
+      .from("judge_scores")
+      .select("student_id, group_entry_id")
+      .eq("program_id", programId),
+  ]);
+
+  // Group programs (D-025 follow-up): the "performing now" unit is a team entry, not a
+  // student — scoring happens once per team, so per-student judge_scores rows never
+  // exist for a group program and would leave every student stuck at scoredJudgeCount 0.
+  if (isGroup) {
+    const { data: entries, error } = await supabase
+      .from("program_group_entries")
+      .select("id, chest_number, main_groups(name)")
+      .eq("program_id", programId)
+      .order("created_at", { ascending: true });
+
+    if (error || !entries) {
+      return { students: [], teams: [], totalJudges: totalJudges ?? 0 };
+    }
+
+    const scoredCountByEntry = new Map<string, number>();
+    for (const row of scores ?? []) {
+      if (!row.group_entry_id) continue;
+      scoredCountByEntry.set(row.group_entry_id, (scoredCountByEntry.get(row.group_entry_id) ?? 0) + 1);
+    }
+
+    const teams = entries.map((entry) => ({
+      id: entry.id,
+      groupName: entry.main_groups?.name ?? "Unknown house",
+      chestNumber: entry.chest_number,
+      scoredJudgeCount: scoredCountByEntry.get(entry.id) ?? 0,
+    }));
+
+    return { students: [], teams, totalJudges: totalJudges ?? 0 };
+  }
+
+  const { data: assigned, error: assignedError } = await supabase
+    .from("program_students")
+    .select("students(id, name, roll_number, photo_url)")
+    .eq("program_id", programId)
+    .order("created_at", { ascending: true });
 
   if (assignedError || !assigned) {
-    return { students: [], totalJudges: totalJudges ?? 0 };
+    return { students: [], teams: [], totalJudges: totalJudges ?? 0 };
   }
 
   const scoredCountByStudent = new Map<string, number>();
   for (const row of scores ?? []) {
+    if (!row.student_id) continue;
     scoredCountByStudent.set(row.student_id, (scoredCountByStudent.get(row.student_id) ?? 0) + 1);
   }
 
@@ -344,5 +388,5 @@ export async function listProgramRoster(programId: string): Promise<ProgramRoste
       : [],
   );
 
-  return { students, totalJudges: totalJudges ?? 0 };
+  return { students, teams: [], totalJudges: totalJudges ?? 0 };
 }

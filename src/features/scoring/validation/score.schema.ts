@@ -43,6 +43,37 @@ export const submitScoresSchema = z.object({
 
 export type SubmitScoresInput = z.infer<typeof submitScoresSchema>;
 
+/** Team-scoped sibling of submitScoresSchema (D-025 follow-up) — a group program's
+ * judge_scores rows are keyed by group_entry_id instead of student_id. */
+export const submitTeamScoresSchema = z.object({
+  scores: z
+    .array(
+      z
+        .object({
+          group_entry_id: z.uuid(),
+          score: z.number().int().min(0),
+          criteria_scores: z
+            .array(
+              z.object({
+                criterion_id: z.string().min(1),
+                score: criterionScoreValueSchema,
+              }),
+            )
+            .optional(),
+        })
+        .refine(
+          (entry) => (entry.criteria_scores && entry.criteria_scores.length > 0) || entry.score <= CRITERION_SCORE_MAX,
+          {
+            message: `Score must be between 0 and ${CRITERION_SCORE_MAX} when this program has no scoring types.`,
+            path: ["score"],
+          },
+        ),
+    )
+    .min(1, "Enter at least one score before saving."),
+});
+
+export type SubmitTeamScoresInput = z.infer<typeof submitTeamScoresSchema>;
+
 /**
  * Client-only. A scoring-form row's per-criterion input allows an empty string (not yet
  * scored — partial saves are expected, see scoring.service.ts) alongside a valid score,
@@ -78,3 +109,26 @@ export const scoringFormSchema = z.object({
 });
 
 export type ScoringFormInput = z.infer<typeof scoringFormSchema>;
+
+/** Team-scoped sibling of scoringEntrySchema/scoringFormSchema — a group program's
+ * form row is keyed by group_entry_id and labeled by house + chest number, not a
+ * student's own name. */
+export const teamScoringEntrySchema = z.object({
+  group_entry_id: z.uuid(),
+  group_name: z.string(),
+  chest_number: z.string(),
+  criteriaScores: z
+    .array(
+      z.object({
+        criterion_id: z.string(),
+        value: criterionFieldSchema,
+      }),
+    )
+    .min(1),
+});
+
+export const teamScoringFormSchema = z.object({
+  entries: z.array(teamScoringEntrySchema),
+});
+
+export type TeamScoringFormInput = z.infer<typeof teamScoringFormSchema>;

@@ -30,7 +30,9 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
   const current = programs.find((p) => CURRENT_STATUSES.includes(p.status)) ?? null;
   const next =
     programs.find((p) => p.status === "upcoming" && p.serial_number !== null) ?? null;
-  const roster = current ? await listProgramRoster(current.id) : null;
+  const roster = current
+    ? await listProgramRoster(current.id, current.participation_type === "group")
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,7 +88,9 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
           {current && roster ? (
             <Card>
               <CardHeader>
-                <CardTitle>Students — {current.name}</CardTitle>
+                <CardTitle>
+                  {current.participation_type === "group" ? "Teams" : "Students"} — {current.name}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ProgramRoster roster={roster} />

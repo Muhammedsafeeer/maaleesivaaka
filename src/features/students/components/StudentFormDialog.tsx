@@ -156,8 +156,13 @@ export function StudentFormDialog({
   const malayalamNameValue = useWatch({ control, name: "malayalamName" });
   const selectedCategories = useWatch({ control, name: "categories" }) ?? [];
   const selectedProgramIds = useWatch({ control, name: "program_ids" }) ?? [];
-  const matchingPrograms = programs.filter((program) =>
-    selectedCategories.includes(program.category),
+  // Group programs (D-025) are excluded here — assigning to one requires a team (house)
+  // to already exist for it, which this per-student flow has no way to set up. Group
+  // rostering happens from the program's own page instead.
+  const matchingPrograms = programs.filter(
+    (program) =>
+      selectedCategories.includes(program.category) &&
+      program.participation_type === "individual",
   );
 
   // `open` is in the deps, not just `student` — this dialog stays mounted between

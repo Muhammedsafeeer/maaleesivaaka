@@ -1,8 +1,19 @@
 import { z } from "zod";
-import { CATEGORIES, STAGE_TYPES, type Category, type StageType } from "@/constants/programs";
+import {
+  CATEGORIES,
+  STAGE_TYPES,
+  PARTICIPATION_TYPES,
+  type Category,
+  type StageType,
+  type ParticipationType,
+} from "@/constants/programs";
 
 const categoryValues = CATEGORIES.map((c) => c.value) as [Category, ...Category[]];
 const stageTypeValues = STAGE_TYPES.map((s) => s.value) as [StageType, ...StageType[]];
+const participationTypeValues = PARTICIPATION_TYPES.map((p) => p.value) as [
+  ParticipationType,
+  ...ParticipationType[],
+];
 
 /**
  * Shared by the create/edit dialog's zodResolver and the Server Action's
@@ -33,3 +44,13 @@ export const programSchema = z.object({
 });
 
 export type ProgramInput = z.infer<typeof programSchema>;
+
+/** Create flow also picks a participation type (D-025) — immutable after creation, so
+ * updateProgramAction keeps using the plain programSchema above, which silently strips
+ * this field (zod objects drop unrecognized keys by default) if the same form values
+ * are ever submitted through the edit path. */
+export const createProgramSchema = programSchema.extend({
+  participation_type: z.enum(participationTypeValues, { error: "Select a participation type." }),
+});
+
+export type CreateProgramInput = z.infer<typeof createProgramSchema>;

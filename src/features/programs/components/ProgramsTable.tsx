@@ -50,6 +50,11 @@ export function ProgramsTable({ programs, hideStageType = false }: { programs: P
                     ({categoryLabels[program.category]})
                   </span>
                 </Link>
+                {program.participation_type === "group" ? (
+                  <Badge variant="outline" className="ml-2">
+                    Group
+                  </Badge>
+                ) : null}
               </TableCell>
               {!hideStageType && <TableCell className="whitespace-nowrap">{stageTypeLabels[program.stage_type]}</TableCell>}
               <TableCell>

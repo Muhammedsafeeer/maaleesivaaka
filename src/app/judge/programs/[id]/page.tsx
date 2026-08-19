@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProgram } from "@/lib/services/program.service";
-import { listScorableStudents } from "@/lib/services/scoring.service";
+import { listScorableStudents, listScorableTeams } from "@/lib/services/scoring.service";
 import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
 import { ScoringForm } from "@/features/scoring/components/ScoringForm";
+import { TeamScoringForm } from "@/features/scoring/components/TeamScoringForm";
 import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
 import { RealtimeProgramJudgesListener } from "@/components/dashboard/RealtimeProgramJudgesListener";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
@@ -41,8 +42,11 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
     notFound();
   }
 
-  const [students, criteria] = await Promise.all([
-    listScorableStudents(id),
+  const isGroup = program.participation_type === "group";
+
+  const [students, teams, criteria] = await Promise.all([
+    isGroup ? Promise.resolve([]) : listScorableStudents(id),
+    isGroup ? listScorableTeams(id) : Promise.resolve([]),
     listScoringCriteria(id),
   ]);
   const canEdit = program.status === "scoring";
@@ -73,7 +77,16 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
         ) : null}
       </div>
 
-      {students.length === 0 ? (
+      {isGroup ? (
+        teams.length === 0 ? (
+          <EmptyState
+            title="No teams yet"
+            description="An admin hasn't added any teams to this program."
+          />
+        ) : (
+          <TeamScoringForm programId={id} teams={teams} criteria={criteria} canEdit={canEdit} />
+        )
+      ) : students.length === 0 ? (
         <EmptyState
           title="No students assigned yet"
           description="An admin hasn't assigned any students to this program."

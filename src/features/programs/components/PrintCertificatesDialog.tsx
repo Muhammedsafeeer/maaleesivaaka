@@ -14,10 +14,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CertificatePrintPortal } from "@/features/certificates/components/CertificatePrintPortal";
 import { CertificateTemplate } from "@/features/certificates/components/CertificateTemplate";
-import type { listResults } from "@/lib/services/result.service";
+import type { listProgramPodiumForCertificates } from "@/lib/services/result.service";
 import type { CertificateSettings } from "@/lib/services/certificateSettings.service";
 
-type ResultRow = Awaited<ReturnType<typeof listResults>>[number];
+type PodiumRow = Awaited<ReturnType<typeof listProgramPodiumForCertificates>>[number];
 
 const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
 
@@ -27,15 +27,18 @@ const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" }
  * anything is sent to the printer, then a "Print" that hands the same three students to
  * CertificatePrintPortal as one CertificateTemplate page each. Hidden entirely (returns
  * null) when the program has no podium yet, same guard the "Publish" button next to it
- * uses for "no results".
+ * uses for "no results". `podiumRows` is already expanded to one row per student —
+ * for a group program a team's shared result becomes one row per team member
+ * (listProgramPodiumForCertificates), so this component never needs to know the
+ * difference between an individual and a group program.
  */
 export function PrintCertificatesDialog({
-  results,
+  podiumRows,
   programName,
   categoryLabel,
   certificateSettings,
 }: {
-  results: ResultRow[];
+  podiumRows: PodiumRow[];
   programName: string;
   categoryLabel: string;
   certificateSettings: CertificateSettings;
@@ -43,9 +46,7 @@ export function PrintCertificatesDialog({
   const [open, setOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
 
-  const podium = results
-    .filter((result) => result.position <= 3 && result.students)
-    .sort((a, b) => a.position - b.position);
+  const podium = podiumRows;
 
   if (podium.length === 0) {
     return null;
@@ -80,11 +81,11 @@ export function PrintCertificatesDialog({
                     <Badge>{POSITION_LABELS[result.position] ?? result.position}</Badge>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {result.students?.name}{" "}
-                    <span className="text-muted-foreground">({result.students?.roll_number})</span>
+                    {result.studentName}{" "}
+                    <span className="text-muted-foreground">({result.rollNumber})</span>
                   </TableCell>
-                  <TableCell>{result.students?.class ?? "—"}</TableCell>
-                  <TableCell>{result.students?.main_groups?.name ?? "—"}</TableCell>
+                  <TableCell>{result.className}</TableCell>
+                  <TableCell>{result.houseName ?? "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -111,12 +112,12 @@ export function PrintCertificatesDialog({
         {podium.map((result) => (
           <CertificateTemplate
             key={result.id}
-            studentName={result.students?.name ?? ""}
-            studentMalayalamName={result.students?.malayalam_name}
-            rollNumber={result.students?.roll_number}
-            className={result.students?.class}
-            houseName={result.students?.main_groups?.name}
-            photoUrl={result.students?.photo_url}
+            studentName={result.studentName}
+            studentMalayalamName={result.studentMalayalamName}
+            rollNumber={result.rollNumber}
+            className={result.className}
+            houseName={result.houseName}
+            photoUrl={result.photoUrl}
             programName={programName}
             categoryLabel={categoryLabel}
             position={result.position}

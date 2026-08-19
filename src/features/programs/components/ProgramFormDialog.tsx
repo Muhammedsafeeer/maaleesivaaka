@@ -26,10 +26,10 @@ import {
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { MalayalamSuggestion } from "@/components/forms/MalayalamSuggestion";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORIES, STAGE_TYPES } from "@/constants/programs";
+import { CATEGORIES, STAGE_TYPES, PARTICIPATION_TYPES } from "@/constants/programs";
 import {
-  programSchema,
-  type ProgramInput,
+  createProgramSchema,
+  type CreateProgramInput,
 } from "@/features/programs/validation/program.schema";
 import {
   createProgramAction,
@@ -46,11 +46,16 @@ type ProgramFormDialogProps = {
   program?: Program;
 };
 
-const emptyDefaults: ProgramInput = {
+const participationTypeLabels = Object.fromEntries(
+  PARTICIPATION_TYPES.map((p) => [p.value, p.label]),
+);
+
+const emptyDefaults: CreateProgramInput = {
   name: "",
   malayalamName: "",
   stage_type: "on_stage",
   category: "kids",
+  participation_type: "individual",
   criteriaNames: [],
 };
 
@@ -70,14 +75,15 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
     reset,
     setValue,
     formState: { errors },
-  } = useForm<ProgramInput>({
-    resolver: zodResolver(programSchema),
+  } = useForm<CreateProgramInput>({
+    resolver: zodResolver(createProgramSchema),
     defaultValues: program
       ? {
           name: program.name,
           malayalamName: program.malayalam_name ?? "",
           stage_type: program.stage_type,
           category: program.category,
+          participation_type: program.participation_type,
           criteriaNames: [],
         }
       : emptyDefaults,
@@ -94,6 +100,7 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
             malayalamName: program.malayalam_name ?? "",
             stage_type: program.stage_type,
             category: program.category,
+            participation_type: program.participation_type,
             criteriaNames: [],
           }
         : emptyDefaults,
@@ -114,13 +121,14 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
           malayalamName: program.malayalam_name ?? "",
           stage_type: program.stage_type,
           category: program.category,
+          participation_type: program.participation_type,
           criteriaNames: data.map((c) => ({ name: c.name })),
         });
       });
     }
   }, [program, open, reset]);
 
-  function onSubmit(values: ProgramInput) {
+  function onSubmit(values: CreateProgramInput) {
     startTransition(async () => {
       const result = isEditing
         ? await updateProgramAction(program.id, values)
@@ -237,6 +245,45 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
                 )}
               />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="program-participation-type">Participation</Label>
+            {program ? (
+              <div>
+                <Badge variant="outline">
+                  {participationTypeLabels[program.participation_type]}
+                </Badge>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {program.participation_type === "individual"
+                    ? "To switch this to a group program, use “Convert to group” on the program page (only before any judge has scored it)."
+                    : "Set at creation and can't be changed afterwards."}
+                </p>
+              </div>
+            ) : (
+              <Controller
+                control={control}
+                name="participation_type"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="program-participation-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PARTICIPATION_TYPES.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              Group programs are team events — a house&apos;s team gets one shared chest
+              number, assigned from the program page after creation.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">

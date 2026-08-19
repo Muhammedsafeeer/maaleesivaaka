@@ -1,11 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { programSchema, type ProgramInput } from "@/features/programs/validation/program.schema";
+import {
+  programSchema,
+  createProgramSchema,
+  type ProgramInput,
+  type CreateProgramInput,
+} from "@/features/programs/validation/program.schema";
 import {
   createProgram,
   updateProgram,
   deleteProgram,
+  convertProgramToGroup,
 } from "@/lib/services/program.service";
 import {
   listScoringCriteria,
@@ -18,12 +24,12 @@ import { assertAdmin } from "@/lib/services/auth.service";
 export type ProgramActionResult = { error: string } | { error?: undefined };
 
 export async function createProgramAction(
-  input: ProgramInput,
+  input: CreateProgramInput,
 ): Promise<ProgramActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
-  const parsed = programSchema.safeParse(input);
+  const parsed = createProgramSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
@@ -95,6 +101,25 @@ export async function getScoringCriteriaAction(
   ]);
 
   return { data, locked };
+}
+
+export async function convertProgramToGroupAction(id: string): Promise<ProgramActionResult> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { error: auth.error };
+
+  // Same lock as scoring types (hasSubmittedScores, not status — see its own comment):
+  // rewriting the roster model out from under scores that were recorded against the
+  // old individual one would corrupt them.
+  if (await hasSubmittedScores(id)) {
+    return { error: "Can't convert after judges have started scoring this program." };
+  }
+
+  const result = await convertProgramToGroup(id);
+  if (!result.success) return { error: result.error };
+
+  revalidatePath(`/admin/programs/${id}`);
+  revalidatePath("/admin/programs");
+  return {};
 }
 
 export async function deleteProgramAction(id: string): Promise<ProgramActionResult> {

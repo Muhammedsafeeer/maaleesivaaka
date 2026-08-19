@@ -82,6 +82,20 @@ export async function listAssignableStudents(programId: string): Promise<Student
     }));
 }
 
+/**
+ * Students eligible to join a specific team entry in a group program (D-025): same
+ * category-match + not-already-assigned rules as listAssignableStudents, plus
+ * restricted to the entry's own house — the DB trigger would reject anyone else anyway,
+ * but filtering here keeps the picker from ever offering an invalid choice.
+ */
+export async function listAssignableStudentsForGroupEntry(
+  programId: string,
+  groupId: string,
+): Promise<Student[]> {
+  const candidates = await listAssignableStudents(programId);
+  return candidates.filter((student) => student.group_id === groupId);
+}
+
 export async function assignStudent(
   programId: string,
   studentId: string,
@@ -103,6 +117,39 @@ export async function assignStudent(
       };
     }
     return { success: false, error: "Could not assign the student. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+/**
+ * Assign several students to one program at once (group-entry tick-list: add every
+ * ticked house member in one round trip instead of one assignStudent call per student).
+ * The category-match / group-entry-exists trigger (D-024/D-025) still fires per row, so
+ * a bad id in the batch fails the whole insert rather than partially applying.
+ */
+export async function assignStudents(
+  programId: string,
+  studentIds: string[],
+): Promise<ServiceResult<null>> {
+  const uniqueIds = [...new Set(studentIds)];
+  if (uniqueIds.length === 0) {
+    return { success: true, data: null };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("program_students").insert(
+    uniqueIds.map((studentId) => ({ program_id: programId, student_id: studentId })),
+  );
+
+  if (error) {
+    if (error.code === "23514") {
+      return {
+        success: false,
+        error: "One of the selected students doesn't match this program's requirements.",
+      };
+    }
+    return { success: false, error: "Could not assign the students. Please try again." };
   }
 
   return { success: true, data: null };
@@ -250,6 +297,40 @@ export async function unassignStudent(
       success: false,
       error: "This student already has scores recorded for this program and can't be removed.",
     };
+  }
+
+  // D-025 follow-up: a group program's judge_scores rows are keyed by group_entry_id,
+  // not student_id (a team is scored once, not once per member), so the check above
+  // never finds anything for a group program — without this, a student could be pulled
+  // off an already-scored team's roster with no protection at all.
+  const { data: student } = await supabase
+    .from("students")
+    .select("group_id")
+    .eq("id", studentId)
+    .single();
+
+  if (student) {
+    const { data: entry } = await supabase
+      .from("program_group_entries")
+      .select("id")
+      .eq("program_id", programId)
+      .eq("group_id", student.group_id)
+      .maybeSingle();
+
+    if (entry) {
+      const { count: teamScoreCount } = await supabase
+        .from("judge_scores")
+        .select("*", { count: "exact", head: true })
+        .eq("program_id", programId)
+        .eq("group_entry_id", entry.id);
+
+      if (teamScoreCount && teamScoreCount > 0) {
+        return {
+          success: false,
+          error: "This student's team already has scores recorded for this program and can't be removed.",
+        };
+      }
+    }
   }
 
   const { error } = await supabase

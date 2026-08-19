@@ -9,6 +9,14 @@ export const assignStudentSchema = z.object({
 
 export type AssignStudentInput = z.infer<typeof assignStudentSchema>;
 
+/** Bulk variant for the group-entry "Add student" tick-list — add several team members
+ * from one house in one go instead of reopening the dialog per student. */
+export const assignStudentsSchema = z.object({
+  student_ids: z.array(z.uuid()).min(1, "Select at least one student."),
+});
+
+export type AssignStudentsInput = z.infer<typeof assignStudentsSchema>;
+
 export const assignJudgeSchema = z.object({
   judge_id: z.uuid("Select a judge."),
 });

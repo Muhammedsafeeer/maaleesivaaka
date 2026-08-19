@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Program } from "@/types/program";
-import { CATEGORIES, type Category, type StageType, type ProgramStatus } from "@/constants/programs";
+import {
+  CATEGORIES,
+  type Category,
+  type StageType,
+  type ProgramStatus,
+  type ParticipationType,
+} from "@/constants/programs";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -80,7 +86,15 @@ export type ProgramInput = {
   category: Category;
 };
 
-export async function createProgram(input: ProgramInput): Promise<ServiceResult<Program>> {
+/** Set at creation (D-025); updateProgram never touches it — the only path to change
+ * it afterwards is convertProgramToGroup below. */
+export type CreateProgramInput = ProgramInput & {
+  participation_type: ParticipationType;
+};
+
+export async function createProgram(
+  input: CreateProgramInput,
+): Promise<ServiceResult<Program>> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("programs")
@@ -89,6 +103,7 @@ export async function createProgram(input: ProgramInput): Promise<ServiceResult<
       malayalam_name: input.malayalamName || null,
       stage_type: input.stage_type,
       category: input.category,
+      participation_type: input.participation_type,
     })
     .select()
     .single();
@@ -122,6 +137,78 @@ export async function updateProgram(
   }
 
   return { success: true, data };
+}
+
+/**
+ * One-way conversion of an already-created individual program to a group program
+ * (D-025 extension): for pre-launch data entry where students were assigned
+ * individually before it was decided the program is actually a team event. Every
+ * house that already has a student assigned here gets a team entry with a placeholder
+ * chest number, so the existing roster survives the switch instead of becoming
+ * orphaned (a group program's UI only shows students under a house's team entry).
+ * The caller (convertProgramToGroupAction) is responsible for blocking this once any
+ * judge has scored the program — this function doesn't re-check that itself.
+ */
+export async function convertProgramToGroup(id: string): Promise<ServiceResult<Program>> {
+  const supabase = await createClient();
+
+  const { data: program, error: programError } = await supabase
+    .from("programs")
+    .select("participation_type")
+    .eq("id", id)
+    .single();
+
+  if (programError || !program) {
+    return { success: false, error: "Program not found." };
+  }
+
+  if (program.participation_type === "group") {
+    return { success: false, error: "This program is already a group program." };
+  }
+
+  const { data: assigned, error: assignedError } = await supabase
+    .from("program_students")
+    .select("students(group_id)")
+    .eq("program_id", id);
+
+  if (assignedError) {
+    return { success: false, error: "Could not read the current roster. Please try again." };
+  }
+
+  const groupIds = [
+    ...new Set(assigned.flatMap((row) => (row.students ? [row.students.group_id] : []))),
+  ];
+
+  const { data: updated, error: updateError } = await supabase
+    .from("programs")
+    .update({ participation_type: "group" })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (updateError) {
+    return { success: false, error: "Could not convert the program. Please try again." };
+  }
+
+  if (groupIds.length > 0) {
+    const { error: entriesError } = await supabase.from("program_group_entries").insert(
+      groupIds.map((groupId, index) => ({
+        program_id: id,
+        group_id: groupId,
+        chest_number: `TBD-${index + 1}`,
+      })),
+    );
+
+    if (entriesError) {
+      return {
+        success: false,
+        error:
+          "Converted, but couldn't auto-create team entries for the existing roster. Add them manually from the Teams panel.",
+      };
+    }
+  }
+
+  return { success: true, data: updated };
 }
 
 export async function deleteProgram(id: string): Promise<ServiceResult<null>> {

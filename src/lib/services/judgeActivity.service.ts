@@ -43,6 +43,10 @@ type ScoreRow = {
   score: number;
   submitted_at: string;
   students: { name: string } | { name: string }[] | null;
+  program_group_entries:
+    | { chest_number: string; main_groups: { name: string } | { name: string }[] | null }
+    | { chest_number: string; main_groups: { name: string } | { name: string }[] | null }[]
+    | null;
 };
 
 function asOne<T>(value: T | T[] | null): T | null {
@@ -59,14 +63,17 @@ function asOne<T>(value: T | T[] | null): T | null {
 export async function listLiveJudgeActivity(): Promise<LiveJudgeActivity[]> {
   const supabase = await createClient();
 
-  const [{ data: judges }, { data: assignmentRows }, { data: studentRows }, { data: scoreRows }] =
+  const [{ data: judges }, { data: assignmentRows }, { data: studentRows }, { data: teamRows }, { data: scoreRows }] =
     await Promise.all([
       supabase.from("profiles").select("id, name, email").eq("role", "judge").order("name"),
       supabase.from("program_judges").select("judge_id, programs(id, name, category, status)"),
       supabase.from("program_students").select("program_id"),
+      supabase.from("program_group_entries").select("program_id"),
       supabase
         .from("judge_scores")
-        .select("judge_id, program_id, score, submitted_at, students(name)")
+        .select(
+          "judge_id, program_id, score, submitted_at, students(name), program_group_entries(chest_number, main_groups(name))",
+        )
         .order("submitted_at", { ascending: false }),
     ]);
 
@@ -74,8 +81,14 @@ export async function listLiveJudgeActivity(): Promise<LiveJudgeActivity[]> {
     return [];
   }
 
+  // D-025 follow-up: "total" is the count of scorable targets — students for an
+  // individual program, team entries for a group program, since scoring happens once
+  // per team, not once per member.
   const totalByProgram = new Map<string, number>();
   for (const row of studentRows ?? []) {
+    totalByProgram.set(row.program_id, (totalByProgram.get(row.program_id) ?? 0) + 1);
+  }
+  for (const row of teamRows ?? []) {
     totalByProgram.set(row.program_id, (totalByProgram.get(row.program_id) ?? 0) + 1);
   }
 
@@ -98,9 +111,15 @@ export async function listLiveJudgeActivity(): Promise<LiveJudgeActivity[]> {
 
     if (!latestByJudge.has(row.judge_id)) {
       const student = asOne(row.students);
+      const entry = asOne(row.program_group_entries);
+      const entryGroup = entry ? asOne(entry.main_groups) : null;
       const program = programById.get(row.program_id);
+      // D-025 follow-up: a group program's row has no student (scored once per team,
+      // keyed by group_entry_id) — falls back to "<House> · Chest <n>" instead of the
+      // generic "Student" placeholder.
+      const displayName = student?.name ?? (entryGroup ? `${entryGroup.name} · Chest ${entry!.chest_number}` : "Student");
       latestByJudge.set(row.judge_id, {
-        studentName: student?.name ?? "Student",
+        studentName: displayName,
         score: row.score,
         submittedAt: row.submitted_at,
         programName: program?.name ?? "Program",

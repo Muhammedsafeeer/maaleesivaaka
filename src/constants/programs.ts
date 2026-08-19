@@ -41,6 +41,17 @@ export const STAGE_TYPES = [
 
 export type StageType = (typeof STAGE_TYPES)[number]["value"];
 
+/** Individual: one student per entry, identified by their own chest number. Group
+ * (D-025): a team of students from one house performs as a single entry, identified by
+ * one shared chest number (docs/decisions.md D-025). Set once at creation; immutable
+ * after. */
+export const PARTICIPATION_TYPES = [
+  { value: "individual", label: "Individual" },
+  { value: "group", label: "Group" },
+] as const;
+
+export type ParticipationType = (typeof PARTICIPATION_TYPES)[number]["value"];
+
 export const GENDERS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },

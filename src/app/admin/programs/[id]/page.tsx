@@ -12,12 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RosterTable } from "@/features/programs/components/RosterTable";
 import { AssignStudentDialog } from "@/features/programs/components/AssignStudentDialog";
+import { GroupRosterPanel } from "@/features/programs/components/GroupRosterPanel";
+import { ConvertToGroupButton } from "@/features/programs/components/ConvertToGroupButton";
 import { JudgeRosterTable } from "@/features/programs/components/JudgeRosterTable";
 import { AssignJudgeDialog } from "@/features/programs/components/AssignJudgeDialog";
 import { ResultsPanel } from "@/features/programs/components/ResultsPanel";
-import { listResults } from "@/lib/services/result.service";
-import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
+import { listResults, listProgramPodiumForCertificates } from "@/lib/services/result.service";
+import { listScoringCriteria, hasSubmittedScores } from "@/lib/services/scoringCriteria.service";
 import { getCertificateSettings } from "@/lib/services/certificateSettings.service";
+import { listGroupEntries } from "@/lib/services/groupEntry.service";
+import { listGroups } from "@/lib/services/group.service";
 import { CATEGORIES, STAGE_TYPES, PROGRAM_STATUSES } from "@/constants/programs";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
@@ -50,16 +54,24 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     assignedJudges,
     assignableJudges,
     results,
+    podiumRows,
     criteria,
     certificateSettings,
+    groupEntries,
+    groups,
+    scored,
   ] = await Promise.all([
     listAssignedStudents(id),
     listAssignableStudents(id),
     listAssignedJudges(id),
     listAssignableJudges(id),
     listResults(id),
+    listProgramPodiumForCertificates(id),
     listScoringCriteria(id),
     getCertificateSettings(),
+    program.participation_type === "group" ? listGroupEntries(id) : Promise.resolve([]),
+    program.participation_type === "group" ? listGroups() : Promise.resolve([]),
+    program.participation_type === "individual" ? hasSubmittedScores(id) : Promise.resolve(false),
   ]);
 
   return (
@@ -72,26 +84,42 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
           <h1 className="font-heading text-xl font-medium">{program.name}</h1>
           <Badge variant="outline">{categoryLabels[program.category]}</Badge>
           <Badge variant="outline">{stageTypeLabels[program.stage_type]}</Badge>
+          {program.participation_type === "group" ? (
+            <Badge variant="outline">Group</Badge>
+          ) : null}
           <Badge variant={program.status === "published" ? "default" : "secondary"}>
             {statusLabels[program.status]}
           </Badge>
+          {program.participation_type === "individual" ? (
+            <ConvertToGroupButton programId={id} disabled={scored} />
+          ) : null}
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-medium">Roster</h2>
-            <p className="text-sm text-muted-foreground">
-              {assignedStudents.length}{" "}
-              {assignedStudents.length === 1 ? "student" : "students"} assigned.
-            </p>
+      {program.participation_type === "group" ? (
+        <GroupRosterPanel
+          programId={id}
+          entries={groupEntries}
+          groups={groups}
+          assignedStudents={assignedStudents}
+          assignableStudents={assignableStudents}
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-medium">Roster</h2>
+              <p className="text-sm text-muted-foreground">
+                {assignedStudents.length}{" "}
+                {assignedStudents.length === 1 ? "student" : "students"} assigned.
+              </p>
+            </div>
+            <AssignStudentDialog programId={id} assignableStudents={assignableStudents} />
           </div>
-          <AssignStudentDialog programId={id} assignableStudents={assignableStudents} />
-        </div>
 
-        <RosterTable programId={id} students={assignedStudents} />
-      </div>
+          <RosterTable programId={id} students={assignedStudents} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
@@ -114,6 +142,7 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
         categoryLabel={categoryLabels[program.category]}
         status={program.status}
         results={results}
+        podiumRows={podiumRows}
         criteria={criteria}
         certificateSettings={certificateSettings}
       />

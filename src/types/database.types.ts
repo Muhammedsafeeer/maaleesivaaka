@@ -164,31 +164,34 @@ export type Database = {
       judge_scores: {
         Row: {
           criteria_scores: Json
+          group_entry_id: string | null
           id: string
           judge_id: string
           program_id: string
           score: number
-          student_id: string
+          student_id: string | null
           submitted_at: string
           updated_at: string
         }
         Insert: {
           criteria_scores?: Json
+          group_entry_id?: string | null
           id?: string
           judge_id: string
           program_id: string
           score: number
-          student_id: string
+          student_id?: string | null
           submitted_at?: string
           updated_at?: string
         }
         Update: {
           criteria_scores?: Json
+          group_entry_id?: string | null
           id?: string
           judge_id?: string
           program_id?: string
           score?: number
-          student_id?: string
+          student_id?: string | null
           submitted_at?: string
           updated_at?: string
         }
@@ -212,6 +215,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_scores_group_entry_id_fkey"
+            columns: ["group_entry_id"]
+            isOneToOne: false
+            referencedRelation: "program_group_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -379,6 +389,7 @@ export type Database = {
           id: string
           malayalam_name: string | null
           name: string
+          participation_type: Database["public"]["Enums"]["participation_type"]
           serial_number: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           status: Database["public"]["Enums"]["program_status"]
@@ -390,6 +401,7 @@ export type Database = {
           id?: string
           malayalam_name?: string | null
           name: string
+          participation_type?: Database["public"]["Enums"]["participation_type"]
           serial_number?: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           status?: Database["public"]["Enums"]["program_status"]
@@ -401,6 +413,7 @@ export type Database = {
           id?: string
           malayalam_name?: string | null
           name?: string
+          participation_type?: Database["public"]["Enums"]["participation_type"]
           serial_number?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           status?: Database["public"]["Enums"]["program_status"]
@@ -408,38 +421,83 @@ export type Database = {
         }
         Relationships: []
       }
+      program_group_entries: {
+        Row: {
+          chest_number: string
+          created_at: string
+          group_id: string
+          id: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          chest_number: string
+          created_at?: string
+          group_id: string
+          id?: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          chest_number?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_group_entries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "main_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_group_entries_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       results: {
         Row: {
           average_score: number
           created_at: string
           criteria_averages: Json
+          group_entry_id: string | null
           id: string
           points: number
           position: number
           program_id: string
-          student_id: string
+          student_id: string | null
           updated_at: string
         }
         Insert: {
           average_score: number
           created_at?: string
           criteria_averages?: Json
+          group_entry_id?: string | null
           id?: string
           points?: number
           position: number
           program_id: string
-          student_id: string
+          student_id?: string | null
           updated_at?: string
         }
         Update: {
           average_score?: number
           created_at?: string
           criteria_averages?: Json
+          group_entry_id?: string | null
           id?: string
           points?: number
           position?: number
           program_id?: string
-          student_id?: string
+          student_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -455,6 +513,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "results_group_entry_id_fkey"
+            columns: ["group_entry_id"]
+            isOneToOne: true
+            referencedRelation: "program_group_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -626,11 +691,16 @@ export type Database = {
         Args: { p_program_id: string }
         Returns: {
           criteria_scores: Json
+          group_entry_id: string | null
           score: number
-          student_id: string
+          student_id: string | null
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_group_entry_assigned_to_program: {
+        Args: { p_program_id: string; p_group_entry_id: string }
+        Returns: boolean
+      }
       is_judge_assigned_to_program: {
         Args: { p_program_id: string }
         Returns: boolean
@@ -669,6 +739,7 @@ export type Database = {
         | "senior"
         | "super_senior"
         | "general"
+      participation_type: "individual" | "group"
       program_status:
         | "draft"
         | "upcoming"
@@ -816,6 +887,7 @@ export const Constants = {
         "super_senior",
         "general",
       ],
+      participation_type: ["individual", "group"],
       program_status: [
         "draft",
         "upcoming",

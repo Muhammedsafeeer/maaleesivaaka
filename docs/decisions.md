@@ -1068,3 +1068,47 @@ every student.
   instead of `students.category`.
 - Existing single-category program-matching behavior for **programs** is unchanged —
   this decision only affects students.
+
+---
+
+## D-025: Group (team) programs with a shared chest number
+
+**Date:** 2026-08-19 · **Status:** Accepted
+
+### Context
+
+Every program was implicitly "individual": `program_students` is a plain (program,
+student) join, and a student's own personal `roll_number` is their only chest number.
+The user needs **group programs** — team events (e.g. group dance/group song) where
+several students from the same house perform together as one entry — and wants that
+entry to carry **one shared chest number for the whole team**, not each student's own
+number. Each student keeps their personal chest number too, for whatever individual
+programs they're separately part of.
+
+### Decision
+
+1. **`programs.participation_type`** (`individual` | `group`, default `individual`) is
+   set once at creation and is immutable after — switching a program between the two
+   once rostering has started has no clean migration path, so the form disables the
+   field on edit (same treatment as the system-managed `status` field).
+2. **`program_group_entries`** (program_id, group_id, chest_number) represents one
+   house's team entry in one group program — unique per (program, house) and unique
+   chest number per program. Students are still added to that team via the existing
+   `program_students` join (no schema change there); the D-007/D-024 trigger is
+   extended so a group program additionally requires the student's house to already
+   have a `program_group_entries` row before they can be assigned.
+3. **Explicit scope cut**: scoring (`judge_scores`), `results`, certificates, and
+   result posters stay exactly as they are — per `(program_id, student_id)`, unaffected
+   by this decision. Only the admin roster view for a group program shows the shared
+   chest number instead of each member's personal one. Making those team-based is a
+   separate, materially bigger piece of work if ever wanted.
+
+### Consequences
+
+- `assignment.service.ts` gains `listAssignableStudentsForGroupEntry`, scoped to one
+  program + house, alongside the existing category-match + not-already-assigned rules.
+- A new `groupEntry.service.ts` owns create/rename/delete for team entries; delete is
+  blocked while the team still has assigned students.
+- The student-form "assign programs on create" flow (D-021) only offers **individual**
+  programs — group-program rostering happens from the program's own page, since it
+  requires a team (house) to exist first.

@@ -60,20 +60,37 @@ export async function listAssignedPrograms(): Promise<AssignedProgramSummary[]> 
   }
 
   const programIds = programs.map((p) => p.id);
+  const individualProgramIds = programs
+    .filter((p) => p.participation_type !== "group")
+    .map((p) => p.id);
+  const groupProgramIds = programs
+    .filter((p) => p.participation_type === "group")
+    .map((p) => p.id);
 
-  const { data: studentRows } = await supabase
-    .from("program_students")
-    .select("program_id")
-    .in("program_id", programIds);
+  const [{ data: studentRows }, { data: teamRows }, { data: scoreRows }] = await Promise.all([
+    individualProgramIds.length > 0
+      ? supabase.from("program_students").select("program_id").in("program_id", individualProgramIds)
+      : Promise.resolve({ data: [] as { program_id: string }[] }),
+    groupProgramIds.length > 0
+      ? supabase.from("program_group_entries").select("program_id").in("program_id", groupProgramIds)
+      : Promise.resolve({ data: [] as { program_id: string }[] }),
+    // Counts a row regardless of whether it's keyed by student_id or group_entry_id —
+    // a program is homogeneously one participation_type, so "one judge_scores row" is
+    // "one scored target" either way; no branch needed for this half of the map.
+    supabase
+      .from("judge_scores")
+      .select("program_id")
+      .eq("judge_id", user.id)
+      .in("program_id", programIds),
+  ]);
 
-  const { data: scoreRows } = await supabase
-    .from("judge_scores")
-    .select("program_id")
-    .eq("judge_id", user.id)
-    .in("program_id", programIds);
-
+  // "Total" is the count of scorable targets — students for an individual program,
+  // team entries for a group program (D-025 follow-up) — not each member individually.
   const totalByProgram = new Map<string, number>();
   for (const row of studentRows ?? []) {
+    totalByProgram.set(row.program_id, (totalByProgram.get(row.program_id) ?? 0) + 1);
+  }
+  for (const row of teamRows ?? []) {
     totalByProgram.set(row.program_id, (totalByProgram.get(row.program_id) ?? 0) + 1);
   }
 
@@ -143,11 +160,77 @@ export async function listScorableStudents(programId: string): Promise<ScorableS
   });
 }
 
+/**
+ * A group program's team entries (D-025 follow-up), each with this judge's own existing
+ * score for the whole team — sibling of listScorableStudents/ScorableStudent, not a
+ * branch of it: a team entry has no photo/roll-number/class, and is scored ONCE per
+ * house rather than once per member, so it's a genuinely different shape, not the same
+ * one with fields missing.
+ */
+export type ScorableTeam = {
+  id: string; // program_group_entries.id
+  groupId: string;
+  groupName: string;
+  chestNumber: string;
+  score: number | null;
+  criteriaScores: CriterionScore[];
+};
+
+export async function listScorableTeams(programId: string): Promise<ScorableTeam[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data: entries, error } = await supabase
+    .from("program_group_entries")
+    .select("id, group_id, chest_number, main_groups(name)")
+    .eq("program_id", programId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("listScorableTeams failed:", error.message);
+    return [];
+  }
+
+  const { data: scores } = await supabase
+    .from("judge_scores")
+    .select("group_entry_id, score, criteria_scores")
+    .eq("program_id", programId)
+    .eq("judge_id", user.id);
+
+  const scoreByEntry = new Map(
+    (scores ?? []).flatMap((row) => (row.group_entry_id ? [[row.group_entry_id, row] as const] : [])),
+  );
+
+  return entries.map((entry) => {
+    const row = scoreByEntry.get(entry.id);
+    return {
+      id: entry.id,
+      groupId: entry.group_id,
+      groupName: entry.main_groups?.name ?? "Unknown house",
+      chestNumber: entry.chest_number,
+      score: row?.score ?? null,
+      criteriaScores: (row?.criteria_scores as CriterionScore[] | null) ?? [],
+    };
+  });
+}
+
 export type ScoreInput = {
   student_id: string;
   score: number;
   /** Present for programs with configured scoring types; submitScores recomputes
    * `score` from these rather than trusting the client's sum. */
+  criteria_scores?: CriterionScore[];
+};
+
+export type TeamScoreInput = {
+  group_entry_id: string;
+  score: number;
   criteria_scores?: CriterionScore[];
 };
 
@@ -279,6 +362,126 @@ export async function submitScores(
   const { error } = await supabase
     .from("judge_scores")
     .upsert(rows, { onConflict: "program_id,student_id,judge_id" });
+
+  if (error) {
+    return { success: false, error: "Could not save scores. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+/**
+ * Team-scoped sibling of submitScores (D-025 follow-up) — a group program is scored
+ * ONCE per team (program_group_entries row), not once per member, so this upserts on
+ * (program_id, group_entry_id, judge_id) instead. Mirrors submitScores' logic exactly
+ * otherwise: same status re-check, same criteria-id validation, same
+ * already-saved-score admin-override requirement.
+ */
+export async function submitTeamScores(
+  programId: string,
+  scores: TeamScoreInput[],
+  adminOverride?: AdminOverride,
+): Promise<ServiceResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "You must be signed in to submit scores." };
+  }
+
+  const { data: program, error: programError } = await supabase
+    .from("programs")
+    .select("status")
+    .eq("id", programId)
+    .single();
+
+  if (programError || !program) {
+    return { success: false, error: "This program isn't available for scoring." };
+  }
+
+  if (program.status !== "scoring") {
+    return { success: false, error: "Scoring isn't open for this program right now." };
+  }
+
+  const { data: criteria } = await supabase
+    .from("scoring_criteria")
+    .select("id")
+    .eq("program_id", programId);
+
+  const validCriterionIds = new Set((criteria ?? []).map((c) => c.id));
+
+  const rows: {
+    program_id: string;
+    group_entry_id: string;
+    judge_id: string;
+    score: number;
+    criteria_scores: CriterionScore[];
+  }[] = [];
+
+  for (const s of scores) {
+    if (validCriterionIds.size > 0) {
+      const submitted = s.criteria_scores ?? [];
+      const submittedIds = submitted.map((cs) => cs.criterion_id);
+      const idsMatch =
+        submittedIds.length === validCriterionIds.size &&
+        submittedIds.every((id) => validCriterionIds.has(id));
+
+      if (!idsMatch) {
+        return {
+          success: false,
+          error: "Scoring types have changed — please refresh and try again.",
+        };
+      }
+
+      rows.push({
+        program_id: programId,
+        group_entry_id: s.group_entry_id,
+        judge_id: user.id,
+        score: submitted.reduce((sum, cs) => sum + cs.score, 0),
+        criteria_scores: submitted,
+      });
+    } else {
+      rows.push({
+        program_id: programId,
+        group_entry_id: s.group_entry_id,
+        judge_id: user.id,
+        score: s.score,
+        criteria_scores: [],
+      });
+    }
+  }
+
+  const { data: existingRows } = await supabase
+    .from("judge_scores")
+    .select("group_entry_id, score")
+    .eq("program_id", programId)
+    .eq("judge_id", user.id)
+    .in(
+      "group_entry_id",
+      rows.map((r) => r.group_entry_id),
+    );
+
+  const existingScoreByEntry = new Map(
+    (existingRows ?? []).flatMap((r) => (r.group_entry_id ? [[r.group_entry_id, r.score] as const] : [])),
+  );
+
+  const changesExistingScore = rows.some((row) => {
+    const existing = existingScoreByEntry.get(row.group_entry_id);
+    return existing !== undefined && existing !== row.score;
+  });
+
+  if (changesExistingScore) {
+    const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
+    if (!authorized) {
+      return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
+    }
+  }
+
+  const { error } = await supabase
+    .from("judge_scores")
+    .upsert(rows, { onConflict: "program_id,group_entry_id,judge_id" });
 
   if (error) {
     return { success: false, error: "Could not save scores. Please try again." };

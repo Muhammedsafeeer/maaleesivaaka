@@ -18,12 +18,13 @@ import {
   publishProgramAction,
 } from "@/features/programs/actions/result.actions";
 import { PrintCertificatesDialog } from "@/features/programs/components/PrintCertificatesDialog";
-import type { listResults } from "@/lib/services/result.service";
+import type { listResults, listProgramPodiumForCertificates } from "@/lib/services/result.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
 import type { CertificateSettings } from "@/lib/services/certificateSettings.service";
 import type { ProgramStatus } from "@/constants/programs";
 
 type ResultRow = Awaited<ReturnType<typeof listResults>>[number];
+type PodiumRow = Awaited<ReturnType<typeof listProgramPodiumForCertificates>>[number];
 type CriterionAverage = { criterion_id: string; average: number };
 
 export function ResultsPanel({
@@ -32,6 +33,7 @@ export function ResultsPanel({
   categoryLabel,
   status,
   results,
+  podiumRows,
   criteria,
   certificateSettings,
 }: {
@@ -40,6 +42,7 @@ export function ResultsPanel({
   categoryLabel: string;
   status: ProgramStatus;
   results: ResultRow[];
+  podiumRows: PodiumRow[];
   criteria: ScoringCriterion[];
   certificateSettings: CertificateSettings;
 }) {
@@ -83,7 +86,7 @@ export function ResultsPanel({
         </div>
         <div className="flex gap-2">
           <PrintCertificatesDialog
-            results={results}
+            podiumRows={podiumRows}
             programName={programName}
             categoryLabel={categoryLabel}
             certificateSettings={certificateSettings}
@@ -116,7 +119,7 @@ export function ResultsPanel({
           <TableHeader>
             <TableRow>
               <TableHead>Position</TableHead>
-              <TableHead>Student</TableHead>
+              <TableHead>Participant</TableHead>
               {criteria.map((criterion) => (
                 <TableHead key={criterion.id} className="text-right">
                   {criterion.name}
@@ -141,10 +144,23 @@ export function ResultsPanel({
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {result.students?.name ?? "—"}{" "}
-                    <span className="text-muted-foreground">
-                      ({result.students?.roll_number ?? "—"})
-                    </span>
+                    {result.students ? (
+                      <>
+                        {result.students.name}{" "}
+                        <span className="text-muted-foreground">
+                          ({result.students.roll_number})
+                        </span>
+                      </>
+                    ) : result.program_group_entries ? (
+                      <>
+                        {result.program_group_entries.main_groups?.name ?? "Unknown house"}{" "}
+                        <span className="text-muted-foreground tabular-nums">
+                          (Chest {result.program_group_entries.chest_number})
+                        </span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   {criteria.map((criterion) => (
                     <TableCell key={criterion.id} className="text-right tabular-nums">

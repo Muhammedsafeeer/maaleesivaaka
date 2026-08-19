@@ -33,6 +33,13 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
     return { success: true, data: null };
   }
 
+  const { data: program } = await supabase
+    .from("programs")
+    .select("participation_type")
+    .eq("id", programId)
+    .single();
+  const isGroup = program?.participation_type === "group";
+
   const { data: scores, error: scoresError } = await supabase.rpc("get_program_scores", {
     p_program_id: programId,
   });
@@ -41,32 +48,40 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
     return { success: false, error: "Could not read scores to calculate results." };
   }
 
-  const totalsByStudent = new Map<string, { sum: number; count: number }>();
-  // Per student, per criterion — only populated for programs with configured scoring
+  // Group programs (D-025 follow-up): a row's key is group_entry_id, not student_id,
+  // since a team is scored once, not once per member. rankResults() itself is agnostic
+  // to what its `student_id` field represents (it only sorts/ranks by average_score),
+  // so this reuses it unchanged with the entry id passed through that field — kept as
+  // `student_id` rather than renamed, per D-004's "stays a pure, untouched function".
+  const totalsByTarget = new Map<string, { sum: number; count: number }>();
+  // Per target, per criterion — only populated for programs with configured scoring
   // types (D-004's pure rankResults() stays total-only; this rides along separately).
-  const criteriaByStudent = new Map<string, Map<string, { sum: number; count: number }>>();
+  const criteriaByTarget = new Map<string, Map<string, { sum: number; count: number }>>();
 
   for (const row of scores) {
-    const entry = totalsByStudent.get(row.student_id) ?? { sum: 0, count: 0 };
+    const targetId = isGroup ? row.group_entry_id : row.student_id;
+    if (!targetId) continue;
+
+    const entry = totalsByTarget.get(targetId) ?? { sum: 0, count: 0 };
     entry.sum += row.score;
     entry.count += 1;
-    totalsByStudent.set(row.student_id, entry);
+    totalsByTarget.set(targetId, entry);
 
     const criteriaScores =
       (row.criteria_scores as { criterion_id: string; score: number }[] | null) ?? [];
     if (criteriaScores.length > 0) {
-      const acc = criteriaByStudent.get(row.student_id) ?? new Map();
+      const acc = criteriaByTarget.get(targetId) ?? new Map();
       for (const cs of criteriaScores) {
         const c = acc.get(cs.criterion_id) ?? { sum: 0, count: 0 };
         c.sum += cs.score;
         c.count += 1;
         acc.set(cs.criterion_id, c);
       }
-      criteriaByStudent.set(row.student_id, acc);
+      criteriaByTarget.set(targetId, acc);
     }
   }
 
-  const averages: StudentAverage[] = Array.from(totalsByStudent.entries()).map(
+  const averages: StudentAverage[] = Array.from(totalsByTarget.entries()).map(
     ([student_id, { sum, count }]) => ({
       student_id,
       average_score: Math.round((sum / count) * 100) / 100,
@@ -81,14 +96,31 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
   });
 
   const rankedWithBreakdown = ranked.map((result) => {
-    const acc = criteriaByStudent.get(result.student_id);
+    const acc = criteriaByTarget.get(result.student_id);
     const criteria_averages = acc
       ? Array.from(acc.entries()).map(([criterion_id, { sum, count }]) => ({
           criterion_id,
           average: Math.round((sum / count) * 100) / 100,
         }))
       : [];
-    return { ...result, criteria_averages };
+    // result.student_id actually holds the group_entry_id for a group program (see the
+    // passthrough note above) — finalize_program_results (SQL) branches on the
+    // program's own participation_type and reads whichever key it's handed.
+    return isGroup
+      ? {
+          group_entry_id: result.student_id,
+          average_score: result.average_score,
+          position: result.position,
+          points: result.points,
+          criteria_averages,
+        }
+      : {
+          student_id: result.student_id,
+          average_score: result.average_score,
+          position: result.position,
+          points: result.points,
+          criteria_averages,
+        };
   });
 
   const { error: finalizeError } = await supabase.rpc("finalize_program_results", {
@@ -122,7 +154,9 @@ export async function listResults(programId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
-    .select("*, students(name, malayalam_name, roll_number, class, photo_url, main_groups(name))")
+    .select(
+      "*, students(name, malayalam_name, roll_number, class, photo_url, main_groups(name)), program_group_entries(chest_number, main_groups(name))",
+    )
     .eq("program_id", programId)
     .order("position", { ascending: true });
 
@@ -131,6 +165,95 @@ export async function listResults(programId: string) {
   }
 
   return data;
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * A group program's team results, expanded into one PodiumCertificateRow per team
+ * member (D-025 follow-up) — a `results` row for a group program is keyed by
+ * group_entry_id, one row per TEAM, but PrintCertificatesDialog/CertificatesBrowser
+ * still print (and key everything off) one certificate per STUDENT. Member list comes
+ * from program_students joined back to the entry's house, same "who's on this team"
+ * query GroupRosterPanel already relies on — there's no per-student results row to read
+ * instead. `maxPosition` mirrors the individual-side `.lte("position", 3)` filter its
+ * caller applies.
+ */
+async function expandTeamResultsForCertificates(
+  supabase: SupabaseServerClient,
+  maxPosition?: number,
+  programId?: string,
+): Promise<PodiumCertificateRow[]> {
+  let query = supabase
+    .from("results")
+    .select(
+      "id, position, points, program_id, programs(name, category), program_group_entries(group_id, chest_number, main_groups(name))",
+    )
+    .not("group_entry_id", "is", null);
+
+  if (maxPosition !== undefined) {
+    query = query.lte("position", maxPosition);
+  }
+  if (programId !== undefined) {
+    query = query.eq("program_id", programId);
+  }
+
+  const { data, error } = await query.order("position", { ascending: true });
+
+  if (error) {
+    console.error("expandTeamResultsForCertificates failed:", error.message);
+    return [];
+  }
+
+  const teamRows = data.flatMap((row) => {
+    const entry = row.program_group_entries;
+    if (!entry || !row.programs) return [];
+    return [{ ...row, entry, programs: row.programs }];
+  });
+
+  if (teamRows.length === 0) {
+    return [];
+  }
+
+  const programIds = [...new Set(teamRows.map((r) => r.program_id))];
+
+  const { data: memberRows, error: memberError } = await supabase
+    .from("program_students")
+    .select("program_id, students(id, name, malayalam_name, roll_number, class, photo_url, group_id)")
+    .in("program_id", programIds);
+
+  if (memberError || !memberRows) {
+    return [];
+  }
+
+  return teamRows.flatMap((row) =>
+    memberRows
+      .filter((m) => m.program_id === row.program_id && m.students?.group_id === row.entry.group_id)
+      .flatMap((m) => {
+        const student = m.students;
+        if (!student) return [];
+        return [
+          {
+            // Composite, not the bare results.id — multiple students now share one
+            // results row, and a bare id would collide across every certificate table
+            // that keys rows by `id` (same reasoning searchStudentResults already uses).
+            id: `${row.id}-${student.id}`,
+            position: row.position,
+            points: row.points,
+            programId: row.program_id,
+            programName: row.programs.name,
+            programCategory: row.programs.category,
+            studentId: student.id,
+            studentName: student.name,
+            studentMalayalamName: student.malayalam_name,
+            rollNumber: student.roll_number,
+            className: student.class,
+            houseName: row.entry.main_groups?.name ?? null,
+            photoUrl: student.photo_url,
+          },
+        ];
+      }),
+  );
 }
 
 export type PodiumCertificateRow = {
@@ -171,7 +294,7 @@ export async function listPodiumResultsForCertificates(): Promise<PodiumCertific
     return [];
   }
 
-  return data.flatMap((row) => {
+  const individualRows = data.flatMap((row) => {
     const student = row.students;
     if (!student || !row.programs) {
       return [];
@@ -194,6 +317,62 @@ export async function listPodiumResultsForCertificates(): Promise<PodiumCertific
       },
     ];
   });
+
+  const teamRows = await expandTeamResultsForCertificates(supabase, 3);
+  return [...individualRows, ...teamRows].sort((a, b) => a.position - b.position);
+}
+
+/**
+ * One program's podium (positions 1-3), individual and group programs alike — the
+ * PrintCertificatesDialog's data source (per-program, unlike listPodiumResultsForCertificates'
+ * every-program list for /admin/certificates). A group program's team result gets
+ * expanded into one row per member here too, same reasoning as
+ * listPodiumResultsForCertificates: the dialog still prints one certificate per student.
+ */
+export async function listProgramPodiumForCertificates(
+  programId: string,
+): Promise<PodiumCertificateRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, program_id, programs(name, category), students(id, name, malayalam_name, roll_number, class, photo_url, main_groups(name))",
+    )
+    .eq("program_id", programId)
+    .lte("position", 3)
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("listProgramPodiumForCertificates failed:", error.message);
+    return [];
+  }
+
+  const individualRows = data.flatMap((row) => {
+    const student = row.students;
+    if (!student || !row.programs) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        position: row.position,
+        points: row.points,
+        programId: row.program_id,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        studentId: student.id,
+        studentName: student.name,
+        studentMalayalamName: student.malayalam_name,
+        rollNumber: student.roll_number,
+        className: student.class,
+        houseName: student.main_groups?.name ?? null,
+        photoUrl: student.photo_url,
+      },
+    ];
+  });
+
+  const teamRows = await expandTeamResultsForCertificates(supabase, 3, programId);
+  return [...individualRows, ...teamRows].sort((a, b) => a.position - b.position);
 }
 
 export type PublishedProgramPodiumRow = {
@@ -231,7 +410,7 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
   const { data, error } = await supabase
     .from("programs")
     .select(
-      "id, name, malayalam_name, category, results(position, points, students(name, malayalam_name, photo_url, main_groups(name, malayalam_name)))",
+      "id, name, malayalam_name, category, results(position, points, students(name, malayalam_name, photo_url, main_groups(name, malayalam_name, photo_url)), program_group_entries(main_groups(name, malayalam_name, photo_url)))",
     )
     .eq("status", "published")
     .lte("results.position", 3)
@@ -247,17 +426,24 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
     programName: program.name,
     programMalayalamName: program.malayalam_name,
     programCategory: program.category,
+    // D-025 follow-up: a group program's podium has no individual student — the poster
+    // shows the winning house's own name/photo in the studentName/photoUrl slots
+    // instead (a poster only ever needs to name who won, and for a team that's the
+    // house), with groupName duplicating it for layouts that render both fields.
     podium: program.results
-      .filter((result) => result.students)
-      .map((result) => ({
-        position: result.position,
-        points: result.points,
-        studentName: result.students!.name,
-        studentMalayalamName: result.students!.malayalam_name,
-        groupName: result.students!.main_groups?.name ?? null,
-        groupMalayalamName: result.students!.main_groups?.malayalam_name ?? null,
-        photoUrl: result.students!.photo_url,
-      }))
+      .filter((result) => result.students || result.program_group_entries?.main_groups)
+      .map((result) => {
+        const group = result.students?.main_groups ?? result.program_group_entries?.main_groups;
+        return {
+          position: result.position,
+          points: result.points,
+          studentName: result.students?.name ?? group?.name ?? "",
+          studentMalayalamName: result.students?.malayalam_name ?? group?.malayalam_name ?? null,
+          groupName: group?.name ?? null,
+          groupMalayalamName: group?.malayalam_name ?? null,
+          photoUrl: result.students?.photo_url ?? group?.photo_url ?? null,
+        };
+      })
       .sort((a, b) => a.position - b.position),
   }));
 }
@@ -284,7 +470,7 @@ export async function listAllResultsForCertificates(): Promise<PodiumCertificate
     return [];
   }
 
-  return data.flatMap((row) => {
+  const individualRows = data.flatMap((row) => {
     const student = row.students;
     if (!student || !row.programs) {
       return [];
@@ -307,6 +493,9 @@ export async function listAllResultsForCertificates(): Promise<PodiumCertificate
       },
     ];
   });
+
+  const teamRows = await expandTeamResultsForCertificates(supabase);
+  return [...individualRows, ...teamRows].sort((a, b) => a.position - b.position);
 }
 
 export type PublicResultRow = {
@@ -350,7 +539,9 @@ export async function listLatestPublishedResults(limit = 10): Promise<LatestResu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
-    .select("id, position, points, updated_at, programs(name, category), students(name, photo_url)")
+    .select(
+      "id, position, points, updated_at, programs(name, category), students(name, photo_url), program_group_entries(main_groups(name, photo_url))",
+    )
     .order("updated_at", { ascending: false })
     .limit(limit);
 
@@ -359,9 +550,17 @@ export async function listLatestPublishedResults(limit = 10): Promise<LatestResu
     return [];
   }
 
+  // D-025 follow-up: a group program's row has no individual student (it's keyed by
+  // group_entry_id) — falls back to the house's own name/photo rather than
+  // disappearing from this feed, same house-only treatment every OTHER audience panel
+  // already uses (D-017). Confirmed with the user: this is not a widening of D-020's
+  // student-detail exception to team wins, only a fallback for the case it can't cover.
   return data.flatMap((row) => {
-    const student = row.students;
-    if (!row.programs || !student) {
+    if (!row.programs) {
+      return [];
+    }
+    const identity = row.students ?? row.program_group_entries?.main_groups;
+    if (!identity) {
       return [];
     }
     return [
@@ -371,8 +570,8 @@ export async function listLatestPublishedResults(limit = 10): Promise<LatestResu
         points: row.points,
         programName: row.programs.name,
         programCategory: row.programs.category,
-        studentName: student.name,
-        studentPhotoUrl: student.photo_url,
+        studentName: identity.name,
+        studentPhotoUrl: identity.photo_url,
         updatedAt: row.updated_at,
       },
     ];
@@ -394,7 +593,7 @@ export async function listProgramWinners(): Promise<PublicResultRow[]> {
   const { data, error } = await supabase
     .from("results")
     .select(
-      "id, position, points, updated_at, programs(name, category), students(main_groups(name, photo_url))",
+      "id, position, points, updated_at, programs(name, category), students(main_groups(name, photo_url)), program_group_entries(main_groups(name, photo_url))",
     )
     .eq("position", 1);
 
@@ -403,8 +602,10 @@ export async function listProgramWinners(): Promise<PublicResultRow[]> {
     return [];
   }
 
+  // D-025 follow-up: this panel was already house-only, so a group program's row (no
+  // student, keyed by group_entry_id) just needs its own house reached a different way.
   const winners = data.flatMap((row) => {
-    const group = row.students?.main_groups;
+    const group = row.students?.main_groups ?? row.program_group_entries?.main_groups;
     if (!row.programs || !group) {
       return [];
     }
@@ -473,7 +674,9 @@ export async function listLatestProgramPodium(): Promise<LatestWinnerStudentRow[
 
   const { data, error } = await supabase
     .from("results")
-    .select("id, position, points, updated_at, programs(name, category), students(name, photo_url)")
+    .select(
+      "id, position, points, updated_at, programs(name, category), students(name, photo_url), program_group_entries(main_groups(name, photo_url))",
+    )
     .eq("program_id", latest.program_id)
     .lte("position", 3)
     .order("position", { ascending: true });
@@ -483,9 +686,14 @@ export async function listLatestProgramPodium(): Promise<LatestWinnerStudentRow[
     return [];
   }
 
+  // D-025 follow-up: same house-name fallback as listLatestPublishedResults above, for
+  // the same reason — a group program's row has no individual student.
   return data.flatMap((row) => {
-    const student = row.students;
-    if (!row.programs || !student) {
+    if (!row.programs) {
+      return [];
+    }
+    const identity = row.students ?? row.program_group_entries?.main_groups;
+    if (!identity) {
       return [];
     }
     return [
@@ -495,8 +703,8 @@ export async function listLatestProgramPodium(): Promise<LatestWinnerStudentRow[
         points: row.points,
         programName: row.programs.name,
         programCategory: row.programs.category,
-        studentName: student.name,
-        studentPhotoUrl: student.photo_url,
+        studentName: identity.name,
+        studentPhotoUrl: identity.photo_url,
         updatedAt: row.updated_at,
       },
     ];
