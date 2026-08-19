@@ -15,12 +15,21 @@ const STAGE_HEIGHT = 1080;
  */
 const SAFE_AREA_RATIO = 0.94;
 
+/**
+ * `window.innerWidth`/`innerHeight` report the *layout* viewport. Several TV
+ * browsers apply their own zoom on top of that layout (even with a correct
+ * viewport meta tag), so the physically rendered pixels end up bigger than what
+ * `innerWidth` claims — scaling off `innerWidth` then systematically undershoots
+ * and content spills past the real screen. `visualViewport` reflects what's
+ * actually visible (it's built for exactly this: tracking zoom/on-screen-keyboard
+ * gaps against the layout viewport), so it's preferred wherever the browser
+ * supports it, with `innerWidth`/`innerHeight` only as the fallback.
+ */
 function computeScale(): number {
   if (typeof window === "undefined") return 1;
-  return Math.min(
-    (window.innerWidth * SAFE_AREA_RATIO) / STAGE_WIDTH,
-    (window.innerHeight * SAFE_AREA_RATIO) / STAGE_HEIGHT,
-  );
+  const vw = window.visualViewport?.width ?? window.innerWidth;
+  const vh = window.visualViewport?.height ?? window.innerHeight;
+  return Math.min((vw * SAFE_AREA_RATIO) / STAGE_WIDTH, (vh * SAFE_AREA_RATIO) / STAGE_HEIGHT);
 }
 
 /**
@@ -40,7 +49,11 @@ export function TvStage({ children }: { children: React.ReactNode }) {
     }
     updateScale();
     window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
+    window.visualViewport?.addEventListener("resize", updateScale);
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      window.visualViewport?.removeEventListener("resize", updateScale);
+    };
   }, []);
 
   return (

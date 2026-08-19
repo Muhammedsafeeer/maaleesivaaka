@@ -1,4 +1,23 @@
+import type { Viewport } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
+
+/**
+ * Overrides the root layout's viewport (src/app/layout.tsx) for this route only.
+ * Locking zoom is safe here specifically because /tv is an unattended kiosk display
+ * with no pinch-zoom-worthy interaction (see the page-level comment on TvPage) —
+ * elsewhere in the app users may legitimately want to pinch-zoom, so this isn't
+ * applied globally. Some TV browsers apply their own default zoom via the same
+ * pinch-zoom mechanism `userScalable`/`maximumScale` govern; locking it removes
+ * one source of the layout-viewport-vs-visual-viewport mismatch TvStage otherwise
+ * has to compensate for via `visualViewport`.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
 
 /** Same scoped font pair as /audience (src/app/audience/layout.tsx) — the TV page
  * shares that visual identity rather than inventing a second one. */
