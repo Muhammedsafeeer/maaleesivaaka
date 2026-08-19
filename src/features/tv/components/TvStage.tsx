@@ -5,9 +5,22 @@ import { useEffect, useState } from "react";
 const STAGE_WIDTH = 1920;
 const STAGE_HEIGHT = 1080;
 
+/**
+ * Most TVs crop a margin off every edge of an HDMI signal by default (overscan —
+ * "Just Scan"/"Screen Fit" is the menu setting that turns it off, but plenty of
+ * hall/lobby TVs never get that flipped). Scaling to the *full* reported viewport
+ * means that cropped strip eats real content, so the stage targets a safe area a bit
+ * smaller than the viewport instead — worst case a 53" TV crops 5%, this leaves the
+ * spotlight-deep background bleeding off the true edge and every slide fully intact.
+ */
+const SAFE_AREA_RATIO = 0.94;
+
 function computeScale(): number {
   if (typeof window === "undefined") return 1;
-  return Math.min(window.innerWidth / STAGE_WIDTH, window.innerHeight / STAGE_HEIGHT);
+  return Math.min(
+    (window.innerWidth * SAFE_AREA_RATIO) / STAGE_WIDTH,
+    (window.innerHeight * SAFE_AREA_RATIO) / STAGE_HEIGHT,
+  );
 }
 
 /**
