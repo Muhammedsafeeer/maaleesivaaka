@@ -54,36 +54,42 @@ export default async function AdminDashboardPage() {
           value={stats.totalStudents}
           href="/admin/students"
           icon={<GraduationCapIcon className="size-4" />}
+          tone="blue"
         />
         <StatCard
           label="Programs"
           value={stats.totalPrograms}
           href="/admin/programs"
           icon={<ListMusicIcon className="size-4" />}
+          tone="green"
         />
         <StatCard
           label="Groups"
           value={stats.totalGroups}
           href="/admin/groups"
           icon={<UsersIcon className="size-4" />}
+          tone="gold"
         />
         <StatCard
           label="Judges"
           value={stats.totalJudges}
           href="/admin/judges"
           icon={<GavelIcon className="size-4" />}
+          tone="yellow"
         />
         <StatCard
           label="Completed"
           value={stats.completedPrograms}
           href="/admin/programs"
           icon={<CheckCircle2Icon className="size-4" />}
+          tone="primary"
         />
         <StatCard
           label="Pending"
           value={stats.pendingPrograms}
           href="/admin/programs"
           icon={<ClockIcon className="size-4" />}
+          tone="red"
         />
       </div>
 
@@ -94,7 +100,7 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card
           size="sm"
-          className="ring-podium-gold/30 transition-shadow duration-200 hover:shadow-md"
+          className="bg-podium-gold/5 ring-podium-gold/30 transition-shadow duration-200 hover:shadow-md"
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -116,7 +122,7 @@ export default async function AdminDashboardPage() {
 
         <Card
           size="sm"
-          className="ring-house-blue/30 transition-shadow duration-200 hover:shadow-md"
+          className="bg-house-blue/5 ring-house-blue/30 transition-shadow duration-200 hover:shadow-md"
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

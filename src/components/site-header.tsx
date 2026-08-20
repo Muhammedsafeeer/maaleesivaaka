@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
@@ -33,6 +34,37 @@ const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" }
 
 function titleFor(pathname: string): string {
   return TITLES.find((t) => pathname.startsWith(t.prefix))?.title ?? "";
+}
+
+const DASHBOARD_ROOTS = new Set(["/admin", "/judge"]);
+
+function greetingFor(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/**
+ * The greeting/date reads the visitor's local clock, which the server can't know in
+ * advance (and often runs in a different timezone entirely — Vercel's build region vs.
+ * wherever the admin actually is). Same tradeoff TvHeader's live clock already makes
+ * (src/features/tv/components/TvHeader.tsx): compute once from a real `Date` via a
+ * lazy useState initializer rather than deriving it in an effect (an unconditional
+ * setState there would just be re-deriving state React already has a value for, which
+ * is exactly what the set-state-in-effect lint rule is warning against), and mark the
+ * rendered text `suppressHydrationWarning` — worst case a server-timezone-off value
+ * flashes for one frame before hydration corrects it to the visitor's real local time.
+ */
+function useLocalGreeting(): { greeting: string; date: string } {
+  const [value] = useState(() => {
+    const now = new Date();
+    return {
+      greeting: greetingFor(now.getHours()),
+      date: now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }),
+    };
+  });
+
+  return value;
 }
 
 /**
@@ -83,19 +115,37 @@ function TiesBell({ ties }: { ties: UnresolvedTieProgram[] }) {
 
 export function SiteHeader({
   role,
+  userName,
   unresolvedTies = [],
 }: {
   role: "admin" | "judge";
+  userName?: string;
   unresolvedTies?: UnresolvedTieProgram[];
 }) {
   const pathname = usePathname();
+  const local = useLocalGreeting();
+  const isDashboardRoot = DASHBOARD_ROOTS.has(pathname);
+  const firstName = userName?.trim().split(/\s+/)[0];
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-        <h1 className="flex-1 text-base font-medium">{titleFor(pathname)}</h1>
+        <div className="flex-1">
+          {isDashboardRoot && firstName ? (
+            <>
+              <h1 className="text-base font-medium" suppressHydrationWarning>
+                {local.greeting}, {firstName}
+              </h1>
+              <p className="text-xs text-muted-foreground" suppressHydrationWarning>
+                {local.date}
+              </p>
+            </>
+          ) : (
+            <h1 className="text-base font-medium">{titleFor(pathname)}</h1>
+          )}
+        </div>
         {role === "admin" ? <TiesBell ties={unresolvedTies} /> : null}
       </div>
     </header>

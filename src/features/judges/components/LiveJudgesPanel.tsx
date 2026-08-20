@@ -48,7 +48,7 @@ export function LiveJudgesPanel({ activity }: { activity: LiveJudgeActivity[] })
   });
 
   return (
-    <Card size="sm" className="ring-house-yellow/30">
+    <Card size="sm" className="bg-house-yellow/5 ring-house-yellow/30">
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">

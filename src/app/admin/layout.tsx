@@ -28,7 +28,7 @@ export default async function AdminLayout({
       <AppSidebar role="admin" user={user} variant="inset" />
       <SidebarInset>
         <RealtimeLeaderboardListener />
-        <SiteHeader role="admin" unresolvedTies={unresolvedTies} />
+        <SiteHeader role="admin" userName={user.name} unresolvedTies={unresolvedTies} />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>

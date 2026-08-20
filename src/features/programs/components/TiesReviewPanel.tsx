@@ -80,7 +80,10 @@ export function TiesReviewPanel({ ties }: { ties: UnresolvedTieProgram[] }) {
   }
 
   return (
-    <Card size="sm" className="animate-in fade-in slide-in-from-top-2 duration-300 ring-destructive/30">
+    <Card
+      size="sm"
+      className="animate-in fade-in slide-in-from-top-2 bg-destructive/5 ring-destructive/30 duration-300"
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className="flex size-6 items-center justify-center rounded-lg bg-destructive/15 text-destructive">

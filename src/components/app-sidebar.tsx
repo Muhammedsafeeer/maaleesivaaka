@@ -34,17 +34,22 @@ import type { Role } from "@/constants/roles";
 
 const ADMIN_NAV: NavMainItem[] = [
   { title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon />, exact: true },
-  { title: "Groups", url: "/admin/groups", icon: <UsersIcon /> },
-  { title: "Students", url: "/admin/students", icon: <GraduationCapIcon /> },
-  { title: "Programs", url: "/admin/programs", icon: <ListMusicIcon /> },
-  { title: "Fixture", url: "/admin/fixture", icon: <CalendarClockIcon /> },
-  { title: "Judges", url: "/admin/judges", icon: <GavelIcon /> },
-  { title: "Leaderboard", url: "/admin/leaderboard", icon: <TrophyIcon /> },
-  { title: "Certificates", url: "/admin/certificates", icon: <AwardIcon /> },
-  { title: "Results Poster", url: "/admin/results-poster", icon: <ImageIcon /> },
-  { title: "Poster Settings", url: "/admin/poster-settings", icon: <LayoutTemplateIcon /> },
-  { title: "Ads", url: "/admin/ads", icon: <MegaphoneIcon /> },
-  { title: "Settings", url: "/admin/settings", icon: <Settings2Icon /> },
+  { title: "Groups", url: "/admin/groups", icon: <UsersIcon />, group: "People" },
+  { title: "Students", url: "/admin/students", icon: <GraduationCapIcon />, group: "People" },
+  { title: "Judges", url: "/admin/judges", icon: <GavelIcon />, group: "People" },
+  { title: "Programs", url: "/admin/programs", icon: <ListMusicIcon />, group: "Event" },
+  { title: "Fixture", url: "/admin/fixture", icon: <CalendarClockIcon />, group: "Event" },
+  { title: "Leaderboard", url: "/admin/leaderboard", icon: <TrophyIcon />, group: "Event" },
+  { title: "Certificates", url: "/admin/certificates", icon: <AwardIcon />, group: "Content" },
+  { title: "Results Poster", url: "/admin/results-poster", icon: <ImageIcon />, group: "Content" },
+  {
+    title: "Poster Settings",
+    url: "/admin/poster-settings",
+    icon: <LayoutTemplateIcon />,
+    group: "Content",
+  },
+  { title: "Ads", url: "/admin/ads", icon: <MegaphoneIcon />, group: "Content" },
+  { title: "Settings", url: "/admin/settings", icon: <Settings2Icon />, group: "System" },
 ];
 
 const JUDGE_NAV: NavMainItem[] = [
