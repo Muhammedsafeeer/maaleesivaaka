@@ -5,6 +5,8 @@
  *         docs/decisions.md D-004 (tie handling)
  */
 
+import type { ChangeEvent } from "react";
+
 /**
  * Each scoring type (criterion) a judge fills in is bounded to this inclusive range —
  * see supabase/migrations/20260801000000_program_scoring_criteria.sql. A program's
@@ -18,6 +20,22 @@ export const CRITERION_SCORE_MAX = 10;
 /** A program with zero configured scoring types still gets one implicit 0–10 score. */
 export function getMaxTotalScore(criteriaCount: number): number {
   return (criteriaCount || 1) * CRITERION_SCORE_MAX;
+}
+
+/**
+ * Clamps a score `<input type="number">` live, in the DOM, before react-hook-form's
+ * own `onChange` runs — the `min`/`max` attributes alone only affect the stepper
+ * arrows, not direct typing/paste, so without this a judge could type "15" and only
+ * find out it's invalid on Save. Call from an `onChange` wrapping the registered
+ * field's own handler: `onChange={(e) => { clampScoreInput(e); registered.onChange(e); }}`.
+ */
+export function clampScoreInput(event: ChangeEvent<HTMLInputElement>): void {
+  const raw = event.target.value;
+  if (raw === "") return;
+  const n = Number(raw);
+  if (Number.isNaN(n)) return;
+  if (n > CRITERION_SCORE_MAX) event.target.value = String(CRITERION_SCORE_MAX);
+  else if (n < CRITERION_SCORE_MIN) event.target.value = String(CRITERION_SCORE_MIN);
 }
 
 /**

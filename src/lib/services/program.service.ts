@@ -152,8 +152,11 @@ export async function updateProgram(
  * (D-025 extension): for pre-launch data entry where students were assigned
  * individually before it was decided the program is actually a team event. Every
  * house that already has a student assigned here gets a team entry with a placeholder
- * chest number, so the existing roster survives the switch instead of becoming
- * orphaned (a group program's UI only shows students under a house's team entry).
+ * chest number, and every already-assigned student is re-pointed at their house's new
+ * entry (group_entry_id) so the existing roster actually shows up under its team
+ * instead of every freshly created team reading "no students added yet" (a group
+ * program's UI only shows students under a house's team entry, keyed by
+ * group_entry_id, not by house alone).
  * The caller (convertProgramToGroupAction) is responsible for blocking this once any
  * judge has scored the program — this function doesn't re-check that itself.
  */
@@ -176,16 +179,22 @@ export async function convertProgramToGroup(id: string): Promise<ServiceResult<P
 
   const { data: assigned, error: assignedError } = await supabase
     .from("program_students")
-    .select("students(group_id)")
+    .select("student_id, students(group_id)")
     .eq("program_id", id);
 
   if (assignedError) {
     return { success: false, error: "Could not read the current roster. Please try again." };
   }
 
-  const groupIds = [
-    ...new Set(assigned.flatMap((row) => (row.students ? [row.students.group_id] : []))),
-  ];
+  // studentId -> groupId (house), used below to re-point each student's row at their
+  // house's newly created entry once it exists.
+  const groupIdByStudent = new Map<string, string>();
+  for (const row of assigned) {
+    if (row.student_id && row.students) {
+      groupIdByStudent.set(row.student_id, row.students.group_id);
+    }
+  }
+  const groupIds = [...new Set(groupIdByStudent.values())];
 
   const { data: updated, error: updateError } = await supabase
     .from("programs")
@@ -199,20 +208,44 @@ export async function convertProgramToGroup(id: string): Promise<ServiceResult<P
   }
 
   if (groupIds.length > 0) {
-    const { error: entriesError } = await supabase.from("program_group_entries").insert(
-      groupIds.map((groupId, index) => ({
-        program_id: id,
-        group_id: groupId,
-        chest_number: `TBD-${index + 1}`,
-      })),
-    );
+    const { data: insertedEntries, error: entriesError } = await supabase
+      .from("program_group_entries")
+      .insert(
+        groupIds.map((groupId, index) => ({
+          program_id: id,
+          group_id: groupId,
+          chest_number: `TBD-${index + 1}`,
+        })),
+      )
+      .select("id, group_id");
 
-    if (entriesError) {
+    if (entriesError || !insertedEntries) {
       return {
         success: false,
         error:
           "Converted, but couldn't auto-create team entries for the existing roster. Add them manually from the Teams panel.",
       };
+    }
+
+    const entryIdByGroup = new Map(insertedEntries.map((e) => [e.group_id, e.id]));
+
+    for (const [studentId, groupId] of groupIdByStudent) {
+      const entryId = entryIdByGroup.get(groupId);
+      if (!entryId) continue;
+
+      const { error: moveError } = await supabase
+        .from("program_students")
+        .update({ group_entry_id: entryId })
+        .eq("program_id", id)
+        .eq("student_id", studentId);
+
+      if (moveError) {
+        return {
+          success: false,
+          error:
+            "Converted and created team entries, but couldn't move the existing roster onto them. Add members manually from the Teams panel.",
+        };
+      }
     }
   }
 

@@ -30,7 +30,7 @@ import {
 import { submitTeamScoresAction } from "@/features/scoring/actions/scoring.actions";
 import type { ScorableTeam, TeamScoreInput } from "@/lib/services/scoring.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
-import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore } from "@/constants/scoring";
+import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore, clampScoreInput } from "@/constants/scoring";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_CRITERION: ScoringCriterion = { id: "__default__", name: "Score" };
@@ -217,7 +217,7 @@ export function TeamScoringForm({
                   aria-invalid={
                     errors.entries?.[index]?.criteriaScores?.[0]?.value ? true : undefined
                   }
-                  {...register(`entries.${index}.criteriaScores.0.value`)}
+                  {...register(`entries.${index}.criteriaScores.0.value`, { onChange: clampScoreInput })}
                 />
                 {errors.entries?.[index]?.criteriaScores?.[0]?.value ? (
                   <p role="alert" className="text-xs text-destructive">
@@ -335,7 +335,9 @@ function MultiCriterionInputs({
                   ? true
                   : undefined
               }
-              {...register(`entries.${index}.criteriaScores.${criterionIndex}.value`)}
+              {...register(`entries.${index}.criteriaScores.${criterionIndex}.value`, {
+                onChange: clampScoreInput,
+              })}
             />
           </div>
         ))}

@@ -30,7 +30,7 @@ import {
 import { submitScoresAction } from "@/features/scoring/actions/scoring.actions";
 import type { ScorableStudent, ScoreInput } from "@/lib/services/scoring.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
-import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore } from "@/constants/scoring";
+import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore, clampScoreInput } from "@/constants/scoring";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -223,7 +223,7 @@ export function ScoringForm({
                   aria-invalid={
                     errors.entries?.[index]?.criteriaScores?.[0]?.value ? true : undefined
                   }
-                  {...register(`entries.${index}.criteriaScores.0.value`)}
+                  {...register(`entries.${index}.criteriaScores.0.value`, { onChange: clampScoreInput })}
                 />
                 {errors.entries?.[index]?.criteriaScores?.[0]?.value ? (
                   <p role="alert" className="text-xs text-destructive">
@@ -346,7 +346,9 @@ function MultiCriterionInputs({
                   ? true
                   : undefined
               }
-              {...register(`entries.${index}.criteriaScores.${criterionIndex}.value`)}
+              {...register(`entries.${index}.criteriaScores.${criterionIndex}.value`, {
+                onChange: clampScoreInput,
+              })}
             />
           </div>
         ))}

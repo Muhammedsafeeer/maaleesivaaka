@@ -21,7 +21,7 @@ import type { CategoryStatus } from "@/lib/services/program.service";
 import type { Program } from "@/types/program";
 import type { AdWithMedia } from "@/types/ad";
 
-const SLIDE_DURATION_MS = 10_000;
+const SLIDE_DURATION_MS = 5_000;
 
 type Slide =
   | { kind: "standings" }
