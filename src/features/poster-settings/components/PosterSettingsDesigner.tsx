@@ -195,6 +195,46 @@ export function PosterSettingsDesigner({
     }
   }
 
+  // Arrow-key nudge for the selected field — the pointer drag above is coarse (a
+  // percentage of wherever the cursor lands), so fine-tuning a field's final position
+  // needs a precise alternative. Skips while focus is inside a form control (the
+  // footer textarea, a colour swatch button, etc.) so arrow keys there keep doing
+  // their normal job instead of also moving the field underneath.
+  useEffect(() => {
+    if (!selectedKey) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      const tag = (event.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const deltas: Record<string, [number, number]> = {
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+      };
+      const delta = deltas[event.key];
+      if (!delta) return;
+
+      event.preventDefault();
+      const step = event.shiftKey ? 0.02 : 0.004;
+      setFields((prev) =>
+        prev.map((f) =>
+          f.key === selectedKey
+            ? {
+                ...f,
+                x: Math.min(1, Math.max(0, f.x + delta[0] * step)),
+                y: Math.min(1, Math.max(0, f.y + delta[1] * step)),
+              }
+            : f,
+        ),
+      );
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedKey]);
+
   const selected = fields.find((f) => f.key === selectedKey) ?? null;
 
   return (
@@ -241,7 +281,8 @@ export function PosterSettingsDesigner({
         <>
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              Click a field below to show it, then drag it into place on the poster.
+              Click a field below to show it, then drag it into place on the poster — or use
+              the arrow keys to nudge it (hold Shift to move faster).
             </p>
             <div className="flex items-center gap-2">
               <label>
@@ -293,8 +334,10 @@ export function PosterSettingsDesigner({
                   // Mirrors DynamicResultPosterTemplate's rendering: a text field's box is
                   // field.width wide (not shrink-wrapped to its text), so text-align only
                   // affects space *inside* that box — the box itself also has to be pinned
-                  // by the same edge align refers to. Photo fields have no align concept,
-                  // so they always stay centered on their anchor point.
+                  // by the same edge align refers to. Text stays single-line and truncates
+                  // with an ellipsis rather than wrapping, so narrowing the width shrinks
+                  // what's visible instead of growing the field taller. Photo fields have
+                  // no align concept, so they always stay centered on their anchor point.
                   const translateX =
                     field.type === "text" && field.align === "left"
                       ? "0%"
@@ -325,11 +368,9 @@ export function PosterSettingsDesigner({
                       </div>
                     ) : (
                       <p
-                        className="px-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+                        className="overflow-hidden px-1 text-ellipsis whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
                         style={{
                           width: `${field.width * 100}%`,
-                          whiteSpace: "normal",
-                          overflowWrap: "break-word",
                           color: field.color,
                           fontSize: field.fontSize,
                           fontWeight: field.bold ? 700 : 400,

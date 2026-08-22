@@ -203,23 +203,23 @@ export function DynamicResultPosterTemplate({
           if (!text) return null;
           const isMalayalam = field.key.endsWith("_malayalam");
           // The field's box is field.width wide (not shrink-wrapped to its text), so
-          // long text wraps instead of overflowing past the poster edge. That means
-          // text-align only affects extra space *inside* the box — the box itself also
-          // has to be pinned by the same edge align refers to, or "left"/"right" would
-          // just move text within a box that's still centered on the anchor point.
+          // text-align has a box to align left/center/right within — the box itself
+          // also has to be pinned by the same edge align refers to, or "left"/"right"
+          // would just move text within a box that's still centered on the anchor
+          // point. Text stays single-line and truncates with an ellipsis rather than
+          // wrapping onto a second line: a narrower width should shrink what's visible,
+          // not grow the field taller and risk overlapping whatever sits below it.
           const translateX = field.align === "left" ? "0%" : field.align === "right" ? "-100%" : "-50%";
 
           return (
             <p
               key={field.key}
-              className="absolute"
+              className="absolute overflow-hidden text-ellipsis whitespace-nowrap"
               style={{
                 left: `${field.x * 100}%`,
                 top: `${field.y * 100}%`,
                 transform: `translate(${translateX}, -50%)`,
                 width: field.width * POSTER_WIDTH,
-                whiteSpace: "normal",
-                overflowWrap: "break-word",
                 color: field.color,
                 fontSize: field.fontSize * 2.5,
                 fontWeight: field.bold ? 700 : 400,
