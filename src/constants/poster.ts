@@ -29,11 +29,16 @@ export type PosterField = {
   y: number;
   fontSize: number;
   photoSize: number;
-  /** Fraction (0..1) of the poster's width — a text field's own box width, so long
-   * text wraps onto a second line instead of overflowing past the poster edge, and so
+  /** Fraction (0..1) of the poster's width — a text field's own box width, so
    * `align` has a box to align left/center/right within. Not meaningful for photo
    * fields (photoSize already controls their circular size). */
   width: number;
+  /** Fraction (0..1) of the poster's height — ONLY for the footer fields (footer,
+   * footer_2, footer_3), whose admin-typed text can run to multiple lines. Not
+   * present on other fields, which stay single-line: treat missing as "not a
+   * multi-line field", same "additive, harmless extra/missing key" reasoning as
+   * `italic`. */
+  height?: number;
   color: string;
   bold: boolean;
   /** Not present on rows saved before this field existed — treat missing as false,
@@ -100,6 +105,7 @@ export function defaultPosterFields(): PosterField[] {
       fontSize: 11,
       photoSize: 0.18,
       width: 0.9,
+      height: 0.06,
       color: "#FFFFFF",
       bold: false,
       align: "center",
@@ -116,6 +122,7 @@ export function defaultPosterFields(): PosterField[] {
       fontSize: 11,
       photoSize: 0.18,
       width: 0.9,
+      height: 0.06,
       color: "#FFFFFF",
       bold: false,
       align: "center",
@@ -132,6 +139,7 @@ export function defaultPosterFields(): PosterField[] {
       fontSize: 11,
       photoSize: 0.18,
       width: 0.9,
+      height: 0.06,
       color: "#FFFFFF",
       bold: false,
       align: "center",

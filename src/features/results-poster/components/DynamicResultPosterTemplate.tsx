@@ -211,20 +211,30 @@ export function DynamicResultPosterTemplate({
           // text-align has a box to align left/center/right within — the box itself
           // also has to be pinned by the same edge align refers to, or "left"/"right"
           // would just move text within a box that's still centered on the anchor
-          // point. Text stays single-line and truncates with an ellipsis rather than
-          // wrapping onto a second line: a narrower width should shrink what's visible,
-          // not grow the field taller and risk overlapping whatever sits below it.
+          // point.
           const translateX = field.align === "left" ? "0%" : field.align === "right" ? "-100%" : "-50%";
+          // Only the footer fields hold free-typed, potentially multi-line text — those
+          // wrap within field.height (clipping anything past it) instead of the usual
+          // single-line-plus-ellipsis every other field uses, where a narrower width
+          // should shrink what's visible rather than grow the field taller and risk
+          // overlapping whatever sits below it.
+          const isMultiline = field.height !== undefined;
 
           return (
             <p
               key={field.key}
-              className="absolute overflow-hidden text-ellipsis whitespace-nowrap"
+              className={isMultiline ? "absolute overflow-hidden" : "absolute overflow-hidden text-ellipsis whitespace-nowrap"}
               style={{
                 left: `${field.x * 100}%`,
                 top: `${field.y * 100}%`,
                 transform: `translate(${translateX}, -50%)`,
                 width: field.width * POSTER_WIDTH,
+                height: isMultiline ? (field.height ?? 0) * posterHeight : undefined,
+                // pre-wrap (not plain "normal") so an admin-typed line break in the
+                // footer textarea actually breaks the line here too, on top of long
+                // lines still wrapping on their own.
+                whiteSpace: isMultiline ? "pre-wrap" : undefined,
+                overflowWrap: isMultiline ? "break-word" : undefined,
                 color: field.color,
                 fontSize: field.fontSize * 2.5,
                 fontWeight: field.bold ? 700 : 400,

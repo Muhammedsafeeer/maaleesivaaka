@@ -386,8 +386,10 @@ export function PosterSettingsDesigner({
                   // affects space *inside* that box — the box itself also has to be pinned
                   // by the same edge align refers to. Text stays single-line and truncates
                   // with an ellipsis rather than wrapping, so narrowing the width shrinks
-                  // what's visible instead of growing the field taller. Photo fields have
-                  // no align concept, so they always stay centered on their anchor point.
+                  // what's visible instead of growing the field taller — except the footer
+                  // fields (field.height is set), whose free-typed text wraps within an
+                  // explicit height instead. Photo fields have no align concept, so they
+                  // always stay centered on their anchor point.
                   const translateX =
                     field.type === "text" && field.align === "left"
                       ? "0%"
@@ -418,9 +420,15 @@ export function PosterSettingsDesigner({
                       </div>
                     ) : (
                       <p
-                        className="overflow-hidden px-1 text-ellipsis whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+                        className={cn(
+                          "overflow-hidden px-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]",
+                          field.height !== undefined ? "" : "text-ellipsis whitespace-nowrap",
+                        )}
                         style={{
                           width: `${field.width * 100}%`,
+                          height: field.height !== undefined ? `${field.height * 100}%` : undefined,
+                          whiteSpace: field.height !== undefined ? "pre-wrap" : undefined,
+                          overflowWrap: field.height !== undefined ? "break-word" : undefined,
                           color: field.color,
                           fontSize: field.fontSize,
                           fontWeight: field.bold ? 700 : 400,
@@ -457,7 +465,7 @@ export function PosterSettingsDesigner({
                       <span className="text-xs text-muted-foreground">Size ({Math.round(selected.fontSize)})</span>
                       <input
                         type="range"
-                        min={8}
+                        min={1}
                         max={48}
                         step={1}
                         value={selected.fontSize}
@@ -479,6 +487,22 @@ export function PosterSettingsDesigner({
                         className="w-full accent-primary"
                       />
                     </div>
+                    {selected.height !== undefined ? (
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          Height ({Math.round(selected.height * 100)}%)
+                        </span>
+                        <input
+                          type="range"
+                          min={0.02}
+                          max={0.4}
+                          step={0.01}
+                          value={selected.height}
+                          onChange={(e) => updateField(selected.key, { height: Number(e.target.value) })}
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">Bold</span>
