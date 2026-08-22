@@ -200,13 +200,6 @@ export function PosterSettingsDesigner({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={selectedCategory === null ? "default" : "outline"}
-          className="cursor-pointer select-none"
-          onClick={() => handleSelectCategory(null)}
-        >
-          Default
-        </Badge>
         {categories.map((c) => (
           <Badge
             key={c.id}
@@ -315,7 +308,7 @@ export function PosterSettingsDesigner({
                     onPointerDown={(e) => handlePointerDown(e, field.key)}
                     className={cn(
                       "absolute cursor-grab active:cursor-grabbing",
-                      field.key === selectedKey && "outline outline-2 outline-offset-2 outline-blue-500",
+                      field.key === selectedKey && "outline-2 outline-offset-2 outline-blue-500",
                     )}
                     style={{
                       left: `${field.x * 100}%`,

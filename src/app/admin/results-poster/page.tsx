@@ -15,10 +15,10 @@ const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.labe
  * published program, listing its top three, for posting to a group chat. Each
  * program renders with ITS OWN category's design
  * (20260822000000_poster_settings_per_category.sql) — a "kids" program uses the kids
- * layout, falling back to Default if that category has none of its own — once a
- * background has been uploaded for it; falls back further to the fixed
- * public/poster.jpg design if even Default has no background (see
- * ResultsPosterBrowser).
+ * layout, once a background has been uploaded for it in Poster Settings; falls back
+ * to the fixed public/poster.jpg design otherwise (see ResultsPosterBrowser). No
+ * shared "Default" design anymore — removed by explicit request, every category is
+ * configured on its own.
  */
 export default async function ResultsPosterPage() {
   const [rows, posterSettingsList] = await Promise.all([listPublishedProgramPodiums(), listAllPosterSettings()]);
@@ -40,7 +40,8 @@ export default async function ResultsPosterPage() {
           {hasAnyCustomLayout ? null : (
             <>
               {" "}
-              No custom layout is set up yet — using the default design. Configure one in{" "}
+              No category has a custom layout set up yet — using the classic poster design.
+              Configure one in{" "}
               <Link href="/admin/poster-settings" className="underline underline-offset-4">
                 Poster Settings
               </Link>

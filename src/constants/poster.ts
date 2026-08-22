@@ -61,6 +61,7 @@ export const POSTER_FONT_OPTIONS: { value: PosterFontFamily; label: string }[] =
 
 export function defaultPosterFields(): PosterField[] {
   const fields: PosterField[] = [
+    { key: "serial_number", label: "Serial number", type: "text", x: 0.06, y: 0.05, fontSize: 16, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "left", fontFamily: "sans", visible: false },
     { key: "program_name", label: "Program name", type: "text", x: 0.5, y: 0.08, fontSize: 26, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
     { key: "program_name_malayalam", label: "Program name (Malayalam)", type: "text", x: 0.5, y: 0.11, fontSize: 20, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
     { key: "category", label: "Category", type: "text", x: 0.5, y: 0.15, fontSize: 14, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },

@@ -76,7 +76,9 @@ function textFor(
   categoryLabel: string,
   categoryMalayalamLabel: string,
   podium: PodiumEntry[],
+  serialNumber: number,
 ): string | null {
+  if (field.key === "serial_number") return `${serialNumber}`;
   if (field.key === "program_name") return programName;
   if (field.key === "program_name_malayalam") return programMalayalamName;
   if (field.key === "category") return categoryLabel;
@@ -127,6 +129,7 @@ export function DynamicResultPosterTemplate({
   categoryLabel,
   categoryMalayalamLabel,
   podium,
+  serialNumber,
 }: {
   settings: PosterSettings;
   programName: string;
@@ -134,6 +137,9 @@ export function DynamicResultPosterTemplate({
   categoryLabel: string;
   categoryMalayalamLabel: string;
   podium: PodiumEntry[];
+  /** This program's 1-based position in the published-programs list — lets the
+   * "Serial number" field announce e.g. "Result #3" without a dedicated DB column. */
+  serialNumber: number;
 }) {
   const [aspectRatio, setAspectRatio] = useState(FALLBACK_ASPECT_RATIO);
   const posterHeight = Math.round(POSTER_WIDTH / aspectRatio);
@@ -185,7 +191,15 @@ export function DynamicResultPosterTemplate({
             );
           }
 
-          const text = textFor(field, programName, programMalayalamName, categoryLabel, categoryMalayalamLabel, podium);
+          const text = textFor(
+            field,
+            programName,
+            programMalayalamName,
+            categoryLabel,
+            categoryMalayalamLabel,
+            podium,
+            serialNumber,
+          );
           if (!text) return null;
           const isMalayalam = field.key.endsWith("_malayalam");
           // Anchor x/y always mark the field's own left/center/right edge, not its visual

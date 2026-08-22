@@ -131,6 +131,7 @@ export function ResultsPosterBrowser({
                 CATEGORY_MALAYALAM_LABELS[target.programCategory as Category] ?? target.programCategory
               }
               podium={target.podium}
+              serialNumber={rows.findIndex((r) => r.programId === target.programId) + 1}
             />
           ) : (
             <ResultPosterTemplate
