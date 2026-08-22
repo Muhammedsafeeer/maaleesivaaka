@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Manjari, Noto_Sans_Malayalam } from "next/font/google";
+import {
+  Manjari,
+  Noto_Sans_Malayalam,
+  Montserrat,
+  Merriweather,
+  Oswald,
+  Dancing_Script,
+  Baloo_2,
+} from "next/font/google";
 import type { PosterField } from "@/constants/poster";
 import type { PosterSettings } from "@/lib/services/posterSettings.service";
 import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
@@ -12,6 +20,11 @@ import type { PublishedProgramPodiumRow } from "@/lib/services/result.service";
 // downloading the poster.
 const malayalamFont = Noto_Sans_Malayalam({ subsets: ["malayalam"], weight: ["600"] });
 const malayalamSerifFont = Manjari({ subsets: ["malayalam"], weight: ["400", "700"] });
+const montserrat = Montserrat({ subsets: ["latin"], weight: ["700", "900"] });
+const merriweather = Merriweather({ subsets: ["latin"], weight: ["400", "700"] });
+const oswald = Oswald({ subsets: ["latin"], weight: ["500", "700"] });
+const dancingScript = Dancing_Script({ subsets: ["latin"], weight: ["600", "700"] });
+const baloo2 = Baloo_2({ subsets: ["latin"], weight: ["500", "700"] });
 
 // Output width is fixed for a crisp capture (generatePosterImage.ts captures this DOM
 // box pixel-for-pixel, same CAPTURE_SCALE reasoning as the certificate pipeline);
@@ -39,6 +52,16 @@ function fontFamilyFor(fontFamily: PosterField["fontFamily"], isMalayalam: boole
       return "Georgia, 'Times New Roman', serif";
     case "mono":
       return "var(--font-geist-mono), monospace";
+    case "display_bold":
+      return montserrat.style.fontFamily;
+    case "classic_serif":
+      return merriweather.style.fontFamily;
+    case "condensed":
+      return oswald.style.fontFamily;
+    case "script":
+      return dancingScript.style.fontFamily;
+    case "rounded":
+      return baloo2.style.fontFamily;
     default:
       return "var(--font-geist-sans), sans-serif";
   }
@@ -176,6 +199,7 @@ export function DynamicResultPosterTemplate({
                 color: field.color,
                 fontSize: field.fontSize * 2.5,
                 fontWeight: field.bold ? 700 : 400,
+                fontStyle: field.italic ? "italic" : "normal",
                 textAlign: field.align,
                 fontFamily: fontFamilyFor(field.fontFamily, isMalayalam),
                 textShadow: "0 2px 6px rgba(0,0,0,0.6)",

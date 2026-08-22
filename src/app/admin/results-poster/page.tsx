@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublishedProgramPodiums } from "@/lib/services/result.service";
-import { getPosterSettings } from "@/lib/services/posterSettings.service";
+import { listAllPosterSettings } from "@/lib/services/posterSettings.service";
 import { CATEGORIES } from "@/constants/programs";
 import { ResultsPosterBrowser } from "@/features/results-poster/components/ResultsPosterBrowser";
 
@@ -12,13 +12,23 @@ const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.labe
 /**
  * Per-program "share this result" page — distinct from /admin/certificates (a
  * per-student keepsake): this generates one WhatsApp-sized poster image per
- * published program, listing its top three, for posting to a group chat. Uses the
- * admin-designed layout from /admin/poster-settings once a background has been
- * uploaded there; falls back to the fixed public/poster.jpg design otherwise (see
+ * published program, listing its top three, for posting to a group chat. Each
+ * program renders with ITS OWN category's design
+ * (20260822000000_poster_settings_per_category.sql) — a "kids" program uses the kids
+ * layout, falling back to Default if that category has none of its own — once a
+ * background has been uploaded for it; falls back further to the fixed
+ * public/poster.jpg design if even Default has no background (see
  * ResultsPosterBrowser).
  */
 export default async function ResultsPosterPage() {
-  const [rows, posterSettings] = await Promise.all([listPublishedProgramPodiums(), getPosterSettings()]);
+  const [rows, posterSettingsList] = await Promise.all([listPublishedProgramPodiums(), listAllPosterSettings()]);
+
+  const defaultSettings = posterSettingsList.find((s) => s.category === null) ?? {
+    category: null,
+    backgroundUrl: null,
+    fields: [],
+  };
+  const hasAnyCustomLayout = posterSettingsList.some((s) => s.backgroundUrl);
 
   return (
     <div className="flex flex-col gap-4">
@@ -27,7 +37,7 @@ export default async function ResultsPosterPage() {
         <p className="text-sm text-muted-foreground">
           Download a shareable poster image of a published program&apos;s top three, ready to post
           to WhatsApp.
-          {posterSettings.backgroundUrl ? null : (
+          {hasAnyCustomLayout ? null : (
             <>
               {" "}
               No custom layout is set up yet — using the default design. Configure one in{" "}
@@ -40,7 +50,12 @@ export default async function ResultsPosterPage() {
         </p>
       </div>
 
-      <ResultsPosterBrowser rows={rows} categoryLabels={categoryLabels} posterSettings={posterSettings} />
+      <ResultsPosterBrowser
+        rows={rows}
+        categoryLabels={categoryLabels}
+        posterSettingsList={posterSettingsList}
+        defaultSettings={defaultSettings}
+      />
     </div>
   );
 }

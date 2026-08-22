@@ -13,7 +13,12 @@ export type PosterFontFamily =
   | "serif"
   | "mono"
   | "malayalam_sans"
-  | "malayalam_serif";
+  | "malayalam_serif"
+  | "display_bold"
+  | "classic_serif"
+  | "condensed"
+  | "script"
+  | "rounded";
 
 export type PosterField = {
   key: string;
@@ -26,6 +31,10 @@ export type PosterField = {
   photoSize: number;
   color: string;
   bold: boolean;
+  /** Not present on rows saved before this field existed — treat missing as false,
+   * same "additive, harmless extra/missing key" reasoning as the rest of this jsonb
+   * column (kept in sync with the Flutter app's PosterField.italic). */
+  italic?: boolean;
   align: PosterAlign;
   fontFamily: PosterFontFamily;
   visible: boolean;
@@ -33,13 +42,21 @@ export type PosterField = {
   staticText?: string;
 };
 
-export const POSTER_COLOR_SWATCHES = ["#FFFFFF", "#000000", "#0F5C33", "#C9A227", "#D32F2F", "#1565C0"];
+export const POSTER_COLOR_SWATCHES = [
+  "#FFFFFF", "#000000", "#0F5C33", "#C9A227", "#D32F2F", "#1565C0",
+  "#7B1FA2", "#F57C00", "#00897B", "#C2185B",
+];
 export const POSTER_FONT_OPTIONS: { value: PosterFontFamily; label: string }[] = [
   { value: "sans", label: "Sans" },
   { value: "serif", label: "Serif" },
   { value: "mono", label: "Mono" },
   { value: "malayalam_sans", label: "Malayalam Sans" },
   { value: "malayalam_serif", label: "Malayalam Serif" },
+  { value: "display_bold", label: "Bold Display" },
+  { value: "classic_serif", label: "Classic Serif" },
+  { value: "condensed", label: "Condensed" },
+  { value: "script", label: "Script" },
+  { value: "rounded", label: "Rounded" },
 ];
 
 export function defaultPosterFields(): PosterField[] {

@@ -36,13 +36,22 @@ function slugify(value: string): string {
 export function ResultsPosterBrowser({
   rows,
   categoryLabels,
-  posterSettings,
+  posterSettingsList,
+  defaultSettings,
 }: {
   rows: PublishedProgramPodiumRow[];
   categoryLabels: Record<string, string>;
-  posterSettings: PosterSettings;
+  /** One design per category, plus the "Default" (category: null) fallback. */
+  posterSettingsList: PosterSettings[];
+  defaultSettings: PosterSettings;
 }) {
   const [target, setTarget] = useState<PublishedProgramPodiumRow | null>(null);
+
+  const settingsByCategory = new Map(posterSettingsList.filter((s) => s.category !== null).map((s) => [s.category, s]));
+
+  function settingsFor(programCategory: string): PosterSettings {
+    return settingsByCategory.get(programCategory) ?? defaultSettings;
+  }
 
   if (rows.length === 0) {
     return (
@@ -110,9 +119,9 @@ export function ResultsPosterBrowser({
         filename={target ? `poster-${slugify(target.programName)}.png` : "poster.png"}
       >
         {target ? (
-          posterSettings.backgroundUrl ? (
+          settingsFor(target.programCategory).backgroundUrl ? (
             <DynamicResultPosterTemplate
-              settings={posterSettings}
+              settings={settingsFor(target.programCategory)}
               programName={target.programName}
               programMalayalamName={target.programMalayalamName}
               categoryLabel={categoryLabels[target.programCategory] ?? target.programCategory}

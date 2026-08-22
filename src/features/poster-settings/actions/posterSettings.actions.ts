@@ -1,17 +1,31 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updatePosterBackground, updatePosterFields } from "@/lib/services/posterSettings.service";
+import {
+  updatePosterBackground,
+  updatePosterFields,
+  getPosterSettings,
+  type PosterSettings,
+} from "@/lib/services/posterSettings.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 import type { PosterField } from "@/constants/poster";
 
 export type PosterSettingsActionResult = { error: string } | { error?: undefined };
 
-export async function updatePosterBackgroundAction(url: string | null): Promise<PosterSettingsActionResult> {
+/** Client-callable fetch for the category tab switcher — avoids a full page
+ * navigation just to load a different category's design. */
+export async function getPosterSettingsAction(category: string | null): Promise<PosterSettings> {
+  return getPosterSettings(category);
+}
+
+export async function updatePosterBackgroundAction(
+  url: string | null,
+  category: string | null,
+): Promise<PosterSettingsActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
-  const result = await updatePosterBackground(url);
+  const result = await updatePosterBackground(url, category);
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/poster-settings");
@@ -24,11 +38,14 @@ export async function updatePosterBackgroundAction(url: string | null): Promise<
  * scoringCriteria.service.ts's replaceScoringCriteria — the designer always sends the
  * complete field catalog (positions + styles), not a diff.
  */
-export async function updatePosterFieldsAction(fields: PosterField[]): Promise<PosterSettingsActionResult> {
+export async function updatePosterFieldsAction(
+  fields: PosterField[],
+  category: string | null,
+): Promise<PosterSettingsActionResult> {
   const auth = await assertAdmin();
   if (!auth.ok) return { error: auth.error };
 
-  const result = await updatePosterFields(fields);
+  const result = await updatePosterFields(fields, category);
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/poster-settings");

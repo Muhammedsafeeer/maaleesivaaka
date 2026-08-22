@@ -39,36 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      categories: {
-        Row: {
-          id: string
-          value: string
-          label: string
-          malayalam_label: string | null
-          sort_order: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          value: string
-          label: string
-          malayalam_label?: string | null
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          value?: string
-          label?: string
-          malayalam_label?: string | null
-          sort_order?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       ad_media: {
         Row: {
           ad_id: string
@@ -137,6 +107,36 @@ export type Database = {
         }
         Relationships: []
       }
+      categories: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          malayalam_label: string | null
+          sort_order: number
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          malayalam_label?: string | null
+          sort_order?: number
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          malayalam_label?: string | null
+          sort_order?: number
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       certificate_settings: {
         Row: {
           created_at: string
@@ -200,6 +200,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "judge_scores_group_entry_id_fkey"
+            columns: ["group_entry_id"]
+            isOneToOne: false
+            referencedRelation: "program_group_entries"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "judge_scores_judge_id_fkey"
             columns: ["judge_id"]
             isOneToOne: false
@@ -218,13 +225,6 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "judge_scores_group_entry_id_fkey"
-            columns: ["group_entry_id"]
-            isOneToOne: false
-            referencedRelation: "program_group_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -259,6 +259,7 @@ export type Database = {
       poster_settings: {
         Row: {
           background_url: string | null
+          category: Database["public"]["Enums"]["participant_category"] | null
           created_at: string
           fields: Json
           id: number
@@ -266,6 +267,7 @@ export type Database = {
         }
         Insert: {
           background_url?: string | null
+          category?: Database["public"]["Enums"]["participant_category"] | null
           created_at?: string
           fields?: Json
           id?: number
@@ -273,6 +275,7 @@ export type Database = {
         }
         Update: {
           background_url?: string | null
+          category?: Database["public"]["Enums"]["participant_category"] | null
           created_at?: string
           fields?: Json
           id?: number
@@ -306,6 +309,58 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      program_group_entries: {
+        Row: {
+          chest_number: string
+          created_at: string
+          group_id: string
+          id: string
+          program_id: string
+          set_number: number
+          updated_at: string
+        }
+        Insert: {
+          chest_number: string
+          created_at?: string
+          group_id: string
+          id?: string
+          program_id: string
+          set_number?: number
+          updated_at?: string
+        }
+        Update: {
+          chest_number?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          program_id?: string
+          set_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_group_entries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "group_leaderboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_group_entries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "main_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_group_entries_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       program_judges: {
         Row: {
@@ -373,6 +428,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "program_students_group_entry_id_fkey"
+            columns: ["group_entry_id"]
+            isOneToOne: false
+            referencedRelation: "program_group_entries"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "program_students_program_id_fkey"
             columns: ["program_id"]
             isOneToOne: false
@@ -384,13 +446,6 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "program_students_group_entry_id_fkey"
-            columns: ["group_entry_id"]
-            isOneToOne: false
-            referencedRelation: "program_group_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -440,51 +495,6 @@ export type Database = {
         }
         Relationships: []
       }
-      program_group_entries: {
-        Row: {
-          chest_number: string
-          created_at: string
-          group_id: string
-          id: string
-          program_id: string
-          set_number: number
-          updated_at: string
-        }
-        Insert: {
-          chest_number: string
-          created_at?: string
-          group_id: string
-          id?: string
-          program_id: string
-          set_number?: number
-          updated_at?: string
-        }
-        Update: {
-          chest_number?: string
-          created_at?: string
-          group_id?: string
-          id?: string
-          program_id?: string
-          set_number?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "program_group_entries_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "main_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "program_group_entries_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       results: {
         Row: {
           average_score: number
@@ -524,6 +534,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "results_group_entry_id_fkey"
+            columns: ["group_entry_id"]
+            isOneToOne: false
+            referencedRelation: "program_group_entries"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "results_program_id_fkey"
             columns: ["program_id"]
             isOneToOne: false
@@ -535,13 +552,6 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "results_group_entry_id_fkey"
-            columns: ["group_entry_id"]
-            isOneToOne: true
-            referencedRelation: "program_group_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -713,14 +723,14 @@ export type Database = {
         Args: { p_program_id: string }
         Returns: {
           criteria_scores: Json
-          group_entry_id: string | null
+          group_entry_id: string
           score: number
-          student_id: string | null
+          student_id: string
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
       is_group_entry_assigned_to_program: {
-        Args: { p_program_id: string; p_group_entry_id: string }
+        Args: { p_group_entry_id: string; p_program_id: string }
         Returns: boolean
       }
       is_judge_assigned_to_program: {
@@ -751,6 +761,14 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_judge_scores: {
+        Args: {
+          p_admin_password?: string
+          p_program_id: string
+          p_scores: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       gender: "male" | "female"
