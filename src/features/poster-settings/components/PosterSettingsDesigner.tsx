@@ -143,7 +143,7 @@ export function PosterSettingsDesigner({
     if (!file) return;
 
     setUploading(true);
-    const uploadResult = await uploadPosterBackground(file);
+    const uploadResult = await uploadPosterBackground(file, selectedCategory);
     if (!uploadResult.success) {
       toast.error(uploadResult.error);
       setUploading(false);
@@ -290,11 +290,11 @@ export function PosterSettingsDesigner({
               {fields
                 .filter((f) => f.visible)
                 .map((field) => {
-                  // Mirrors DynamicResultPosterTemplate's rendering: a nowrap text field's
-                  // box shrinks to fit its content, so text-align alone has no visible
-                  // effect unless the box itself is also pinned by that same edge. Photo
-                  // fields have no align concept, so they always stay centered on their
-                  // anchor point.
+                  // Mirrors DynamicResultPosterTemplate's rendering: a text field's box is
+                  // field.width wide (not shrink-wrapped to its text), so text-align only
+                  // affects space *inside* that box — the box itself also has to be pinned
+                  // by the same edge align refers to. Photo fields have no align concept,
+                  // so they always stay centered on their anchor point.
                   const translateX =
                     field.type === "text" && field.align === "left"
                       ? "0%"
@@ -325,8 +325,11 @@ export function PosterSettingsDesigner({
                       </div>
                     ) : (
                       <p
-                        className="whitespace-nowrap px-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+                        className="px-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
                         style={{
+                          width: `${field.width * 100}%`,
+                          whiteSpace: "normal",
+                          overflowWrap: "break-word",
                           color: field.color,
                           fontSize: field.fontSize,
                           fontWeight: field.bold ? 700 : 400,
@@ -368,6 +371,20 @@ export function PosterSettingsDesigner({
                         step={1}
                         value={selected.fontSize}
                         onChange={(e) => updateField(selected.key, { fontSize: Number(e.target.value) })}
+                        className="w-full accent-primary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs text-muted-foreground">
+                        Width ({Math.round(selected.width * 100)}%)
+                      </span>
+                      <input
+                        type="range"
+                        min={0.1}
+                        max={1}
+                        step={0.01}
+                        value={selected.width}
+                        onChange={(e) => updateField(selected.key, { width: Number(e.target.value) })}
                         className="w-full accent-primary"
                       />
                     </div>

@@ -29,6 +29,11 @@ export type PosterField = {
   y: number;
   fontSize: number;
   photoSize: number;
+  /** Fraction (0..1) of the poster's width — a text field's own box width, so long
+   * text wraps onto a second line instead of overflowing past the poster edge, and so
+   * `align` has a box to align left/center/right within. Not meaningful for photo
+   * fields (photoSize already controls their circular size). */
+  width: number;
   color: string;
   bold: boolean;
   /** Not present on rows saved before this field existed — treat missing as false,
@@ -61,22 +66,22 @@ export const POSTER_FONT_OPTIONS: { value: PosterFontFamily; label: string }[] =
 
 export function defaultPosterFields(): PosterField[] {
   const fields: PosterField[] = [
-    { key: "serial_number", label: "Serial number", type: "text", x: 0.06, y: 0.05, fontSize: 16, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "left", fontFamily: "sans", visible: false },
-    { key: "program_name", label: "Program name", type: "text", x: 0.5, y: 0.08, fontSize: 26, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-    { key: "program_name_malayalam", label: "Program name (Malayalam)", type: "text", x: 0.5, y: 0.11, fontSize: 20, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-    { key: "category", label: "Category", type: "text", x: 0.5, y: 0.15, fontSize: 14, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-    { key: "category_malayalam", label: "Category (Malayalam)", type: "text", x: 0.5, y: 0.18, fontSize: 14, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+    { key: "serial_number", label: "Serial number", type: "text", x: 0.06, y: 0.05, fontSize: 16, photoSize: 0.18, width: 0.15, color: "#FFFFFF", bold: true, align: "left", fontFamily: "sans", visible: false },
+    { key: "program_name", label: "Program name", type: "text", x: 0.5, y: 0.08, fontSize: 26, photoSize: 0.18, width: 0.6, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+    { key: "program_name_malayalam", label: "Program name (Malayalam)", type: "text", x: 0.5, y: 0.11, fontSize: 20, photoSize: 0.18, width: 0.6, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+    { key: "category", label: "Category", type: "text", x: 0.5, y: 0.15, fontSize: 14, photoSize: 0.18, width: 0.5, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+    { key: "category_malayalam", label: "Category (Malayalam)", type: "text", x: 0.5, y: 0.18, fontSize: 14, photoSize: 0.18, width: 0.5, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
   ];
 
   for (const p of [1, 2, 3]) {
     const cx = 0.2 + (p - 1) * 0.3;
     fields.push(
-      { key: `position_${p}_photo`, label: `Winner ${p} photo`, type: "photo", x: cx, y: 0.45, fontSize: 16, photoSize: 0.2, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_name`, label: `Winner ${p} name`, type: "text", x: cx, y: 0.6, fontSize: 15, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_name_malayalam`, label: `Winner ${p} name (Malayalam)`, type: "text", x: cx, y: 0.63, fontSize: 13, photoSize: 0.18, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_group`, label: `Winner ${p} group`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_group_malayalam`, label: `Winner ${p} group (Malayalam)`, type: "text", x: cx, y: 0.68, fontSize: 11, photoSize: 0.18, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_points`, label: `Winner ${p} points`, type: "text", x: cx, y: 0.7, fontSize: 12, photoSize: 0.18, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_photo`, label: `Winner ${p} photo`, type: "photo", x: cx, y: 0.45, fontSize: 16, photoSize: 0.2, width: 0.2, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_name`, label: `Winner ${p} name`, type: "text", x: cx, y: 0.6, fontSize: 15, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_name_malayalam`, label: `Winner ${p} name (Malayalam)`, type: "text", x: cx, y: 0.63, fontSize: 13, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_group`, label: `Winner ${p} group`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_group_malayalam`, label: `Winner ${p} group (Malayalam)`, type: "text", x: cx, y: 0.68, fontSize: 11, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_points`, label: `Winner ${p} points`, type: "text", x: cx, y: 0.7, fontSize: 12, photoSize: 0.18, width: 0.2, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
     );
   }
 
@@ -88,6 +93,7 @@ export function defaultPosterFields(): PosterField[] {
     y: 0.94,
     fontSize: 11,
     photoSize: 0.18,
+    width: 0.9,
     color: "#FFFFFF",
     bold: false,
     align: "center",

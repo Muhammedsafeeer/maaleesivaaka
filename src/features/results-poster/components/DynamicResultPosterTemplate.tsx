@@ -202,20 +202,24 @@ export function DynamicResultPosterTemplate({
           );
           if (!text) return null;
           const isMalayalam = field.key.endsWith("_malayalam");
-          // Anchor x/y always mark the field's own left/center/right edge, not its visual
-          // center — a nowrap single-line <p> shrinks its box to fit the text, so
-          // text-align alone (which only affects extra space *inside* the box) has no
-          // visible effect unless the box itself is also pinned by that same edge.
+          // The field's box is field.width wide (not shrink-wrapped to its text), so
+          // long text wraps instead of overflowing past the poster edge. That means
+          // text-align only affects extra space *inside* the box — the box itself also
+          // has to be pinned by the same edge align refers to, or "left"/"right" would
+          // just move text within a box that's still centered on the anchor point.
           const translateX = field.align === "left" ? "0%" : field.align === "right" ? "-100%" : "-50%";
 
           return (
             <p
               key={field.key}
-              className="absolute whitespace-nowrap"
+              className="absolute"
               style={{
                 left: `${field.x * 100}%`,
                 top: `${field.y * 100}%`,
                 transform: `translate(${translateX}, -50%)`,
+                width: field.width * POSTER_WIDTH,
+                whiteSpace: "normal",
+                overflowWrap: "break-word",
                 color: field.color,
                 fontSize: field.fontSize * 2.5,
                 fontWeight: field.bold ? 700 : 400,

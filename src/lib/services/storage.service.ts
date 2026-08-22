@@ -116,14 +116,23 @@ export async function uploadAdMedia(
 }
 
 /**
- * Poster designer background — fixed key ('background', same singleton shape as
- * certificate-assets' 'seal'/'signature'), uncompressed like uploadAdMedia (shown
- * full-bleed, not a small thumbnail like PhotoUpload's photos). A `?v=` cache-buster
- * is appended to the returned URL so re-uploading over the same key doesn't keep
- * serving a cached copy of the old background — same reasoning as the Flutter app's
- * PosterRepository.uploadBackground.
+ * Poster designer background — one key PER CATEGORY ('background-<category>', or
+ * 'background-default' for the no-category fallback row) so each category's design
+ * keeps its own image file in storage. Was a single fixed 'background' key (same
+ * singleton shape as certificate-assets' 'seal'/'signature') from before
+ * 20260822000000_poster_settings_per_category.sql split poster_settings into one row
+ * per category — that key was never updated to match, so every category's DB row
+ * pointed at the same shared storage object and uploading a new background for one
+ * category silently overwrote every other category's photo too. Uncompressed like
+ * uploadAdMedia (shown full-bleed, not a small thumbnail like PhotoUpload's photos).
+ * A `?v=` cache-buster is appended to the returned URL so re-uploading over the same
+ * key doesn't keep serving a cached copy of the old background — same reasoning as
+ * the Flutter app's PosterRepository.uploadBackground.
  */
-export async function uploadPosterBackground(file: File): Promise<StorageResult<string>> {
+export async function uploadPosterBackground(
+  file: File,
+  category: string | null = null,
+): Promise<StorageResult<string>> {
   if (!ALLOWED_PHOTO_MIME_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_MIME_TYPES)[number])) {
     return { success: false, error: "Background must be a JPEG, PNG, or WebP image." };
   }
@@ -133,7 +142,7 @@ export async function uploadPosterBackground(file: File): Promise<StorageResult<
   }
 
   const supabase = createClient();
-  const key = "background";
+  const key = `background-${category ?? "default"}`;
 
   const { error: uploadError } = await supabase.storage
     .from("poster-assets")
