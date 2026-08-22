@@ -397,6 +397,19 @@ export function PosterSettingsDesigner({
                         ? "-100%"
                         : "-50%";
 
+                  // Width (and, for footer fields, height) live on THIS outer positioned
+                  // div, not on the child inside it — a child's percentage width/height
+                  // only resolves against a parent that itself has a definite size. Left on
+                  // the child (as this used to be), the parent below has no width of its
+                  // own, so the browser falls back to shrink-to-fit: it picks a width from
+                  // whatever space is left between `left` and the canvas's own right edge,
+                  // which shrinks as `left` grows — the field visibly narrowed when dragged
+                  // toward the right and "recovered" when dragged back, even though
+                  // field.width itself never changed. A percentage height inside a
+                  // heightless parent is worse: CSS treats it as "auto" and ignores it
+                  // outright, which is why the Height slider had no visible effect at all.
+                  const boxWidth = field.type === "photo" ? field.photoSize : field.width;
+
                   return (
                   <div
                     key={field.key}
@@ -409,24 +422,25 @@ export function PosterSettingsDesigner({
                       left: `${field.x * 100}%`,
                       top: `${field.y * 100}%`,
                       transform: `translate(${translateX}, -50%)`,
+                      width: `${boxWidth * 100}%`,
+                      height: field.type === "text" && field.height !== undefined ? `${field.height * 100}%` : undefined,
+                      minWidth: field.type === "photo" ? 32 : undefined,
                     }}
                   >
                     {field.type === "photo" ? (
                       <div
-                        className="flex items-center justify-center rounded-full border-2 border-white bg-black/30 text-white/70"
-                        style={{ width: `${field.photoSize * 100}%`, aspectRatio: "1", minWidth: 32 }}
+                        className="flex size-full items-center justify-center rounded-full border-2 border-white bg-black/30 text-white/70"
+                        style={{ aspectRatio: "1" }}
                       >
                         <ImageIcon className="size-1/2" aria-hidden="true" />
                       </div>
                     ) : (
                       <p
                         className={cn(
-                          "overflow-hidden px-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]",
+                          "size-full overflow-hidden px-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]",
                           field.height !== undefined ? "" : "text-ellipsis whitespace-nowrap",
                         )}
                         style={{
-                          width: `${field.width * 100}%`,
-                          height: field.height !== undefined ? `${field.height * 100}%` : undefined,
                           whiteSpace: field.height !== undefined ? "pre-wrap" : undefined,
                           overflowWrap: field.height !== undefined ? "break-word" : undefined,
                           color: field.color,
@@ -480,7 +494,7 @@ export function PosterSettingsDesigner({
                       <input
                         type="range"
                         min={0.1}
-                        max={1}
+                        max={2}
                         step={0.01}
                         value={selected.width}
                         onChange={(e) => updateField(selected.key, { width: Number(e.target.value) })}
@@ -495,7 +509,7 @@ export function PosterSettingsDesigner({
                         <input
                           type="range"
                           min={0.02}
-                          max={0.4}
+                          max={1.5}
                           step={0.01}
                           value={selected.height}
                           onChange={(e) => updateField(selected.key, { height: Number(e.target.value) })}
