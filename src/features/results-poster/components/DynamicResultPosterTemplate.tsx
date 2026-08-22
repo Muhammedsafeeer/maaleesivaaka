@@ -188,14 +188,20 @@ export function DynamicResultPosterTemplate({
           const text = textFor(field, programName, programMalayalamName, categoryLabel, categoryMalayalamLabel, podium);
           if (!text) return null;
           const isMalayalam = field.key.endsWith("_malayalam");
+          // Anchor x/y always mark the field's own left/center/right edge, not its visual
+          // center — a nowrap single-line <p> shrinks its box to fit the text, so
+          // text-align alone (which only affects extra space *inside* the box) has no
+          // visible effect unless the box itself is also pinned by that same edge.
+          const translateX = field.align === "left" ? "0%" : field.align === "right" ? "-100%" : "-50%";
 
           return (
             <p
               key={field.key}
-              className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap"
+              className="absolute whitespace-nowrap"
               style={{
                 left: `${field.x * 100}%`,
                 top: `${field.y * 100}%`,
+                transform: `translate(${translateX}, -50%)`,
                 color: field.color,
                 fontSize: field.fontSize * 2.5,
                 fontWeight: field.bold ? 700 : 400,

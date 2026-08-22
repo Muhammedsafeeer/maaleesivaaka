@@ -296,15 +296,32 @@ export function PosterSettingsDesigner({
             >
               {fields
                 .filter((f) => f.visible)
-                .map((field) => (
+                .map((field) => {
+                  // Mirrors DynamicResultPosterTemplate's rendering: a nowrap text field's
+                  // box shrinks to fit its content, so text-align alone has no visible
+                  // effect unless the box itself is also pinned by that same edge. Photo
+                  // fields have no align concept, so they always stay centered on their
+                  // anchor point.
+                  const translateX =
+                    field.type === "text" && field.align === "left"
+                      ? "0%"
+                      : field.type === "text" && field.align === "right"
+                        ? "-100%"
+                        : "-50%";
+
+                  return (
                   <div
                     key={field.key}
                     onPointerDown={(e) => handlePointerDown(e, field.key)}
                     className={cn(
-                      "absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing",
+                      "absolute cursor-grab active:cursor-grabbing",
                       field.key === selectedKey && "outline outline-2 outline-offset-2 outline-blue-500",
                     )}
-                    style={{ left: `${field.x * 100}%`, top: `${field.y * 100}%` }}
+                    style={{
+                      left: `${field.x * 100}%`,
+                      top: `${field.y * 100}%`,
+                      transform: `translate(${translateX}, -50%)`,
+                    }}
                   >
                     {field.type === "photo" ? (
                       <div
@@ -329,7 +346,8 @@ export function PosterSettingsDesigner({
                       </p>
                     )}
                   </div>
-                ))}
+                  );
+                })}
             </div>
 
             {selected ? (

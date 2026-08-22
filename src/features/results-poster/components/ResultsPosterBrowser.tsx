@@ -67,6 +67,7 @@ export function ResultsPosterBrowser({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">#</TableHead>
             <TableHead>Program</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Podium</TableHead>
@@ -74,8 +75,9 @@ export function ResultsPosterBrowser({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((program) => (
+          {rows.map((program, index) => (
             <TableRow key={program.programId}>
+              <TableCell className="text-muted-foreground">{index + 1}</TableCell>
               <TableCell className="font-medium whitespace-nowrap">{program.programName}</TableCell>
               <TableCell>{categoryLabels[program.programCategory] ?? program.programCategory}</TableCell>
               <TableCell>
