@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -240,7 +240,15 @@ function AddTeamMemberDialog({
   const [isPending, startTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [search, setSearch] = useState("");
   const atLimit = remainingSlots !== null && selectedIds.length >= remainingSlots;
+
+  const query = search.trim().toLowerCase();
+  const filteredStudents = query
+    ? assignableStudents.filter(
+        (s) => s.name.toLowerCase().includes(query) || s.roll_number.toLowerCase().includes(query),
+      )
+    : assignableStudents;
 
   function toggle(studentId: string, checked: boolean) {
     setSelectedIds((prev) =>
@@ -252,6 +260,7 @@ function AddTeamMemberDialog({
     if (!nextOpen) {
       setSelectedIds([]);
       setError(undefined);
+      setSearch("");
     }
     onOpenChange(nextOpen);
   }
@@ -295,25 +304,41 @@ function AddTeamMemberDialog({
 
         <div className="flex flex-col gap-2">
           <Label>Students</Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or roll number…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 pl-8 text-sm"
+              aria-label="Search students"
+            />
+          </div>
           <div className="max-h-64 overflow-y-auto rounded-lg border border-border">
-            {assignableStudents.map((student) => {
-              const checked = selectedIds.includes(student.id);
-              return (
-                <label
-                  key={student.id}
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-muted/60 has-disabled:cursor-not-allowed has-disabled:opacity-50"
-                >
-                  <Checkbox
-                    checked={checked}
-                    disabled={!checked && atLimit}
-                    onCheckedChange={(value) => toggle(student.id, value === true)}
-                  />
-                  <span className="min-w-0 flex-1 truncate">
-                    {student.name} ({student.roll_number})
-                  </span>
-                </label>
-              );
-            })}
+            {filteredStudents.length === 0 ? (
+              <p className="px-3 py-3 text-center text-sm text-muted-foreground">
+                No students match &ldquo;{search}&rdquo;
+              </p>
+            ) : (
+              filteredStudents.map((student) => {
+                const checked = selectedIds.includes(student.id);
+                return (
+                  <label
+                    key={student.id}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-muted/60 has-disabled:cursor-not-allowed has-disabled:opacity-50"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      disabled={!checked && atLimit}
+                      onCheckedChange={(value) => toggle(student.id, value === true)}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {student.name} ({student.roll_number})
+                    </span>
+                  </label>
+                );
+              })
+            )}
           </div>
           {selectedIds.length > 0 ? (
             <p className="text-xs text-muted-foreground">
