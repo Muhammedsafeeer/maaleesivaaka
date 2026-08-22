@@ -11,14 +11,25 @@ import {
   Baloo_2,
 } from "next/font/google";
 import { toast } from "sonner";
-import { Upload, ImageIcon } from "lucide-react";
+import { Upload, ImageIcon, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { uploadPosterBackground } from "@/lib/services/storage.service";
 import {
   updatePosterBackgroundAction,
   updatePosterFieldsAction,
+  applyPosterFieldsToAllCategoriesAction,
   getPosterSettingsAction,
 } from "@/features/poster-settings/actions/posterSettings.actions";
 import {
@@ -91,6 +102,8 @@ export function PosterSettingsDesigner({
   const [uploading, setUploading] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [isSaving, startSaveTransition] = useTransition();
+  const [isApplyingAll, startApplyAllTransition] = useTransition();
+  const [applyAllOpen, setApplyAllOpen] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(FALLBACK_ASPECT_RATIO);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<{ key: string; pointerId: number } | null>(null);
@@ -169,6 +182,32 @@ export function PosterSettingsDesigner({
         return;
       }
       toast.success("Poster layout saved.");
+    });
+  }
+
+  function handleApplyToAll() {
+    const otherCategories = categories
+      .map((c) => c.value)
+      .filter((value) => value !== selectedCategory);
+
+    startApplyAllTransition(async () => {
+      // Save this category's own layout first — otherwise "apply to all" would copy
+      // whatever was last saved, silently dropping any unsaved edit still sitting in
+      // the canvas.
+      const saveResult = await updatePosterFieldsAction(fields, selectedCategory);
+      if (saveResult.error) {
+        toast.error(saveResult.error);
+        return;
+      }
+
+      const applyResult = await applyPosterFieldsToAllCategoriesAction(fields, otherCategories);
+      if (applyResult.error) {
+        toast.error(applyResult.error);
+        return;
+      }
+
+      setApplyAllOpen(false);
+      toast.success("Field placement applied to every category.");
     });
   }
 
@@ -299,6 +338,17 @@ export function PosterSettingsDesigner({
               <Button size="sm" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? "Saving…" : "Save layout"}
               </Button>
+              {categories.length > 1 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setApplyAllOpen(true)}
+                  disabled={isApplyingAll}
+                >
+                  <Copy className="size-4" data-icon="inline-start" aria-hidden="true" />
+                  Apply to all categories
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -525,6 +575,31 @@ export function PosterSettingsDesigner({
           </div>
         </>
       )}
+
+      <AlertDialog open={applyAllOpen} onOpenChange={setApplyAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply this layout to every category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every field&apos;s position, size, colour, and alignment on this design will be
+              copied onto every other category, replacing their current placement.
+              Backgrounds stay untouched — only field placement changes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isApplyingAll}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                handleApplyToAll();
+              }}
+              disabled={isApplyingAll}
+            >
+              {isApplyingAll ? "Applying…" : "Apply to all"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

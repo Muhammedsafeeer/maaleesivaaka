@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   updatePosterBackground,
   updatePosterFields,
+  applyPosterFieldsToCategories,
   getPosterSettings,
   type PosterSettings,
 } from "@/lib/services/posterSettings.service";
@@ -46,6 +47,23 @@ export async function updatePosterFieldsAction(
   if (!auth.ok) return { error: auth.error };
 
   const result = await updatePosterFields(fields, category);
+  if (!result.success) return { error: result.error };
+
+  revalidatePath("/admin/poster-settings");
+  revalidatePath("/admin/results-poster");
+  return {};
+}
+
+/** Applies one category's current field placement onto every other category — see
+ * applyPosterFieldsToCategories for why this is field-only (background stays untouched). */
+export async function applyPosterFieldsToAllCategoriesAction(
+  fields: PosterField[],
+  categories: string[],
+): Promise<PosterSettingsActionResult> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { error: auth.error };
+
+  const result = await applyPosterFieldsToCategories(fields, categories);
   if (!result.success) return { error: result.error };
 
   revalidatePath("/admin/poster-settings");

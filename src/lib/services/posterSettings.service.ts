@@ -93,3 +93,35 @@ export async function updatePosterFields(
   }
   return { success: true, data: null };
 }
+
+/**
+ * Copies one category's field placement (positions, sizes, colors, alignment,
+ * visibility) onto every OTHER category — admin-requested: after getting one
+ * category's layout right, apply the exact same field placement everywhere rather
+ * than re-dragging each field per category by hand. Deliberately field-only, not
+ * `background_url` — each category typically keeps its own themed background image,
+ * only the placement should match. Upsert rather than a plain update so a category
+ * that has no poster_settings row yet (e.g. one created after
+ * 20260822000000_poster_settings_per_category.sql seeded the rest) still ends up with
+ * one instead of the update silently matching zero rows; the `poster_settings_category_unique`
+ * constraint from that same migration is what makes the upsert's conflict target valid.
+ */
+export async function applyPosterFieldsToCategories(
+  fields: PosterField[],
+  categories: string[],
+): Promise<ServiceResult<null>> {
+  if (categories.length === 0) return { success: true, data: null };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("poster_settings")
+    .upsert(
+      categories.map((category) => ({ category: category as ParticipantCategory, fields })),
+      { onConflict: "category" },
+    );
+
+  if (error) {
+    return { success: false, error: "Could not apply the layout to every category. Please try again." };
+  }
+  return { success: true, data: null };
+}
