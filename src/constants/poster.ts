@@ -78,29 +78,68 @@ export function defaultPosterFields(): PosterField[] {
     fields.push(
       { key: `position_${p}_photo`, label: `Winner ${p} photo`, type: "photo", x: cx, y: 0.45, fontSize: 16, photoSize: 0.2, width: 0.2, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
       { key: `position_${p}_name`, label: `Winner ${p} name`, type: "text", x: cx, y: 0.6, fontSize: 15, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_name_malayalam`, label: `Winner ${p} name (Malayalam)`, type: "text", x: cx, y: 0.63, fontSize: 13, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_group`, label: `Winner ${p} group`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_group_malayalam`, label: `Winner ${p} group (Malayalam)`, type: "text", x: cx, y: 0.68, fontSize: 11, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
-      { key: `position_${p}_points`, label: `Winner ${p} points`, type: "text", x: cx, y: 0.7, fontSize: 12, photoSize: 0.18, width: 0.2, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_name_malayalam`, label: `Winner ${p} name (Malayalam)`, type: "text", x: cx, y: 0.625, fontSize: 13, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_class`, label: `Winner ${p} class`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, width: 0.25, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_group`, label: `Winner ${p} group`, type: "text", x: cx, y: 0.675, fontSize: 12, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_group_malayalam`, label: `Winner ${p} group (Malayalam)`, type: "text", x: cx, y: 0.7, fontSize: 11, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      { key: `position_${p}_points`, label: `Winner ${p} points`, type: "text", x: cx, y: 0.725, fontSize: 12, photoSize: 0.18, width: 0.2, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
     );
   }
 
-  fields.push({
-    key: "footer",
-    label: "Footer",
-    type: "text",
-    x: 0.5,
-    y: 0.94,
-    fontSize: 11,
-    photoSize: 0.18,
-    width: 0.9,
-    color: "#FFFFFF",
-    bold: false,
-    align: "center",
-    fontFamily: "sans",
-    visible: false,
-    staticText: "",
-  });
+  // Three independent footer lines (not one multi-line field) so each can be shown,
+  // positioned, and styled on its own — e.g. a contact line in one font/size and a
+  // sign-off in another. Stacked upward from "footer", which keeps its original y so an
+  // already-configured design's footer position doesn't shift under it.
+  fields.push(
+    {
+      key: "footer",
+      label: "Footer",
+      type: "text",
+      x: 0.5,
+      y: 0.94,
+      fontSize: 11,
+      photoSize: 0.18,
+      width: 0.9,
+      color: "#FFFFFF",
+      bold: false,
+      align: "center",
+      fontFamily: "sans",
+      visible: false,
+      staticText: "",
+    },
+    {
+      key: "footer_2",
+      label: "Footer 2",
+      type: "text",
+      x: 0.5,
+      y: 0.9,
+      fontSize: 11,
+      photoSize: 0.18,
+      width: 0.9,
+      color: "#FFFFFF",
+      bold: false,
+      align: "center",
+      fontFamily: "sans",
+      visible: false,
+      staticText: "",
+    },
+    {
+      key: "footer_3",
+      label: "Footer 3",
+      type: "text",
+      x: 0.5,
+      y: 0.86,
+      fontSize: 11,
+      photoSize: 0.18,
+      width: 0.9,
+      color: "#FFFFFF",
+      bold: false,
+      align: "center",
+      fontFamily: "sans",
+      visible: false,
+      staticText: "",
+    },
+  );
 
   return fields;
 }

@@ -506,6 +506,8 @@ export type PublishedProgramPodiumRow = {
     points: number;
     studentName: string;
     studentMalayalamName: string | null;
+    /** Individual programs only — a group win has no single student's class to show. */
+    studentClass: string | null;
     groupName: string | null;
     groupMalayalamName: string | null;
     photoUrl: string | null;
@@ -531,7 +533,7 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
   const { data, error } = await supabase
     .from("programs")
     .select(
-      "id, name, malayalam_name, category, results(position, points, students(name, malayalam_name, photo_url, main_groups(name, malayalam_name, photo_url)), program_group_entries(main_groups(name, malayalam_name, photo_url)))",
+      "id, name, malayalam_name, category, results(position, points, students(name, malayalam_name, class, photo_url, main_groups(name, malayalam_name, photo_url)), program_group_entries(main_groups(name, malayalam_name, photo_url)))",
     )
     .eq("status", "published")
     .lte("results.position", 3)
@@ -560,6 +562,7 @@ export async function listPublishedProgramPodiums(): Promise<PublishedProgramPod
           points: result.points,
           studentName: result.students?.name ?? group?.name ?? "",
           studentMalayalamName: result.students?.malayalam_name ?? group?.malayalam_name ?? null,
+          studentClass: result.students?.class ?? null,
           groupName: group?.name ?? null,
           groupMalayalamName: group?.malayalam_name ?? null,
           photoUrl: result.students?.photo_url ?? group?.photo_url ?? null,

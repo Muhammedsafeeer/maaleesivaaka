@@ -391,7 +391,7 @@ export function PosterSettingsDesigner({
               <div className="flex w-full flex-col gap-4 rounded-lg border border-border p-4 lg:w-72">
                 <p className="text-sm font-medium">{selected.label}</p>
 
-                {selected.key === "footer" ? (
+                {selected.key === "footer" || selected.key === "footer_2" || selected.key === "footer_3" ? (
                   <textarea
                     value={selected.staticText ?? ""}
                     placeholder="Footer text"

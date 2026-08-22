@@ -83,9 +83,11 @@ function textFor(
   if (field.key === "program_name_malayalam") return programMalayalamName;
   if (field.key === "category") return categoryLabel;
   if (field.key === "category_malayalam") return categoryMalayalamLabel;
-  if (field.key === "footer") return field.staticText ?? null;
+  if (field.key === "footer" || field.key === "footer_2" || field.key === "footer_3") {
+    return field.staticText ?? null;
+  }
 
-  const match = /^position_(\d)_(name|group|points|name_malayalam|group_malayalam)$/.exec(field.key);
+  const match = /^position_(\d)_(name|group|points|class|name_malayalam|group_malayalam)$/.exec(field.key);
   if (!match) return null;
   const position = Number(match[1]);
   const attr = match[2];
@@ -97,6 +99,9 @@ function textFor(
       return entry.studentName;
     case "name_malayalam":
       return entry.studentMalayalamName;
+    case "class":
+      // Group wins have no single student's class to show (studentClass is null there).
+      return entry.studentClass ? `Class:${entry.studentClass}` : null;
     case "group":
       return entry.groupName;
     case "group_malayalam":
