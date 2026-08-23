@@ -14,20 +14,27 @@ function isComplete(totalStudents: number, scoredCount: number) {
   return totalStudents > 0 && scoredCount === totalStudents;
 }
 
+// Programs actually open for scoring right now (or already wrapped up by an admin)
+// surface first, ahead of "upcoming"/"draft" ones a judge can't do anything with yet —
+// otherwise they sort alphabetically alongside everything else and the one that
+// actually needs attention can get buried in a long roster. "completed" here is the
+// program's own admin-set status (can precede this judge finishing their own scoring —
+// e.g. an admin closed it early), not this page's own Pending/Completed grouping below.
+const STATUS_PRIORITY: Record<string, number> = { scoring: 0, completed: 1 };
+function byStatusThenName(a: { status: string; name: string }, b: { status: string; name: string }) {
+  const diff = (STATUS_PRIORITY[a.status] ?? 2) - (STATUS_PRIORITY[b.status] ?? 2);
+  return diff !== 0 ? diff : a.name.localeCompare(b.name);
+}
+
 export default async function JudgeDashboardPage() {
   const programs = await listAssignedPrograms();
 
-  const completed = programs.filter((p) => isComplete(p.totalStudents, p.scoredCount));
-  // Programs actually open for scoring right now surface first — otherwise they sort
-  // alphabetically alongside "upcoming" programs a judge can't do anything with yet,
-  // and the one that actually needs attention can get buried in a long roster.
+  const completed = programs
+    .filter((p) => isComplete(p.totalStudents, p.scoredCount))
+    .sort(byStatusThenName);
   const pending = programs
     .filter((p) => !isComplete(p.totalStudents, p.scoredCount))
-    .sort((a, b) => {
-      if (a.status === "scoring" && b.status !== "scoring") return -1;
-      if (a.status !== "scoring" && b.status === "scoring") return 1;
-      return a.name.localeCompare(b.name);
-    });
+    .sort(byStatusThenName);
 
   return (
     <div className="flex flex-col gap-6">
