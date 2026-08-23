@@ -94,6 +94,9 @@ export function ResultsPosterBrowser({
                           {POSITION_LABELS[entry.position] ?? entry.position}
                         </Badge>
                         {entry.studentName}
+                        {entry.groupName ? (
+                          <span className="text-muted-foreground">({entry.groupName})</span>
+                        ) : null}
                       </span>
                     ))}
                   </div>

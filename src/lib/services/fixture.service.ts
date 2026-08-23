@@ -202,6 +202,28 @@ export async function overrideProgramStatus(
     };
   }
 
+  // Admin-requested guard: this override is an escape hatch (e.g. "a judge never
+  // submits") that skips finalize_program_results entirely, so nothing else stops an
+  // admin from force-completing a program nobody actually scored — every student would
+  // land tied for 1st with full points the moment results got calculated. Requiring at
+  // least one score above 0 first doesn't block the normal case (a judge partially
+  // scoring, the rest defaulting to 0 per the scoring form's own floor) — it only
+  // blocks completing a program that's genuinely all zero.
+  if (status === "completed") {
+    const { count: scoredCount } = await supabase
+      .from("judge_scores")
+      .select("id", { count: "exact", head: true })
+      .eq("program_id", programId)
+      .gt("score", 0);
+
+    if (!scoredCount) {
+      return {
+        success: false,
+        error: "No student has a score above 0 yet — score at least one before marking this program completed.",
+      };
+    }
+  }
+
   if (CURRENT_STATUSES.includes(status as (typeof CURRENT_STATUSES)[number])) {
     const { data: current } = await supabase
       .from("programs")

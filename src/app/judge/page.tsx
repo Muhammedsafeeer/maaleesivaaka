@@ -37,14 +37,14 @@ export default async function JudgeDashboardPage() {
     .sort(byStatusThenName);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div id="assigned" className="flex scroll-mt-4 flex-col gap-6">
       <RealtimeProgramsListener />
       <RealtimeProgramJudgesListener />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Assigned Programs" value={programs.length} />
-        <StatCard label="Pending" value={pending.length} />
-        <StatCard label="Completed" value={completed.length} />
+        <StatCard label="Assigned Programs" value={programs.length} href="#assigned" />
+        <StatCard label="Pending" value={pending.length} href="#pending" />
+        <StatCard label="Completed" value={completed.length} href="#completed" />
       </div>
 
       {programs.length === 0 ? (
@@ -54,7 +54,7 @@ export default async function JudgeDashboardPage() {
         />
       ) : (
         <>
-          <div className="flex flex-col gap-3">
+          <div id="pending" className="flex scroll-mt-4 flex-col gap-3">
             <h2 className="text-sm font-medium">Pending</h2>
             {pending.length === 0 ? (
               <EmptyState title="Nothing pending" description="You're all caught up." />
@@ -67,7 +67,7 @@ export default async function JudgeDashboardPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div id="completed" className="flex scroll-mt-4 flex-col gap-3">
             <h2 className="text-sm font-medium">Completed</h2>
             {completed.length === 0 ? (
               <EmptyState
