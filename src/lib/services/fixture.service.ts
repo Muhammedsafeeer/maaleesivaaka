@@ -162,11 +162,17 @@ export async function startNextProgram(stageType: StageType): Promise<ServiceRes
 /**
  * Admin escape hatch for the otherwise-automatic status pipeline (e.g. a judge never
  * submits, or a program was started by mistake). Deliberately can't set 'published' —
- * that stays behind publishProgram()'s "results must be calculated" gate — and can't
- * touch a program that's already published, so a public result can't be silently
- * changed from here. Setting a program to 'scoring' is still blocked while another
- * program on the same stage is already current, so this can't put two programs "on
- * stage" at once.
+ * that stays behind publishProgram()'s "results must be calculated" gate. A program
+ * that's already published is otherwise locked from this override too (a public result
+ * can't be silently changed from here) EXCEPT the two admin-requested recovery paths
+ * for an accidental publish: back to 'scoring' (reopen for rescoring) or 'upcoming' (a
+ * full reset) — see ResultsPanel's "Unpublish" control, the only place these are
+ * reachable from.
+ *
+ * Setting a program to 'scoring' is otherwise blocked while another program on the same
+ * stage is already current, so this can't put two programs "on stage" at once — except
+ * reopening a published one for rescoring, which skips that check (it already had its
+ * turn; it isn't going back "on stage").
  *
  * Serial numbers are never typed in by hand (see reorderUpcoming): moving a program to
  * 'upcoming' auto-assigns it the next serial in the stage if it doesn't already have
@@ -231,7 +237,15 @@ export async function overrideProgramStatus(
     }
   }
 
-  if (CURRENT_STATUSES.includes(status as (typeof CURRENT_STATUSES)[number])) {
+  // Reopening a PUBLISHED program for rescoring isn't putting it back "on stage" — it
+  // already had its turn and finished — so it skips this conflict check entirely.
+  // Without this exception, reopening one almost always failed in practice: there's
+  // usually some other program genuinely on stage for the same stage_type at any given
+  // moment, which isn't actually a conflict with a program that's just having a score
+  // corrected.
+  const isReopenForRescoring = existing.status === "published" && status === "scoring";
+
+  if (!isReopenForRescoring && CURRENT_STATUSES.includes(status as (typeof CURRENT_STATUSES)[number])) {
     const { data: current } = await supabase
       .from("programs")
       .select("id")
