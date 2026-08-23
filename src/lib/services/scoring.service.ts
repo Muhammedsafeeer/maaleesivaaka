@@ -237,6 +237,32 @@ export type TeamScoreInput = {
 
 export type AdminOverride = { password: string };
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Whether `programId` is the program this judge most recently touched, across every
+ * program they've ever scored — not just this one. Read BEFORE the current
+ * submission's own upsert runs, so it reflects state prior to this call. Backs the
+ * allowLastProgramRescoreWithoutAuth setting: a judge revising their own last program
+ * is almost always "I just noticed a typo," not a dispute needing an admin present —
+ * anything OTHER than their most recent program still requires authorization.
+ */
+async function isJudgesMostRecentProgram(
+  supabase: SupabaseServerClient,
+  judgeId: string,
+  programId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("judge_scores")
+    .select("program_id")
+    .eq("judge_id", judgeId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.program_id === programId;
+}
+
 /**
  * Bulk upsert on the (program_id, student_id, judge_id) unique constraint (Phase 5) —
  * one statement, atomic, matches the RLS insert/update policies exactly (Phase 7).
@@ -246,8 +272,10 @@ export type AdminOverride = { password: string };
  * Changing a score that was already saved (as opposed to setting one for the first
  * time) requires a verified `adminOverride`, even while the program is still
  * 'scoring' — a judge shouldn't be able to unilaterally revise a submitted score
- * without an admin present to authorize it. Determined from the DB's current state,
- * not a client-sent flag, so a stale or hand-crafted request can't skip the check.
+ * without an admin present to authorize it — UNLESS allowLastProgramRescoreWithoutAuth
+ * is on and this is that judge's own most recently scored program (see
+ * isJudgesMostRecentProgram). Determined from the DB's current state, not a
+ * client-sent flag, so a stale or hand-crafted request can't skip the check.
  */
 export async function submitScores(
   programId: string,
@@ -362,9 +390,16 @@ export async function submitScores(
   });
 
   if (changesExistingScore) {
-    const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
-    if (!authorized) {
-      return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
+    const settings = await getScoreSettings();
+    const skipAuth =
+      settings.allowLastProgramRescoreWithoutAuth &&
+      (await isJudgesMostRecentProgram(supabase, user.id, programId));
+
+    if (!skipAuth) {
+      const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
+      if (!authorized) {
+        return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
+      }
     }
   }
 
@@ -490,9 +525,16 @@ export async function submitTeamScores(
   });
 
   if (changesExistingScore) {
-    const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
-    if (!authorized) {
-      return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
+    const settings = await getScoreSettings();
+    const skipAuth =
+      settings.allowLastProgramRescoreWithoutAuth &&
+      (await isJudgesMostRecentProgram(supabase, user.id, programId));
+
+    if (!skipAuth) {
+      const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
+      if (!authorized) {
+        return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
+      }
     }
   }
 

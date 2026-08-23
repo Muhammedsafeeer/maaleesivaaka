@@ -45,6 +45,7 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
       groupSecondPlacePoints: String(settings.groupSecondPlacePoints),
       groupThirdPlacePoints: String(settings.groupThirdPlacePoints),
       allowJudgeRescore: settings.allowJudgeRescore,
+      allowLastProgramRescoreWithoutAuth: settings.allowLastProgramRescoreWithoutAuth,
     },
   });
 
@@ -58,6 +59,7 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
         groupSecondPlacePoints: Number(values.groupSecondPlacePoints),
         groupThirdPlacePoints: Number(values.groupThirdPlacePoints),
         allowJudgeRescore: values.allowJudgeRescore,
+        allowLastProgramRescoreWithoutAuth: values.allowLastProgramRescoreWithoutAuth,
       });
       if (result.error) {
         toast.error(result.error);
@@ -140,8 +142,33 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
               <span className="block text-sm text-muted-foreground">
                 Normally a judge&apos;s scoring form locks the moment a program is marked
                 completed. Turning this on lets them keep revising their own scores until
-                you publish it — an admin&apos;s authorization is still required to change
-                any score already submitted.
+                you publish it — changing a score already submitted may still need an
+                admin&apos;s authorization, depending on the setting below.
+              </span>
+            </span>
+          </label>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="allowLastProgramRescoreWithoutAuth"
+        render={({ field }) => (
+          <label className="flex cursor-pointer items-start gap-2">
+            <Checkbox
+              id="score-settings-allow-last-program-rescore-without-auth"
+              checked={field.value}
+              onCheckedChange={(value) => field.onChange(value === true)}
+            />
+            <span>
+              <span className="block text-sm font-medium">
+                Skip admin authorization for a judge&apos;s own last program
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Normally changing a score a judge already submitted needs an admin&apos;s
+                password, even for their own mistake. Turning this on waives that only for
+                the single program a judge most recently scored — any other, earlier
+                program still needs an admin present.
               </span>
             </span>
           </label>

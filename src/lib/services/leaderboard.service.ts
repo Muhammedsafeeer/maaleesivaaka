@@ -105,6 +105,10 @@ export async function listGroupLeaderboard(limit?: number): Promise<GroupLeaderb
 
 export type GroupPointContribution = {
   id: string;
+  /** The underlying `results.id` — shared by every member of the same team result
+   * (unlike `id`, which is per-student so React has a unique list key). The UI groups
+   * on this so a team's shared points show once, not once per member. */
+  resultId: string;
   studentId: string;
   studentName: string;
   studentPhotoUrl: string | null;
@@ -146,6 +150,7 @@ export async function listGroupPointContributions(groupId: string): Promise<Grou
     return [
       {
         id: row.id,
+        resultId: row.id,
         studentId: row.students.id,
         studentName: row.students.name,
         studentPhotoUrl: row.students.photo_url,
@@ -188,6 +193,7 @@ export async function listGroupPointContributions(groupId: string): Promise<Grou
           return [
             {
               id: `${result.id}-${student.id}`,
+              resultId: result.id,
               studentId: student.id,
               studentName: student.name,
               studentPhotoUrl: student.photo_url,

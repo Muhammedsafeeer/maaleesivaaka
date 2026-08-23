@@ -283,8 +283,8 @@ export function ResultsPanel({
                     {result.students ? (
                       <>
                         {result.students.name}{" "}
-                        <span className="text-muted-foreground">
-                          ({result.students.roll_number})
+                        <span className="text-muted-foreground tabular-nums">
+                          (Chest {result.students.roll_number})
                         </span>
                       </>
                     ) : result.program_group_entries ? (

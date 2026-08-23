@@ -18,6 +18,12 @@ export type ScoreSettings = {
    * submitTeamScores and the judge scoring page's canEdit. Never applies once
    * 'published', regardless of this setting. */
   allowJudgeRescore: boolean;
+  /** A separate toggle from allowJudgeRescore: when true, a judge can revise a score
+   * they already submitted for their own MOST RECENTLY scored program without an
+   * admin's password — see scoring.service.ts's submitScores/submitTeamScores. Any
+   * OTHER, earlier program they've scored still requires admin authorization to
+   * change, whether this is on or off. */
+  allowLastProgramRescoreWithoutAuth: boolean;
 };
 
 const FALLBACK_SETTINGS: ScoreSettings = {
@@ -28,15 +34,17 @@ const FALLBACK_SETTINGS: ScoreSettings = {
   groupSecondPlacePoints: DEFAULT_GROUP_POSITION_POINTS[2],
   groupThirdPlacePoints: DEFAULT_GROUP_POSITION_POINTS[3],
   allowJudgeRescore: false,
+  allowLastProgramRescoreWithoutAuth: false,
 };
 
 const SCORE_SETTINGS_COLUMNS =
-  "first_place_points, second_place_points, third_place_points, group_first_place_points, group_second_place_points, group_third_place_points, allow_judge_rescore";
+  "first_place_points, second_place_points, third_place_points, group_first_place_points, group_second_place_points, group_third_place_points, allow_judge_rescore, allow_last_program_rescore_without_auth";
 
 /**
  * The singleton row (id = 1, seeded by the 20260731140000 migration, group_* columns
- * added by 20260823010000, allow_judge_rescore by 20260823020000). Falls back to
- * DEFAULT_POSITION_POINTS/DEFAULT_GROUP_POSITION_POINTS (and allowJudgeRescore: false)
+ * added by 20260823010000, allow_judge_rescore by 20260823020000,
+ * allow_last_program_rescore_without_auth by 20260823030000). Falls back to
+ * DEFAULT_POSITION_POINTS/DEFAULT_GROUP_POSITION_POINTS (and both allow flags: false)
  * on any read failure rather than throwing — this is read mid-request by
  * finalizeIfComplete() right after a judge submits a score, and a missing/unreadable
  * settings row shouldn't block scoring from finalizing.
@@ -61,6 +69,7 @@ export async function getScoreSettings(): Promise<ScoreSettings> {
     groupSecondPlacePoints: data.group_second_place_points,
     groupThirdPlacePoints: data.group_third_place_points,
     allowJudgeRescore: data.allow_judge_rescore,
+    allowLastProgramRescoreWithoutAuth: data.allow_last_program_rescore_without_auth,
   };
 }
 
@@ -78,6 +87,7 @@ export async function updateScoreSettings(
       group_second_place_points: settings.groupSecondPlacePoints,
       group_third_place_points: settings.groupThirdPlacePoints,
       allow_judge_rescore: settings.allowJudgeRescore,
+      allow_last_program_rescore_without_auth: settings.allowLastProgramRescoreWithoutAuth,
     })
     .eq("id", 1)
     .select(SCORE_SETTINGS_COLUMNS)
@@ -97,6 +107,7 @@ export async function updateScoreSettings(
       groupSecondPlacePoints: data.group_second_place_points,
       groupThirdPlacePoints: data.group_third_place_points,
       allowJudgeRescore: data.allow_judge_rescore,
+      allowLastProgramRescoreWithoutAuth: data.allow_last_program_rescore_without_auth,
     },
   };
 }

@@ -559,6 +559,7 @@ export type Database = {
       score_settings: {
         Row: {
           allow_judge_rescore: boolean
+          allow_last_program_rescore_without_auth: boolean
           created_at: string
           first_place_points: number
           group_first_place_points: number
@@ -571,6 +572,7 @@ export type Database = {
         }
         Insert: {
           allow_judge_rescore?: boolean
+          allow_last_program_rescore_without_auth?: boolean
           created_at?: string
           first_place_points?: number
           group_first_place_points?: number
@@ -583,6 +585,7 @@ export type Database = {
         }
         Update: {
           allow_judge_rescore?: boolean
+          allow_last_program_rescore_without_auth?: boolean
           created_at?: string
           first_place_points?: number
           group_first_place_points?: number
