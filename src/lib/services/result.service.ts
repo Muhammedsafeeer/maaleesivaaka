@@ -648,6 +648,157 @@ export async function listAllResultsForCertificates(): Promise<PodiumCertificate
   return [...individualRows, ...teamRows].sort((a, b) => a.position - b.position);
 }
 
+export type StudentResultsReportRow = {
+  id: string;
+  position: number;
+  points: number;
+  programId: string;
+  programName: string;
+  programCategory: string;
+  studentId: string;
+  studentName: string;
+  studentMalayalamName: string | null;
+  rollNumber: string;
+  className: string;
+  gender: string;
+  houseId: string | null;
+  houseName: string | null;
+  photoUrl: string | null;
+};
+
+/**
+ * A group program's result expanded into one StudentResultsReportRow per team member —
+ * same purpose as expandTeamResultsForCertificates above, kept as its own copy rather
+ * than a shared/parameterized helper because this one needs two things that function's
+ * callers don't: a `programs.status = 'published'` filter (this report is meant to be
+ * handed out once results are public, unlike the certificates page which deliberately
+ * covers every status) and `houseId`/`gender` on each row (the certificates shape has
+ * neither).
+ */
+async function expandGroupResultsForReport(
+  supabase: SupabaseServerClient,
+): Promise<StudentResultsReportRow[]> {
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, program_id, programs!inner(name, category, status), program_group_entries(group_id, chest_number, main_groups(id, name))",
+    )
+    .eq("programs.status", "published")
+    .not("group_entry_id", "is", null);
+
+  if (error) {
+    console.error("expandGroupResultsForReport failed:", error.message);
+    return [];
+  }
+
+  const teamRows = data.flatMap((row) => {
+    const entry = row.program_group_entries;
+    if (!entry || !row.programs) return [];
+    return [{ ...row, entry, programs: row.programs }];
+  });
+
+  if (teamRows.length === 0) {
+    return [];
+  }
+
+  const programIds = [...new Set(teamRows.map((r) => r.program_id))];
+
+  const { data: memberRows, error: memberError } = await supabase
+    .from("program_students")
+    .select(
+      "program_id, students(id, name, malayalam_name, roll_number, class, gender, photo_url, group_id)",
+    )
+    .in("program_id", programIds);
+
+  if (memberError || !memberRows) {
+    return [];
+  }
+
+  return teamRows.flatMap((row) =>
+    memberRows
+      .filter((m) => m.program_id === row.program_id && m.students?.group_id === row.entry.group_id)
+      .flatMap((m) => {
+        const student = m.students;
+        if (!student) return [];
+        return [
+          {
+            id: `${row.id}-${student.id}`,
+            position: row.position,
+            points: row.points,
+            programId: row.program_id,
+            programName: row.programs.name,
+            programCategory: row.programs.category,
+            studentId: student.id,
+            studentName: student.name,
+            studentMalayalamName: student.malayalam_name,
+            rollNumber: student.roll_number,
+            className: student.class,
+            gender: student.gender,
+            houseId: row.entry.main_groups?.id ?? null,
+            houseName: row.entry.main_groups?.name ?? null,
+            photoUrl: student.photo_url,
+          },
+        ];
+      }),
+  );
+}
+
+/**
+ * Every result from a PUBLISHED program, position-uncapped, one row per student (a
+ * group program's team result is expanded to one row per member, same as
+ * listAllResultsForCertificates) — the data source for the admin "Results Report"
+ * page's Position/Category/Group tabs. Published-only (unlike listAllResultsForCertificates,
+ * which is admin-only and intentionally shows every status so certificates can be
+ * printed ahead of the public announcement): this report is meant to be exported/handed
+ * out once results are final and public, so an in-progress program's scores shouldn't
+ * leak into it. Carries houseId (not just houseName) so the Group tab can group
+ * reliably even if two houses were ever given the same display name.
+ */
+export async function listStudentResultsReport(): Promise<StudentResultsReportRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "id, position, points, program_id, programs!inner(name, category, status), students(id, name, malayalam_name, roll_number, class, gender, photo_url, main_groups(id, name))",
+    )
+    .eq("programs.status", "published")
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("listStudentResultsReport failed:", error.message);
+    return [];
+  }
+
+  const individualRows: StudentResultsReportRow[] = data.flatMap((row) => {
+    const student = row.students;
+    if (!student || !row.programs) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        position: row.position,
+        points: row.points,
+        programId: row.program_id,
+        programName: row.programs.name,
+        programCategory: row.programs.category,
+        studentId: student.id,
+        studentName: student.name,
+        studentMalayalamName: student.malayalam_name,
+        rollNumber: student.roll_number,
+        className: student.class,
+        gender: student.gender,
+        houseId: student.main_groups?.id ?? null,
+        houseName: student.main_groups?.name ?? null,
+        photoUrl: student.photo_url,
+      },
+    ];
+  });
+
+  const teamRows = await expandGroupResultsForReport(supabase);
+  return [...individualRows, ...teamRows].sort((a, b) => a.position - b.position);
+}
+
 export type PublicResultRow = {
   id: string;
   position: number;
