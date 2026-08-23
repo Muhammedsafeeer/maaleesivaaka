@@ -1,0 +1,17 @@
+-- One-time data cleanup, paired with 20260825020000's code-side fix.
+--
+-- Every program finalized BEFORE that fix already has its never-actually-scored
+-- students' results rows on record — e.g. Quiz (Senior, Off Stage) currently shows
+-- UFAIR (1st) and ADHIL SULAIMAN (2nd) correctly, but then 9 more students all tied at
+-- "3rd", every one of them average_score = 0. 20260825020000 stops this from happening
+-- for any FUTURE finalize/recalculate, but it only touches rows finalize_program_results
+-- actually rewrites — it does nothing for a program that's already sitting in
+-- 'completed'/'published' with the stale rows already there, since nothing
+-- re-finalizes a published program on its own.
+--
+-- Simple retroactive fix: delete every existing results row with average_score = 0
+-- outright, project-wide. Safe because a) nothing else has a foreign key onto
+-- results.id (nothing to cascade/orphan), and b) this is byte-for-byte what
+-- 20260825020000's finalizeIfComplete filter already does going forward — this just
+-- applies that same rule to results rows written before the fix existed.
+delete from results where average_score = 0;
