@@ -13,6 +13,9 @@ export const scoreSettingsSchema = z.object({
   firstPlacePoints: pointsValueSchema,
   secondPlacePoints: pointsValueSchema,
   thirdPlacePoints: pointsValueSchema,
+  groupFirstPlacePoints: pointsValueSchema,
+  groupSecondPlacePoints: pointsValueSchema,
+  groupThirdPlacePoints: pointsValueSchema,
 });
 
 export type ScoreSettingsInput = z.infer<typeof scoreSettingsSchema>;
@@ -35,6 +38,9 @@ export const scoreSettingsFormSchema = z.object({
   firstPlacePoints: pointsFieldSchema,
   secondPlacePoints: pointsFieldSchema,
   thirdPlacePoints: pointsFieldSchema,
+  groupFirstPlacePoints: pointsFieldSchema,
+  groupSecondPlacePoints: pointsFieldSchema,
+  groupThirdPlacePoints: pointsFieldSchema,
 });
 
 export type ScoreSettingsFormInput = z.infer<typeof scoreSettingsFormSchema>;

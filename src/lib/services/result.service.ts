@@ -89,11 +89,22 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
   );
 
   const settings = await getScoreSettings();
-  const ranked = rankResults(averages, {
-    1: settings.firstPlacePoints,
-    2: settings.secondPlacePoints,
-    3: settings.thirdPlacePoints,
-  });
+  // A group (team) program's podium uses its own admin-configured points, separate
+  // from an individual program's — see scoreSettings.service.ts.
+  const ranked = rankResults(
+    averages,
+    isGroup
+      ? {
+          1: settings.groupFirstPlacePoints,
+          2: settings.groupSecondPlacePoints,
+          3: settings.groupThirdPlacePoints,
+        }
+      : {
+          1: settings.firstPlacePoints,
+          2: settings.secondPlacePoints,
+          3: settings.thirdPlacePoints,
+        },
+  );
 
   const rankedWithBreakdown = ranked.map((result) => {
     const acc = criteriaByTarget.get(result.student_id);

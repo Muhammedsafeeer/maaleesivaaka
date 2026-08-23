@@ -14,10 +14,16 @@ import {
 import { updateScoreSettingsAction } from "@/features/settings/actions/settings.actions";
 import type { ScoreSettings } from "@/lib/services/scoreSettings.service";
 
-const FIELDS = [
+const INDIVIDUAL_FIELDS = [
   { name: "firstPlacePoints", label: "1st place" },
   { name: "secondPlacePoints", label: "2nd place" },
   { name: "thirdPlacePoints", label: "3rd place" },
+] as const;
+
+const GROUP_FIELDS = [
+  { name: "groupFirstPlacePoints", label: "1st place" },
+  { name: "groupSecondPlacePoints", label: "2nd place" },
+  { name: "groupThirdPlacePoints", label: "3rd place" },
 ] as const;
 
 export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
@@ -33,6 +39,9 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
       firstPlacePoints: String(settings.firstPlacePoints),
       secondPlacePoints: String(settings.secondPlacePoints),
       thirdPlacePoints: String(settings.thirdPlacePoints),
+      groupFirstPlacePoints: String(settings.groupFirstPlacePoints),
+      groupSecondPlacePoints: String(settings.groupSecondPlacePoints),
+      groupThirdPlacePoints: String(settings.groupThirdPlacePoints),
     },
   });
 
@@ -42,6 +51,9 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
         firstPlacePoints: Number(values.firstPlacePoints),
         secondPlacePoints: Number(values.secondPlacePoints),
         thirdPlacePoints: Number(values.thirdPlacePoints),
+        groupFirstPlacePoints: Number(values.groupFirstPlacePoints),
+        groupSecondPlacePoints: Number(values.groupSecondPlacePoints),
+        groupThirdPlacePoints: Number(values.groupThirdPlacePoints),
       });
       if (result.error) {
         toast.error(result.error);
@@ -52,27 +64,59 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {FIELDS.map((field) => (
-          <div key={field.name} className="flex flex-col gap-2">
-            <Label htmlFor={`score-settings-${field.name}`}>{field.label}</Label>
-            <Input
-              id={`score-settings-${field.name}`}
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              aria-invalid={errors[field.name] ? true : undefined}
-              {...register(field.name)}
-            />
-            {errors[field.name] ? (
-              <p role="alert" className="text-sm text-destructive">
-                {errors[field.name]?.message}
-              </p>
-            ) : null}
-          </div>
-        ))}
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Individual programs
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {INDIVIDUAL_FIELDS.map((field) => (
+            <div key={field.name} className="flex flex-col gap-2">
+              <Label htmlFor={`score-settings-${field.name}`}>{field.label}</Label>
+              <Input
+                id={`score-settings-${field.name}`}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                aria-invalid={errors[field.name] ? true : undefined}
+                {...register(field.name)}
+              />
+              {errors[field.name] ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors[field.name]?.message}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Group programs
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {GROUP_FIELDS.map((field) => (
+            <div key={field.name} className="flex flex-col gap-2">
+              <Label htmlFor={`score-settings-${field.name}`}>{field.label}</Label>
+              <Input
+                id={`score-settings-${field.name}`}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                aria-invalid={errors[field.name] ? true : undefined}
+                {...register(field.name)}
+              />
+              {errors[field.name] ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors[field.name]?.message}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
 
       <SubmitButton isPending={isPending} pendingText="Saving…" className="self-start">

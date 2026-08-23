@@ -54,6 +54,17 @@ export const DEFAULT_POSITION_POINTS = {
   3: 1,
 } as const;
 
+/** Sibling default for GROUP (team) programs — admin-configured separately from
+ * DEFAULT_POSITION_POINTS (see the 20260823010000 migration's group_*_points columns
+ * and scoreSettings.service.ts), since a team event's podium can reasonably be worth a
+ * different number of points than an individual one. Same 5/3/1 defaults so behaviour
+ * is unchanged until an admin deliberately sets the two apart. */
+export const DEFAULT_GROUP_POSITION_POINTS = {
+  1: 5,
+  2: 3,
+  3: 1,
+} as const;
+
 /** Positions outside the podium contribute nothing to the group leaderboard. */
 export const POINTS_FOR_UNPLACED = 0;
 

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_POSITION_POINTS } from "@/constants/scoring";
+import { DEFAULT_POSITION_POINTS, DEFAULT_GROUP_POSITION_POINTS } from "@/constants/scoring";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -7,17 +7,30 @@ export type ScoreSettings = {
   firstPlacePoints: number;
   secondPlacePoints: number;
   thirdPlacePoints: number;
+  /** Used instead of the plain fields above for a GROUP (team) program's own podium —
+   * see result.service.ts's finalizeIfComplete, which picks the set based on the
+   * program's participation_type. */
+  groupFirstPlacePoints: number;
+  groupSecondPlacePoints: number;
+  groupThirdPlacePoints: number;
 };
 
 const FALLBACK_SETTINGS: ScoreSettings = {
   firstPlacePoints: DEFAULT_POSITION_POINTS[1],
   secondPlacePoints: DEFAULT_POSITION_POINTS[2],
   thirdPlacePoints: DEFAULT_POSITION_POINTS[3],
+  groupFirstPlacePoints: DEFAULT_GROUP_POSITION_POINTS[1],
+  groupSecondPlacePoints: DEFAULT_GROUP_POSITION_POINTS[2],
+  groupThirdPlacePoints: DEFAULT_GROUP_POSITION_POINTS[3],
 };
 
+const SCORE_SETTINGS_COLUMNS =
+  "first_place_points, second_place_points, third_place_points, group_first_place_points, group_second_place_points, group_third_place_points";
+
 /**
- * The singleton row (id = 1, seeded by the 20260731140000 migration). Falls back to
- * DEFAULT_POSITION_POINTS on any read failure rather than throwing — this is read
+ * The singleton row (id = 1, seeded by the 20260731140000 migration, group_* columns
+ * added by 20260823010000). Falls back to DEFAULT_POSITION_POINTS/
+ * DEFAULT_GROUP_POSITION_POINTS on any read failure rather than throwing — this is read
  * mid-request by finalizeIfComplete() right after a judge submits a score, and a
  * missing/unreadable settings row shouldn't block scoring from finalizing.
  */
@@ -25,7 +38,7 @@ export async function getScoreSettings(): Promise<ScoreSettings> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("score_settings")
-    .select("first_place_points, second_place_points, third_place_points")
+    .select(SCORE_SETTINGS_COLUMNS)
     .eq("id", 1)
     .single();
 
@@ -37,6 +50,9 @@ export async function getScoreSettings(): Promise<ScoreSettings> {
     firstPlacePoints: data.first_place_points,
     secondPlacePoints: data.second_place_points,
     thirdPlacePoints: data.third_place_points,
+    groupFirstPlacePoints: data.group_first_place_points,
+    groupSecondPlacePoints: data.group_second_place_points,
+    groupThirdPlacePoints: data.group_third_place_points,
   };
 }
 
@@ -50,9 +66,12 @@ export async function updateScoreSettings(
       first_place_points: settings.firstPlacePoints,
       second_place_points: settings.secondPlacePoints,
       third_place_points: settings.thirdPlacePoints,
+      group_first_place_points: settings.groupFirstPlacePoints,
+      group_second_place_points: settings.groupSecondPlacePoints,
+      group_third_place_points: settings.groupThirdPlacePoints,
     })
     .eq("id", 1)
-    .select("first_place_points, second_place_points, third_place_points")
+    .select(SCORE_SETTINGS_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -65,6 +84,9 @@ export async function updateScoreSettings(
       firstPlacePoints: data.first_place_points,
       secondPlacePoints: data.second_place_points,
       thirdPlacePoints: data.third_place_points,
+      groupFirstPlacePoints: data.group_first_place_points,
+      groupSecondPlacePoints: data.group_second_place_points,
+      groupThirdPlacePoints: data.group_third_place_points,
     },
   };
 }

@@ -30,7 +30,9 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Points a student&apos;s house earns for a podium finish in a program. Ties
+            Points a student&apos;s house earns for a podium finish in a program —
+            individual and group programs are configured separately, since a team event
+            can be worth a different number of points than an individual one. Ties
             share a position and each receive its full points. Only affects programs
             finalized after you save — already-completed or published results keep the
             points they were given at the time.

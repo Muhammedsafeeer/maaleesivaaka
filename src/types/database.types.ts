@@ -560,6 +560,9 @@ export type Database = {
         Row: {
           created_at: string
           first_place_points: number
+          group_first_place_points: number
+          group_second_place_points: number
+          group_third_place_points: number
           id: number
           second_place_points: number
           third_place_points: number
@@ -568,6 +571,9 @@ export type Database = {
         Insert: {
           created_at?: string
           first_place_points?: number
+          group_first_place_points?: number
+          group_second_place_points?: number
+          group_third_place_points?: number
           id?: number
           second_place_points?: number
           third_place_points?: number
@@ -576,6 +582,9 @@ export type Database = {
         Update: {
           created_at?: string
           first_place_points?: number
+          group_first_place_points?: number
+          group_second_place_points?: number
+          group_third_place_points?: number
           id?: number
           second_place_points?: number
           third_place_points?: number
