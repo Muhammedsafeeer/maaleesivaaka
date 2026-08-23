@@ -76,12 +76,22 @@ async function maxSerialNumber(
   return data?.serial_number ?? 0;
 }
 
+/** 'published' sorts first, 'scoring' right after — see listFixture. */
+const FIXTURE_STATUS_PRIORITY: Partial<Record<ProgramStatus, number>> = {
+  published: 0,
+  scoring: 1,
+};
+
 /**
  * Every program for a stage, in running order (nulls-last on serial_number, then
- * name as a stable tiebreaker for programs that share a serial or have none yet).
- * Supabase's `.order()` doesn't support a secondary nullsFirst independent of the
- * first column's direction across two different columns in one call reliably across
- * all client versions, so this sorts client-side instead of chaining two `.order()`s.
+ * name as a stable tiebreaker for programs that share a serial or have none yet) —
+ * EXCEPT 'published' programs, which always sort first, and 'scoring' right after them
+ * (the one actually on stage right now) — both regardless of where their serial number
+ * falls, so neither is ever buried mid-list on a long fixture. Admin-requested, same
+ * priority on both stage tabs. Supabase's `.order()` doesn't support a secondary
+ * nullsFirst independent of the first column's direction across two different columns
+ * in one call reliably across all client versions, so this sorts client-side instead
+ * of chaining two `.order()`s.
  */
 export async function listFixture(stageType: StageType): Promise<Program[]> {
   const supabase = await createClient();
@@ -95,6 +105,10 @@ export async function listFixture(stageType: StageType): Promise<Program[]> {
   }
 
   return [...data].sort((a, b) => {
+    const aPriority = FIXTURE_STATUS_PRIORITY[a.status] ?? 2;
+    const bPriority = FIXTURE_STATUS_PRIORITY[b.status] ?? 2;
+    if (aPriority !== bPriority) return aPriority - bPriority;
+
     if (a.serial_number === b.serial_number) {
       return a.name.localeCompare(b.name);
     }
