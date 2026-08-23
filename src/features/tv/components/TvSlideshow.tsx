@@ -18,7 +18,7 @@ import type {
   PublicResultRow,
 } from "@/lib/services/result.service";
 import type { CategoryStatus } from "@/lib/services/program.service";
-import type { Program } from "@/types/program";
+import type { Program, FixtureBreak } from "@/types/program";
 import type { AdWithMedia } from "@/types/ad";
 
 const SLIDE_DURATION_MS = 5_000;
@@ -68,6 +68,7 @@ export function TvSlideshow({
   standings,
   latestWinner,
   nowPerforming,
+  currentBreaks,
   housesByProgram,
   latestResults,
   programWinners,
@@ -77,6 +78,7 @@ export function TvSlideshow({
   standings: GroupLeaderboardRow[];
   latestWinner: LatestWinnerStudentRow[];
   nowPerforming: Program[];
+  currentBreaks: FixtureBreak[];
   housesByProgram: Record<string, GroupLeaderboardRow[]>;
   latestResults: LatestResultStudentRow[];
   programWinners: PublicResultRow[];
@@ -86,7 +88,7 @@ export function TvSlideshow({
   const slides: Slide[] = [
     standings.length > 0 ? { kind: "standings" as const } : null,
     latestWinner.length > 0 ? { kind: "latestWinner" as const } : null,
-    nowPerforming.length > 0 ? { kind: "nowPerforming" as const } : null,
+    nowPerforming.length > 0 || currentBreaks.length > 0 ? { kind: "nowPerforming" as const } : null,
     latestResults.length > 0 ? { kind: "latestResults" as const } : null,
     programWinners.length > 0 ? { kind: "programWinners" as const } : null,
     festivalStatus.some((s) => s.total > 0) ? { kind: "festivalStatus" as const } : null,
@@ -138,7 +140,11 @@ export function TvSlideshow({
         {active.kind === "standings" ? <StandingsSlide groups={standings} /> : null}
         {active.kind === "latestWinner" ? <LatestWinnerSlide results={latestWinner} /> : null}
         {active.kind === "nowPerforming" ? (
-          <NowPerformingSlide programs={nowPerforming} housesByProgram={housesByProgram} />
+          <NowPerformingSlide
+            programs={nowPerforming}
+            currentBreaks={currentBreaks}
+            housesByProgram={housesByProgram}
+          />
         ) : null}
         {active.kind === "latestResults" ? <LatestResultsSlide results={latestResults} /> : null}
         {active.kind === "programWinners" ? <ProgramWinnersSlide winners={programWinners} /> : null}

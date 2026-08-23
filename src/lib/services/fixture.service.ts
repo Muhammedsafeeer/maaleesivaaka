@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAnonClient } from "@/lib/supabase/server";
 import type { Program, FixtureBreak, FixtureBreakStatus } from "@/types/program";
 import type { StageType, ProgramStatus } from "@/constants/programs";
 
@@ -162,6 +162,28 @@ export async function listFixture(stageType: StageType): Promise<FixtureEntry[]>
     if (b.serialNumber === null) return -1;
     return a.serialNumber - b.serialNumber;
   });
+}
+
+/**
+ * The break currently active on each stage, if any — the public "Now Performing"
+ * counterpart to `listPrograms({status: "scoring"})` on /audience and /tv. Uses
+ * createAnonClient() (not the request's own session) for the same reason every other
+ * /audience-/tv-/g-only query in this codebase does: a staff member simply logged in
+ * as admin/judge on the same browser previewing one of those pages shouldn't see
+ * anything different than a genuinely anonymous visitor would. Breaks have no
+ * sensitive fields, so unlike results this isn't a correctness fix, just consistency —
+ * see createAnonClient's own comment.
+ */
+export async function listCurrentFixtureBreaks(): Promise<FixtureBreak[]> {
+  const supabase = createAnonClient();
+  const { data, error } = await supabase.from("fixture_breaks").select("*").eq("status", "scoring");
+
+  if (error) {
+    console.error("listCurrentFixtureBreaks failed:", error.message);
+    return [];
+  }
+
+  return data;
 }
 
 /**

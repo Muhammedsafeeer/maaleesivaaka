@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Trophy, Award, Mic2, Activity, ListOrdered, Medal, Clock, Sparkles, LogIn } from "lucide-react";
+import { Trophy, Award, Mic2, Activity, ListOrdered, Medal, Clock, Sparkles, LogIn, Coffee } from "lucide-react";
 import { listPrograms, listCategoryStatus } from "@/lib/services/program.service";
-import { listGroupLeaderboard } from "@/lib/services/leaderboard.service";
+import { listCurrentFixtureBreaks } from "@/lib/services/fixture.service";
+import { listPublicGroupLeaderboard } from "@/lib/services/leaderboard.service";
 import {
   listLatestPublishedResults,
   listLatestProgramPodium,
@@ -56,6 +57,7 @@ const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.labe
 export default async function AudiencePage() {
   const [
     currentPrograms,
+    currentBreaks,
     leaderboard,
     latestResults,
     latestProgramPodium,
@@ -67,7 +69,8 @@ export default async function AudiencePage() {
     // Starting a program on the Fixture page goes straight to 'scoring' — that's the
     // only "on stage" status a program can have (the 'ongoing' status was removed).
     listPrograms({ status: "scoring" }),
-    listGroupLeaderboard(),
+    listCurrentFixtureBreaks(),
+    listPublicGroupLeaderboard(),
     listLatestPublishedResults(),
     listLatestProgramPodium(),
     listProgramWinners(),
@@ -77,14 +80,17 @@ export default async function AudiencePage() {
   ]);
 
   // On-stage and off-stage each run independently (fixture.service.ts's
-  // startNextProgram/CURRENT_STATUSES check is scoped per stage_type), so up to one
-  // program per stage can be 'scoring' at the same time — this shows both rather than
-  // only the first program in the list.
+  // startNextFixtureEntry/CURRENT_STATUSES check is scoped per stage_type), so up to
+  // one entry per stage — a program OR a break — can be current at the same time; this
+  // shows both stages rather than only the first entry in the list.
   const currentByStage = new Map(
     STAGE_TYPES.map((s) => [
       s.value,
       currentPrograms.find((p) => p.stage_type === s.value) ?? null,
     ]),
+  );
+  const currentBreakByStage = new Map(
+    STAGE_TYPES.map((s) => [s.value, currentBreaks.find((b) => b.stage_type === s.value) ?? null]),
   );
 
   return (
@@ -172,23 +178,25 @@ export default async function AudiencePage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {STAGE_TYPES.map((stage) => {
             const program = currentByStage.get(stage.value) ?? null;
+            const brk = program ? null : (currentBreakByStage.get(stage.value) ?? null);
+            const isLive = !!program || !!brk;
             return (
               <div
                 key={stage.value}
                 className={cn(
                   "relative rounded-2xl border p-4",
-                  program
+                  isLive
                     ? "border-(--stage-gold) bg-(--stage-spotlight) shadow-md"
                     : "border-(--stage-gold-dim)/30 bg-(--stage-cream-deep)/60",
                 )}
               >
-                {program ? (
+                {isLive ? (
                   <Lantern className="lantern-glow absolute top-3 right-3 size-4 text-(--stage-spotlight-gold)" />
                 ) : null}
                 <Badge
                   className={cn(
                     "mb-2 w-fit border-none",
-                    program
+                    isLive
                       ? "bg-(--stage-spotlight-gold)/20 text-(--stage-spotlight-gold)"
                       : "bg-(--stage-gold-dim)/25 text-(--stage-gold-bright)",
                   )}
@@ -203,6 +211,14 @@ export default async function AudiencePage() {
                     <p className="mt-1 text-sm text-(--stage-spotlight-ink-dim)">
                       {categoryLabels[program.category]}
                     </p>
+                  </>
+                ) : brk ? (
+                  <>
+                    <p className="flex items-center gap-1.5 font-[family-name:var(--font-audience-display)] text-xl font-bold text-(--stage-spotlight-ink)">
+                      <Coffee className="size-4 shrink-0" aria-hidden="true" />
+                      {brk.label}
+                    </p>
+                    <p className="mt-1 text-sm text-(--stage-spotlight-ink-dim)">Break</p>
                   </>
                 ) : (
                   <p className="text-sm text-(--stage-ink)/40">

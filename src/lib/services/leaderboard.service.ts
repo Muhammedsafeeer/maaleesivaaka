@@ -1,5 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAnonClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
+
+type SupabaseClientLike = ReturnType<typeof createAnonClient>;
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 /**
  * Every column of a Postgres view is nullable in the generated types (views carry no
@@ -31,13 +34,15 @@ export type GroupPublicResult = {
  * (src/app/g/[id]/page.tsx). House-only, no student names (D-017's same contract as
  * every other public surface): individual-program rows reached via the scored
  * student's house, group-program rows via the team entry's house, same two-source
- * split group_leaderboard/listGroupPointContributions already use. Runs through the
- * regular (RLS-scoped) client, so an anonymous caller only ever sees rows
- * is_program_published() already allows (published AND not hide_results) — no
- * additional filtering needed here.
+ * split group_leaderboard/listGroupPointContributions already use. Uses
+ * createAnonClient() — /g/[id] is a public route, so an anonymous caller only ever
+ * sees rows is_program_published() already allows (published AND not hide_results);
+ * the request's own session client would instead carry through admin/judge RLS access
+ * for a staff member simply logged in on the same browser. See createAnonClient's own
+ * comment.
  */
 export async function listGroupPublicResults(groupId: string): Promise<GroupPublicResult[]> {
-  const supabase = await createClient();
+  const supabase = createAnonClient();
 
   const [{ data: individualRows }, { data: teamRows }] = await Promise.all([
     supabase
@@ -70,13 +75,13 @@ export async function listGroupPublicResults(groupId: string): Promise<GroupPubl
   });
 }
 
-/** Reads the group_leaderboard view (D-002) — never stored, always derived from
- * results.points on read, so this is correct-by-construction even right after a score
- * correction. Pass `limit` for a preview (e.g. the dashboard's top 5); omit it for the
- * full standings. */
-export async function listGroupLeaderboard(limit?: number): Promise<GroupLeaderboardRow[]> {
-  const supabase = await createClient();
-
+/** Shared by listGroupLeaderboard/listPublicGroupLeaderboard below — the view read
+ * itself doesn't change, only which client (and therefore which RLS identity) runs
+ * it. */
+async function queryGroupLeaderboard(
+  supabase: SupabaseServerClient | SupabaseClientLike,
+  limit?: number,
+): Promise<GroupLeaderboardRow[]> {
   let query = supabase.from("group_leaderboard").select("*").order("rank", { ascending: true });
   if (limit) {
     query = query.limit(limit);
@@ -101,6 +106,33 @@ export async function listGroupLeaderboard(limit?: number): Promise<GroupLeaderb
       total_points: row.total_points ?? 0,
       rank: row.rank ?? 0,
     }));
+}
+
+/** Reads the group_leaderboard view (D-002) — never stored, always derived from
+ * results.points on read, so this is correct-by-construction even right after a score
+ * correction. Pass `limit` for a preview (e.g. the dashboard's top 5); omit it for the
+ * full standings. Admin-only: this runs under the request's own session, so it
+ * deliberately includes completed-but-not-yet-published results (RLS's admin policy
+ * grants full `results` access) — an admin reviewing standings wants the true current
+ * picture, not just what's already public. Never call this from /audience, /tv, or
+ * /g/[id] — use listPublicGroupLeaderboard there instead.
+ */
+export async function listGroupLeaderboard(limit?: number): Promise<GroupLeaderboardRow[]> {
+  const supabase = await createClient();
+  return queryGroupLeaderboard(supabase, limit);
+}
+
+/**
+ * Public sibling of listGroupLeaderboard, for /audience, /tv, and /g/[id] — the three
+ * deliberately public routes (constants/roles.ts's PUBLIC_ROUTES). Uses
+ * createAnonClient() rather than the request's own session, so a staff member simply
+ * logged in as admin/judge on the same browser previewing one of these pages doesn't
+ * silently see completed-but-not-yet-published results counted into the totals; see
+ * createAnonClient's own comment.
+ */
+export async function listPublicGroupLeaderboard(limit?: number): Promise<GroupLeaderboardRow[]> {
+  const supabase = createAnonClient();
+  return queryGroupLeaderboard(supabase, limit);
 }
 
 export type GroupPointContribution = {

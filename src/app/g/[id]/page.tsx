@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Trophy, ListOrdered } from "lucide-react";
-import { listGroupLeaderboard, listGroupPublicResults } from "@/lib/services/leaderboard.service";
+import { listPublicGroupLeaderboard, listGroupPublicResults } from "@/lib/services/leaderboard.service";
 import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 import { OrnateFrame } from "@/features/leaderboard/components/OrnateFrame";
 import { SectionHeading } from "@/features/leaderboard/components/SectionHeading";
@@ -20,7 +20,7 @@ type GroupPublicPageProps = {
 
 export async function generateMetadata({ params }: GroupPublicPageProps): Promise<Metadata> {
   const { id } = await params;
-  const groups = await listGroupLeaderboard();
+  const groups = await listPublicGroupLeaderboard();
   const group = groups.find((g) => g.id === id);
   return { title: group ? `${group.name} — Live Points` : "House not found" };
 }
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: GroupPublicPageProps): Promis
 export default async function GroupPublicPage({ params }: GroupPublicPageProps) {
   const { id } = await params;
   const [groups, results] = await Promise.all([
-    listGroupLeaderboard(),
+    listPublicGroupLeaderboard(),
     listGroupPublicResults(id),
   ]);
 

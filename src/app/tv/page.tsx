@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { listGroupLeaderboard, type GroupLeaderboardRow } from "@/lib/services/leaderboard.service";
+import { listPublicGroupLeaderboard, type GroupLeaderboardRow } from "@/lib/services/leaderboard.service";
 import {
   listLatestProgramPodium,
   listLatestPublishedResults,
   listProgramWinners,
 } from "@/lib/services/result.service";
 import { listPrograms, listCategoryStatus } from "@/lib/services/program.service";
+import { listCurrentFixtureBreaks } from "@/lib/services/fixture.service";
 import { listGroupEntries } from "@/lib/services/groupEntry.service";
 import { listTvAds } from "@/lib/services/ad.service";
 import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
@@ -29,16 +30,25 @@ export const metadata: Metadata = {
  * TV" toggle would need someone to manually refresh the TV's browser to show up.
  */
 export default async function TvPage() {
-  const [standings, latestWinner, nowPerforming, latestResults, programWinners, festivalStatus, ads] =
-    await Promise.all([
-      listGroupLeaderboard(),
-      listLatestProgramPodium(),
-      listPrograms({ status: "scoring" }),
-      listLatestPublishedResults(),
-      listProgramWinners(),
-      listCategoryStatus(),
-      listTvAds(),
-    ]);
+  const [
+    standings,
+    latestWinner,
+    nowPerforming,
+    currentBreaks,
+    latestResults,
+    programWinners,
+    festivalStatus,
+    ads,
+  ] = await Promise.all([
+    listPublicGroupLeaderboard(),
+    listLatestProgramPodium(),
+    listPrograms({ status: "scoring" }),
+    listCurrentFixtureBreaks(),
+    listLatestPublishedResults(),
+    listProgramWinners(),
+    listCategoryStatus(),
+    listTvAds(),
+  ]);
 
   // For a group program currently on stage, its competing houses are already public
   // (their team entries exist before scoring starts) — cross-referenced against
@@ -63,6 +73,7 @@ export default async function TvPage() {
         standings={standings}
         latestWinner={latestWinner}
         nowPerforming={nowPerforming}
+        currentBreaks={currentBreaks}
         housesByProgram={housesByProgram}
         latestResults={latestResults}
         programWinners={programWinners}

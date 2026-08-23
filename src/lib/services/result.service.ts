@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAnonClient } from "@/lib/supabase/server";
 import { rankResults, type StudentAverage } from "@/lib/services/scoring.service";
 import { getScoreSettings } from "@/lib/services/scoreSettings.service";
 import { CATEGORIES } from "@/constants/programs";
@@ -671,13 +671,16 @@ export type LatestResultStudentRow = {
  * student data just by sharing a shape. No new grant needed: reuses the
  * `grant select (name, photo_url) on students to anon` already in place for D-018.
  *
- * RLS already restricts `results` to published programs for an anonymous caller
- * (D-003), so no explicit status filter is needed here — the same query run by an admin
- * session would also see unpublished rows, which is why this is a distinct function
- * from listResults() rather than a shared one.
+ * Uses createAnonClient() (not the request's own session) — this is audience/TV-only,
+ * and RLS restricting `results` to published programs only holds for a genuinely
+ * anonymous caller; a staff member simply logged in as admin/judge on the same browser
+ * previewing /audience or /tv would otherwise see unpublished rows leak through, since
+ * that request would carry their real session cookie. See createAnonClient's own
+ * comment. This is also why this stays a distinct function from listResults() rather
+ * than a shared one — that one is admin-only and deliberately not status-filtered.
  */
 export async function listLatestPublishedResults(limit = 10): Promise<LatestResultStudentRow[]> {
-  const supabase = await createClient();
+  const supabase = createAnonClient();
   const { data, error } = await supabase
     .from("results")
     .select(
@@ -728,9 +731,13 @@ export async function listLatestPublishedResults(limit = 10): Promise<LatestResu
  * name in JS rather than at the DB level — PostgREST only honors `.order()` on a
  * joined table when that join is `!inner` (this one deliberately isn't, so a program
  * missing a group/photo is skipped via flatMap below rather than dropping the row).
+ *
+ * Uses createAnonClient() — same reasoning as listLatestPublishedResults: this is
+ * audience-only and relies on RLS restricting `results` to published programs, which
+ * only holds for a genuinely anonymous caller.
  */
 export async function listProgramWinners(): Promise<PublicResultRow[]> {
-  const supabase = await createClient();
+  const supabase = createAnonClient();
   const { data, error } = await supabase
     .from("results")
     .select(
@@ -798,9 +805,16 @@ export type LatestWinnerStudentRow = {
  * just won" podium, distinct from listLatestPublishedResults' recency feed across every
  * program and from listProgramWinners' full every-program list. Two queries: find which
  * program was updated most recently, then read that program's own top 3 by position.
+ *
+ * Uses createAnonClient() — same reasoning as listLatestPublishedResults: this is
+ * audience/TV-only and relies on RLS restricting `results` to published programs,
+ * which only holds for a genuinely anonymous caller. Without it, a staff member simply
+ * logged in as admin/judge on the same browser previewing /audience or /tv would see
+ * whichever program was scored most recently — including one still 'scoring' or
+ * 'completed' but not yet publicly announced — instead of the latest PUBLISHED one.
  */
 export async function listLatestProgramPodium(): Promise<LatestWinnerStudentRow[]> {
-  const supabase = await createClient();
+  const supabase = createAnonClient();
 
   const { data: latest, error: latestError } = await supabase
     .from("results")
