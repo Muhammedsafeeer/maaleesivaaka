@@ -94,7 +94,15 @@ export function ResultsPosterBrowser({
                           {POSITION_LABELS[entry.position] ?? entry.position}
                         </Badge>
                         {entry.studentName}
-                        {entry.groupName ? (
+                        {entry.chestNumber ? (
+                          // A group win's studentName already IS the house name (see
+                          // listPublishedProgramPodiums) — showing groupName alongside it
+                          // would just repeat it, so the chest number goes here instead,
+                          // the one thing that's actually distinct for a team entry.
+                          <span className="text-muted-foreground tabular-nums">
+                            (Chest {entry.chestNumber})
+                          </span>
+                        ) : entry.groupName ? (
                           <span className="text-muted-foreground">({entry.groupName})</span>
                         ) : null}
                       </span>

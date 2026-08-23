@@ -85,6 +85,12 @@ export function defaultPosterFields(): PosterField[] {
       { key: `position_${p}_name`, label: `Winner ${p} name`, type: "text", x: cx, y: 0.6, fontSize: 15, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
       { key: `position_${p}_name_malayalam`, label: `Winner ${p} name (Malayalam)`, type: "text", x: cx, y: 0.625, fontSize: 13, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: true, align: "center", fontFamily: "sans", visible: false },
       { key: `position_${p}_class`, label: `Winner ${p} class`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, width: 0.25, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
+      // Same slot as position_p_class, not a separate row — the two are mutually
+      // exclusive per result (an individual win has a class, a group win has a chest
+      // number, never both), so they can share a position without ever visually
+      // colliding: whichever applies to a given winner renders, the other renders
+      // nothing (textFor returns null for the field that doesn't apply).
+      { key: `position_${p}_chest`, label: `Winner ${p} chest number`, type: "text", x: cx, y: 0.65, fontSize: 12, photoSize: 0.18, width: 0.25, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
       { key: `position_${p}_group`, label: `Winner ${p} group`, type: "text", x: cx, y: 0.675, fontSize: 12, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
       { key: `position_${p}_group_malayalam`, label: `Winner ${p} group (Malayalam)`, type: "text", x: cx, y: 0.7, fontSize: 11, photoSize: 0.18, width: 0.35, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },
       { key: `position_${p}_points`, label: `Winner ${p} points`, type: "text", x: cx, y: 0.725, fontSize: 12, photoSize: 0.18, width: 0.2, color: "#FFFFFF", bold: false, align: "center", fontFamily: "sans", visible: false },

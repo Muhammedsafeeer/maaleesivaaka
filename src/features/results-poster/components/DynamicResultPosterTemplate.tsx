@@ -87,7 +87,9 @@ function textFor(
     return field.staticText ?? null;
   }
 
-  const match = /^position_(\d)_(name|group|points|class|name_malayalam|group_malayalam)$/.exec(field.key);
+  const match = /^position_(\d)_(name|group|points|class|chest|name_malayalam|group_malayalam)$/.exec(
+    field.key,
+  );
   if (!match) return null;
   const position = Number(match[1]);
   const attr = match[2];
@@ -102,6 +104,9 @@ function textFor(
     case "class":
       // Group wins have no single student's class to show (studentClass is null there).
       return entry.studentClass ? `Class:${entry.studentClass}` : null;
+    case "chest":
+      // Individual wins have no team chest number to show (chestNumber is null there).
+      return entry.chestNumber ? `Chest:${entry.chestNumber}` : null;
     case "group":
       return entry.groupName;
     case "group_malayalam":
