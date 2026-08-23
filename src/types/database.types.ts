@@ -164,6 +164,36 @@ export type Database = {
         }
         Relationships: []
       }
+      fixture_breaks: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          serial_number: number | null
+          stage_type: Database["public"]["Enums"]["stage_type"]
+          status: Database["public"]["Enums"]["program_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          serial_number?: number | null
+          stage_type: Database["public"]["Enums"]["stage_type"]
+          status?: Database["public"]["Enums"]["program_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          serial_number?: number | null
+          stage_type?: Database["public"]["Enums"]["stage_type"]
+          status?: Database["public"]["Enums"]["program_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       judge_scores: {
         Row: {
           criteria_scores: Json

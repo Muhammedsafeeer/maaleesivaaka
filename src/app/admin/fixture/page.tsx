@@ -26,12 +26,12 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
   const stageType: StageType =
     params.stage === "off_stage" ? "off_stage" : "on_stage";
 
-  const programs = await listFixture(stageType);
-  const current = programs.find((p) => CURRENT_STATUSES.includes(p.status)) ?? null;
-  const next =
-    programs.find((p) => p.status === "upcoming" && p.serial_number !== null) ?? null;
-  const roster = current
-    ? await listProgramRoster(current.id, current.participation_type === "group")
+  const entries = await listFixture(stageType);
+  const current = entries.find((e) => CURRENT_STATUSES.includes(e.status)) ?? null;
+  const next = entries.find((e) => e.status === "upcoming" && e.serialNumber !== null) ?? null;
+  const currentProgram = current?.kind === "program" ? current.program : null;
+  const roster = currentProgram
+    ? await listProgramRoster(currentProgram.id, currentProgram.participation_type === "group")
     : null;
 
   return (
@@ -47,12 +47,14 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
           <h1 className="font-heading text-xl font-medium">Fixture</h1>
           <p className="text-sm text-muted-foreground">
             Running order per stage. Set a program to Upcoming to queue it — it gets the
-            next serial number automatically — then drag upcoming programs to reorder
-            them. Click &quot;Start next program&quot; below to put the first one on stage;
-            after that, whichever program is queued next starts automatically as soon as
-            the current one is completed. Click a name to manage its roster, judges, and
-            results. A program that&apos;s already scoring, completed, or published keeps
-            its serial number and can&apos;t be dragged.
+            next serial number automatically — then drag upcoming entries to reorder
+            them. Add a break to hold a slot in the order for a tea break, prayer break,
+            and so on — it isn&apos;t scored, but otherwise moves through the same
+            queue as a program. Click &quot;Start next&quot; below to put the first entry on
+            stage; after that, whichever entry is queued next starts automatically as
+            soon as the current one is completed. Click a program&apos;s name to manage
+            its roster, judges, and results. An entry that&apos;s already scoring,
+            completed, or published keeps its serial number and can&apos;t be dragged.
           </p>
         </div>
       </div>
@@ -80,16 +82,17 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <FixtureList programs={programs} stageType={stageType} />
+          <FixtureList entries={entries} stageType={stageType} />
         </div>
         <div className="flex flex-col gap-6">
           <CurrentProgramCard stageType={stageType} current={current} next={next} />
 
-          {current && roster ? (
+          {currentProgram && roster ? (
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {current.participation_type === "group" ? "Teams" : "Students"} — {current.name}
+                  {currentProgram.participation_type === "group" ? "Teams" : "Students"} —{" "}
+                  {currentProgram.name}
                 </CardTitle>
               </CardHeader>
               <CardContent>

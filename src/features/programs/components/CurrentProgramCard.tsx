@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Radio } from "lucide-react";
+import { Radio, Coffee } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,13 @@ import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatus
 import { startNextProgramAction } from "@/features/programs/actions/fixture.actions";
 import { CATEGORIES, type StageType } from "@/constants/programs";
 import { cn } from "@/lib/utils";
-import type { Program } from "@/types/program";
+import type { FixtureEntry } from "@/lib/services/fixture.service";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
+
+function entryLabel(entry: FixtureEntry): string {
+  return entry.kind === "program" ? entry.program.name : entry.brk.label;
+}
 
 export function CurrentProgramCard({
   stageType,
@@ -20,8 +24,8 @@ export function CurrentProgramCard({
   next,
 }: {
   stageType: StageType;
-  current: Program | null;
-  next: Program | null;
+  current: FixtureEntry | null;
+  next: FixtureEntry | null;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -32,7 +36,7 @@ export function CurrentProgramCard({
         toast.error(result.error);
         return;
       }
-      toast.success("Next program started.");
+      toast.success("Next entry started.");
     });
   }
 
@@ -42,7 +46,11 @@ export function CurrentProgramCard({
         <CardTitle className="flex items-center gap-2">
           {current ? (
             <span className="flex size-6 items-center justify-center rounded-lg bg-podium-gold/15 text-podium-gold">
-              <Radio className="size-3.5 animate-pulse" />
+              {current.kind === "break" ? (
+                <Coffee className="size-3.5" />
+              ) : (
+                <Radio className="size-3.5 animate-pulse" />
+              )}
             </span>
           ) : null}
           Now on stage
@@ -53,31 +61,38 @@ export function CurrentProgramCard({
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline gap-3">
               <span className="font-heading text-3xl font-semibold tabular-nums text-podium-gold">
-                #{current.serial_number}
+                #{current.serialNumber}
               </span>
-              <span className="text-lg font-medium">{current.name}</span>
+              <span className="text-lg font-medium">{entryLabel(current)}</span>
             </div>
             <div className="flex gap-2">
-              <Badge variant="outline">{categoryLabels[current.category]}</Badge>
+              {current.kind === "program" ? (
+                <Badge variant="outline">{categoryLabels[current.program.category]}</Badge>
+              ) : (
+                <Badge variant="outline">Break</Badge>
+              )}
               <ProgramStatusBadge status={current.status} />
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No program is currently on stage.</p>
+          <p className="text-sm text-muted-foreground">Nothing is currently on stage.</p>
         )}
 
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           <p className="text-sm text-muted-foreground">
             {next ? (
               <>
-                Next: <span className="font-medium text-foreground">#{next.serial_number} {next.name}</span>
+                Next:{" "}
+                <span className="font-medium text-foreground">
+                  #{next.serialNumber} {entryLabel(next)}
+                </span>
               </>
             ) : (
-              "No upcoming program is queued with a serial number."
+              "Nothing upcoming is queued with a serial number."
             )}
           </p>
           <Button onClick={handleStart} disabled={isPending || !!current || !next}>
-            {isPending ? "Starting…" : "Start next program"}
+            {isPending ? "Starting…" : "Start next"}
           </Button>
         </div>
       </CardContent>

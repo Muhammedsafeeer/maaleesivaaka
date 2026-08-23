@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Program } from "@/types/program";
+import type { Program, FixtureBreak, FixtureBreakStatus } from "@/types/program";
 import type { StageType, ProgramStatus } from "@/constants/programs";
+
+/** A merged, running-order-sorted view of programs and breaks for one stage — what
+ * listFixture returns and FixtureList renders. A break is a "dummy row" (no students,
+ * judges, category, or scoring) that otherwise shares the exact same running-order
+ * mechanics as a program: draggable, one-current-entry-per-stage, auto-advance. */
+export type FixtureEntry =
+  | { kind: "program"; id: string; serialNumber: number | null; status: ProgramStatus; program: Program }
+  | { kind: "break"; id: string; serialNumber: number | null; status: FixtureBreakStatus; brk: FixtureBreak };
 
 export type RosterStudent = {
   id: string;
@@ -49,128 +57,191 @@ export const STAGE_ALREADY_HAS_A_CURRENT_PROGRAM =
 
 /**
  * Highest serial number already claimed in this stage, optionally restricted to a
- * subset of statuses. The base to count up from when a program joins or rejoins the
- * running order, so a freshly-queued program always lands after everything already
- * scheduled rather than colliding with an existing number.
+ * subset of statuses, across BOTH programs and fixture_breaks — they share one
+ * numbering space per stage, so a freshly-queued program or break always lands after
+ * everything already scheduled (of either kind) rather than colliding with an
+ * existing number. `statuses` is matched against both tables identically; breaks never
+ * hold 'draft'/'published' so passing those just naturally excludes every break.
  */
 async function maxSerialNumber(
   supabase: SupabaseServerClient,
   stageType: StageType,
   statuses?: readonly ProgramStatus[],
 ): Promise<number> {
-  let query = supabase
+  let programQuery = supabase
     .from("programs")
     .select("serial_number")
     .eq("stage_type", stageType)
     .not("serial_number", "is", null);
-
   if (statuses) {
-    query = query.in("status", statuses);
+    programQuery = programQuery.in("status", statuses);
   }
 
-  const { data } = await query
-    .order("serial_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  let breakQuery = supabase
+    .from("fixture_breaks")
+    .select("serial_number")
+    .eq("stage_type", stageType)
+    .not("serial_number", "is", null);
+  if (statuses) {
+    breakQuery = breakQuery.in("status", statuses);
+  }
 
-  return data?.serial_number ?? 0;
+  const [{ data: programMax }, { data: breakMax }] = await Promise.all([
+    programQuery.order("serial_number", { ascending: false }).limit(1).maybeSingle(),
+    breakQuery.order("serial_number", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+
+  return Math.max(programMax?.serial_number ?? 0, breakMax?.serial_number ?? 0);
 }
 
-/** 'published' sorts first, 'scoring' right after — see listFixture. */
+/** 'published' sorts first, 'scoring' right after — see listFixture. A break is never
+ * 'published', so it only ever falls in the priority-2 (neither) bucket, sorted purely
+ * by serial_number like an 'upcoming'/'completed' program would be. */
 const FIXTURE_STATUS_PRIORITY: Partial<Record<ProgramStatus, number>> = {
   published: 0,
   scoring: 1,
 };
 
+function fixtureEntryName(entry: FixtureEntry): string {
+  return entry.kind === "program" ? entry.program.name : entry.brk.label;
+}
+
 /**
- * Every program for a stage, in running order (nulls-last on serial_number, then
- * name as a stable tiebreaker for programs that share a serial or have none yet) —
- * EXCEPT 'published' programs, which always sort first, and 'scoring' right after them
- * (the one actually on stage right now) — both regardless of where their serial number
+ * Every program AND break for a stage, merged into one running order (nulls-last on
+ * serial_number, then name as a stable tiebreaker) — EXCEPT 'published' programs,
+ * which always sort first, and 'scoring' right after them (whichever entry is actually
+ * on stage right now, program or break) — both regardless of where their serial number
  * falls, so neither is ever buried mid-list on a long fixture. Admin-requested, same
  * priority on both stage tabs. Supabase's `.order()` doesn't support a secondary
  * nullsFirst independent of the first column's direction across two different columns
  * in one call reliably across all client versions, so this sorts client-side instead
  * of chaining two `.order()`s.
  */
-export async function listFixture(stageType: StageType): Promise<Program[]> {
+export async function listFixture(stageType: StageType): Promise<FixtureEntry[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("programs")
-    .select("*")
-    .eq("stage_type", stageType);
+  const [{ data: programs, error: programsError }, { data: breaks, error: breaksError }] =
+    await Promise.all([
+      supabase.from("programs").select("*").eq("stage_type", stageType),
+      supabase.from("fixture_breaks").select("*").eq("stage_type", stageType),
+    ]);
 
-  if (error) {
+  if (programsError || breaksError) {
     return [];
   }
 
-  return [...data].sort((a, b) => {
-    const aPriority = FIXTURE_STATUS_PRIORITY[a.status] ?? 2;
-    const bPriority = FIXTURE_STATUS_PRIORITY[b.status] ?? 2;
+  const entries: FixtureEntry[] = [
+    ...programs.map(
+      (program): FixtureEntry => ({
+        kind: "program",
+        id: program.id,
+        serialNumber: program.serial_number,
+        status: program.status,
+        program,
+      }),
+    ),
+    ...breaks.map(
+      (brk): FixtureEntry => ({
+        kind: "break",
+        id: brk.id,
+        serialNumber: brk.serial_number,
+        status: brk.status as FixtureBreakStatus,
+        brk,
+      }),
+    ),
+  ];
+
+  return entries.sort((a, b) => {
+    const aPriority = FIXTURE_STATUS_PRIORITY[a.status as ProgramStatus] ?? 2;
+    const bPriority = FIXTURE_STATUS_PRIORITY[b.status as ProgramStatus] ?? 2;
     if (aPriority !== bPriority) return aPriority - bPriority;
 
-    if (a.serial_number === b.serial_number) {
-      return a.name.localeCompare(b.name);
+    if (a.serialNumber === b.serialNumber) {
+      return fixtureEntryName(a).localeCompare(fixtureEntryName(b));
     }
-    if (a.serial_number === null) return 1;
-    if (b.serial_number === null) return -1;
-    return a.serial_number - b.serial_number;
+    if (a.serialNumber === null) return 1;
+    if (b.serialNumber === null) return -1;
+    return a.serialNumber - b.serialNumber;
   });
 }
 
 /**
- * Starts the lowest-serial 'upcoming' program for a stage, sending it straight to
- * 'scoring' (performance and scoring are one admin-facing step — judges can score while
- * the program is on stage). Refuses if that stage already has a current program, so a
- * stage only ever has one "on stage" program at a time.
+ * Starts the lowest-serial 'upcoming' entry for a stage — a program OR a break,
+ * whichever comes first in the running order — sending it straight to 'scoring'
+ * (performance/break and "current" are one admin-facing step; judges can score a
+ * program while it's in this state). Refuses if that stage already has a current
+ * entry of either kind, so a stage only ever has one "on stage" entry at a time.
  */
-export async function startNextProgram(stageType: StageType): Promise<ServiceResult<Program>> {
+export async function startNextFixtureEntry(stageType: StageType): Promise<ServiceResult<null>> {
   const supabase = await createClient();
 
-  const { data: current } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("stage_type", stageType)
-    .in("status", CURRENT_STATUSES)
-    .limit(1)
-    .maybeSingle();
+  const [{ data: currentProgram }, { data: currentBreak }] = await Promise.all([
+    supabase
+      .from("programs")
+      .select("id")
+      .eq("stage_type", stageType)
+      .in("status", CURRENT_STATUSES)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("fixture_breaks")
+      .select("id")
+      .eq("stage_type", stageType)
+      .in("status", CURRENT_STATUSES)
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  if (current) {
+  if (currentProgram || currentBreak) {
     return {
       success: false,
       error: STAGE_ALREADY_HAS_A_CURRENT_PROGRAM,
     };
   }
 
-  const { data: next, error: nextError } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("stage_type", stageType)
-    .eq("status", "upcoming")
-    .not("serial_number", "is", null)
-    .order("serial_number", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: nextProgram }, { data: nextBreak }] = await Promise.all([
+    supabase
+      .from("programs")
+      .select("id, serial_number")
+      .eq("stage_type", stageType)
+      .eq("status", "upcoming")
+      .not("serial_number", "is", null)
+      .order("serial_number", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("fixture_breaks")
+      .select("id, serial_number")
+      .eq("stage_type", stageType)
+      .eq("status", "upcoming")
+      .not("serial_number", "is", null)
+      .order("serial_number", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  if (nextError || !next) {
+  // Whichever of the two candidates has the lower serial number is next — a break
+  // sitting between two programs has to actually take its turn, not be skipped.
+  const next =
+    nextProgram && (!nextBreak || nextProgram.serial_number! <= nextBreak.serial_number!)
+      ? { table: "programs" as const, id: nextProgram.id }
+      : nextBreak
+        ? { table: "fixture_breaks" as const, id: nextBreak.id }
+        : null;
+
+  if (!next) {
     return {
       success: false,
       error: NO_UPCOMING_PROGRAM_QUEUED,
     };
   }
 
-  const { data, error } = await supabase
-    .from("programs")
-    .update({ status: "scoring" })
-    .eq("id", next.id)
-    .select()
-    .single();
+  const { error } = await supabase.from(next.table).update({ status: "scoring" }).eq("id", next.id);
 
   if (error) {
-    return { success: false, error: "Could not start the next program. Please try again." };
+    return { success: false, error: "Could not start the next entry. Please try again." };
   }
 
-  return { success: true, data };
+  return { success: true, data: null };
 }
 
 /**
@@ -193,11 +264,10 @@ export async function startNextProgram(stageType: StageType): Promise<ServiceRes
  * one, and moving it back to 'draft' clears its serial — it leaves the running order
  * entirely rather than holding a stale slot in it.
  *
- * Reaching 'completed' this way auto-starts the next queued program on the same stage
- * (see startNextProgram below), same as the normal finalize-on-full-scoring path
- * (result.service.ts's finalizeIfComplete) — a program forced to 'completed' via this
- * escape hatch shouldn't leave the stage stuck idle just because it skipped the usual
- * finalization route.
+ * Reaching 'completed' this way auto-starts the next queued entry on the same stage —
+ * a program OR a break, whichever is next (see startNextFixtureEntry below) — so a
+ * program forced to 'completed' via this escape hatch doesn't leave the stage stuck
+ * idle just because it skipped the usual finalization route.
  */
 export async function overrideProgramStatus(
   programId: string,
@@ -260,16 +330,25 @@ export async function overrideProgramStatus(
   const isReopenForRescoring = existing.status === "published" && status === "scoring";
 
   if (!isReopenForRescoring && CURRENT_STATUSES.includes(status as (typeof CURRENT_STATUSES)[number])) {
-    const { data: current } = await supabase
-      .from("programs")
-      .select("id")
-      .eq("stage_type", existing.stage_type)
-      .in("status", CURRENT_STATUSES)
-      .neq("id", programId)
-      .limit(1)
-      .maybeSingle();
+    const [{ data: currentProgram }, { data: currentBreak }] = await Promise.all([
+      supabase
+        .from("programs")
+        .select("id")
+        .eq("stage_type", existing.stage_type)
+        .in("status", CURRENT_STATUSES)
+        .neq("id", programId)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("fixture_breaks")
+        .select("id")
+        .eq("stage_type", existing.stage_type)
+        .in("status", CURRENT_STATUSES)
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
-    if (current) {
+    if (currentProgram || currentBreak) {
       return {
         success: false,
         error: "Another program on this stage is already on stage — finish or move it first.",
@@ -297,68 +376,87 @@ export async function overrideProgramStatus(
   }
 
   if (status === "completed") {
-    const advanceResult = await startNextProgram(existing.stage_type);
+    const advanceResult = await startNextFixtureEntry(existing.stage_type);
     if (
       !advanceResult.success &&
       advanceResult.error !== NO_UPCOMING_PROGRAM_QUEUED &&
       advanceResult.error !== STAGE_ALREADY_HAS_A_CURRENT_PROGRAM
     ) {
-      console.error("startNextProgram failed after overrideProgramStatus:", advanceResult.error);
+      console.error("startNextFixtureEntry failed after overrideProgramStatus:", advanceResult.error);
     }
   }
 
   return { success: true, data };
 }
 
+export type FixtureEntryRef = { id: string; kind: "program" | "break" };
+
 /**
- * Applies a drag-and-drop reorder from the Fixture page. Only 'upcoming' programs can
- * be dragged — anything that's already scoring, completed, or published has already had
- * its turn and keeps its original serial number, so `orderedIds` must be exactly the
- * stage's current 'upcoming' set (checked below) in its new order. Renumbers them
+ * Applies a drag-and-drop reorder from the Fixture page, over a MIXED list of programs
+ * and breaks. Only 'upcoming' entries of either kind can be dragged — anything that's
+ * already scoring, completed, or published has already had its turn and keeps its
+ * original serial number, so `orderedEntries` must be exactly the stage's current
+ * 'upcoming' set (of both kinds, checked below) in its new order. Renumbers them
  * sequentially starting right after the highest serial number already locked in by a
- * settled (scoring/completed/published) program, so the new order can never collide
- * with, or sort ahead of, a program that's already had its turn.
+ * settled (scoring/completed/published) entry, so the new order can never collide
+ * with, or sort ahead of, an entry that's already had its turn.
  */
 export async function reorderUpcoming(
   stageType: StageType,
-  orderedIds: string[],
+  orderedEntries: FixtureEntryRef[],
 ): Promise<ServiceResult<null>> {
   const supabase = await createClient();
 
-  if (orderedIds.length === 0) {
+  if (orderedEntries.length === 0) {
     return { success: true, data: null };
   }
 
-  const { data: rows, error } = await supabase
-    .from("programs")
-    .select("id, stage_type, status")
-    .in("id", orderedIds);
+  const programIds = orderedEntries.filter((e) => e.kind === "program").map((e) => e.id);
+  const breakIds = orderedEntries.filter((e) => e.kind === "break").map((e) => e.id);
 
-  if (error || !rows || rows.length !== orderedIds.length) {
+  const [{ data: programRows, error: programError }, { data: breakRows, error: breakError }] =
+    await Promise.all([
+      programIds.length > 0
+        ? supabase.from("programs").select("id, stage_type, status").in("id", programIds)
+        : Promise.resolve({ data: [] as { id: string; stage_type: string; status: string }[], error: null }),
+      breakIds.length > 0
+        ? supabase.from("fixture_breaks").select("id, stage_type, status").in("id", breakIds)
+        : Promise.resolve({ data: [] as { id: string; stage_type: string; status: string }[], error: null }),
+    ]);
+
+  if (
+    programError ||
+    breakError ||
+    !programRows ||
+    !breakRows ||
+    programRows.length !== programIds.length ||
+    breakRows.length !== breakIds.length
+  ) {
     return {
       success: false,
       error: "Could not reorder — the running order changed. Refresh and try again.",
     };
   }
 
-  const allUpcomingInStage = rows.every(
+  const allUpcomingInStage = [...programRows, ...breakRows].every(
     (row) => row.stage_type === stageType && row.status === "upcoming",
   );
 
   if (!allUpcomingInStage) {
     return {
       success: false,
-      error: "Only upcoming programs can be reordered.",
+      error: "Only upcoming entries can be reordered.",
     };
   }
 
   let next = (await maxSerialNumber(supabase, stageType, SETTLED_STATUSES)) + 1;
 
-  for (const id of orderedIds) {
+  for (const entry of orderedEntries) {
+    const table = entry.kind === "program" ? "programs" : "fixture_breaks";
     const { error: updateError } = await supabase
-      .from("programs")
+      .from(table)
       .update({ serial_number: next })
-      .eq("id", id);
+      .eq("id", entry.id);
 
     if (updateError) {
       return { success: false, error: "Could not save the new running order. Please try again." };
@@ -368,6 +466,121 @@ export async function reorderUpcoming(
   }
 
   return { success: true, data: null };
+}
+
+/**
+ * Appends a new break to the end of a stage's upcoming running order — admin drags it
+ * into its actual position afterward via the same reorderUpcoming path a program uses.
+ */
+export async function createFixtureBreak(
+  stageType: StageType,
+  label: string,
+): Promise<ServiceResult<FixtureBreak>> {
+  const supabase = await createClient();
+  const serialNumber = (await maxSerialNumber(supabase, stageType)) + 1;
+
+  const { data, error } = await supabase
+    .from("fixture_breaks")
+    .insert({ stage_type: stageType, label: label.trim() || "Break", serial_number: serialNumber })
+    .select()
+    .single();
+
+  if (error || !data) {
+    return { success: false, error: "Could not add the break. Please try again." };
+  }
+
+  return { success: true, data };
+}
+
+export async function deleteFixtureBreak(breakId: string): Promise<ServiceResult<null>> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("fixture_breaks").delete().eq("id", breakId);
+
+  if (error) {
+    return { success: false, error: "Could not remove the break. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+/**
+ * Admin-only status control for a break — same "only one current entry per stage"
+ * conflict check as overrideProgramStatus, and the same auto-start-next-entry on
+ * 'completed', but none of that function's program-specific rules (no zero-score
+ * guard, no published lock, no draft/serial-clearing branch — a break never leaves
+ * 'draft'/'published' at all).
+ */
+export async function overrideBreakStatus(
+  breakId: string,
+  status: FixtureBreakStatus,
+): Promise<ServiceResult<FixtureBreak>> {
+  const supabase = await createClient();
+
+  const { data: existing, error: readError } = await supabase
+    .from("fixture_breaks")
+    .select("stage_type, serial_number")
+    .eq("id", breakId)
+    .single();
+
+  if (readError || !existing) {
+    return { success: false, error: "Could not find that break." };
+  }
+
+  if (status === "scoring") {
+    const [{ data: currentProgram }, { data: currentBreak }] = await Promise.all([
+      supabase
+        .from("programs")
+        .select("id")
+        .eq("stage_type", existing.stage_type)
+        .in("status", CURRENT_STATUSES)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("fixture_breaks")
+        .select("id")
+        .eq("stage_type", existing.stage_type)
+        .in("status", CURRENT_STATUSES)
+        .neq("id", breakId)
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (currentProgram || currentBreak) {
+      return {
+        success: false,
+        error: "Another program on this stage is already on stage — finish or move it first.",
+      };
+    }
+  }
+
+  const update: { status: FixtureBreakStatus; serial_number?: number } = { status };
+  if (status === "upcoming" && existing.serial_number === null) {
+    update.serial_number = (await maxSerialNumber(supabase, existing.stage_type)) + 1;
+  }
+
+  const { data, error } = await supabase
+    .from("fixture_breaks")
+    .update(update)
+    .eq("id", breakId)
+    .select()
+    .single();
+
+  if (error || !data) {
+    return { success: false, error: "Could not update the break. Please try again." };
+  }
+
+  if (status === "completed") {
+    const advanceResult = await startNextFixtureEntry(existing.stage_type);
+    if (
+      !advanceResult.success &&
+      advanceResult.error !== NO_UPCOMING_PROGRAM_QUEUED &&
+      advanceResult.error !== STAGE_ALREADY_HAS_A_CURRENT_PROGRAM
+    ) {
+      console.error("startNextFixtureEntry failed after overrideBreakStatus:", advanceResult.error);
+    }
+  }
+
+  return { success: true, data };
 }
 
 /**

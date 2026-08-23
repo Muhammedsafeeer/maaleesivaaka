@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { GripVertical, ChevronUp, ChevronDown } from "lucide-react";
+import { GripVertical, ChevronUp, ChevronDown, Plus, Trash2, Coffee } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -36,22 +37,90 @@ import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatus
 import {
   setProgramStatusAction,
   reorderUpcomingAction,
+  createFixtureBreakAction,
+  setBreakStatusAction,
+  deleteFixtureBreakAction,
 } from "@/features/programs/actions/fixture.actions";
 import { publishProgramAction } from "@/features/programs/actions/result.actions";
 import { CATEGORIES, PROGRAM_STATUSES, type ProgramStatus, type StageType } from "@/constants/programs";
 import { cn } from "@/lib/utils";
-import type { Program } from "@/types/program";
+import type { Program, FixtureBreak, FixtureBreakStatus } from "@/types/program";
+import type { FixtureEntry, FixtureEntryRef } from "@/lib/services/fixture.service";
 
 const categoryLabels = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 
 // 'published' is deliberately excluded — that transition stays behind the program
 // page's "Publish results" gate (requires calculated results), not this override.
 const overridableStatuses = PROGRAM_STATUSES.filter((s) => s.value !== "published");
+const breakStatuses: { value: FixtureBreakStatus; label: string }[] = [
+  { value: "upcoming", label: "Upcoming" },
+  { value: "scoring", label: "Current" },
+  { value: "completed", label: "Completed" },
+];
 
 const CURRENT_STATUSES = ["scoring"];
 
+function entryLabel(entry: FixtureEntry): string {
+  return entry.kind === "program" ? entry.program.name : entry.brk.label;
+}
+
+/** Shared reorder tap-targets (arrows + drag handle) — identical for a program row and
+ * a break row, so both kinds of entry drag/move exactly the same way. */
+function ReorderHandle({
+  label,
+  draggable,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+}: {
+  label: string;
+  draggable: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  if (!draggable) return <span className="size-4 shrink-0" aria-hidden />;
+
+  return (
+    <>
+      {/* Native HTML5 drag-and-drop doesn't fire on touch (mouse-events-only API) —
+          these buttons are the reorder path on mobile, and work fine alongside the
+          drag handle on desktop too. Each button gets real padding (not just its bare
+          icon) so its tap target is actually big enough to hit reliably on a phone —
+          a bare size-3.5 icon with no padding is well under the ~40px a thumb needs. */}
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          aria-label={`Move ${label} up`}
+          disabled={!canMoveUp}
+          onClick={onMoveUp}
+          className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronUp className="size-4" />
+        </button>
+        <button
+          type="button"
+          aria-label={`Move ${label} down`}
+          disabled={!canMoveDown}
+          onClick={onMoveDown}
+          className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronDown className="size-4" />
+        </button>
+      </div>
+      <GripVertical
+        aria-label={`Drag to reorder ${label}`}
+        className="hidden size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing sm:block"
+      />
+    </>
+  );
+}
+
 function FixtureRow({
   program,
+  serialNumber,
   draggable,
   isDragging,
   onDragStart,
@@ -64,6 +133,7 @@ function FixtureRow({
   onMoveDown,
 }: {
   program: Program;
+  serialNumber: number | null;
   draggable: boolean;
   isDragging: boolean;
   onDragStart: () => void;
@@ -114,43 +184,15 @@ function FixtureRow({
     >
       <TableCell className="w-24 py-3">
         <div className="flex items-center gap-1">
-          {draggable ? (
-            <>
-              {/* Native HTML5 drag-and-drop doesn't fire on touch (mouse-events-only
-                  API) — these buttons are the reorder path on mobile, and work fine
-                  alongside the drag handle on desktop too. Each button gets real
-                  padding (not just its bare icon) so its tap target is actually big
-                  enough to hit reliably on a phone — a bare size-3.5 icon with no
-                  padding is well under the ~40px a thumb needs. */}
-              <div className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  aria-label={`Move ${program.name} up`}
-                  disabled={!canMoveUp}
-                  onClick={onMoveUp}
-                  className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <ChevronUp className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Move ${program.name} down`}
-                  disabled={!canMoveDown}
-                  onClick={onMoveDown}
-                  className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <ChevronDown className="size-4" />
-                </button>
-              </div>
-              <GripVertical
-                aria-label={`Drag to reorder ${program.name}`}
-                className="hidden size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing sm:block"
-              />
-            </>
-          ) : (
-            <span className="size-4 shrink-0" aria-hidden />
-          )}
-          <span className="tabular-nums">{program.serial_number ?? "—"}</span>
+          <ReorderHandle
+            label={program.name}
+            draggable={draggable}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+          />
+          <span className="tabular-nums">{serialNumber ?? "—"}</span>
         </div>
       </TableCell>
       <TableCell className="font-medium">
@@ -196,15 +238,176 @@ function FixtureRow({
   );
 }
 
+/**
+ * A "dummy row" for a break — a placeholder slot in the running order (tea break,
+ * prayer break, ...) that isn't a real program: no category link, no criteria/results,
+ * just a label, a status, and a delete option. Otherwise reorders exactly like a
+ * program row (same ReorderHandle).
+ */
+function FixtureBreakRow({
+  brk,
+  serialNumber,
+  draggable,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+}: {
+  brk: FixtureBreak;
+  serialNumber: number | null;
+  draggable: boolean;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [isDeleting, startDelete] = useTransition();
+  const status = brk.status as FixtureBreakStatus;
+
+  function handleStatusChange(next: FixtureBreakStatus) {
+    if (next === status) return;
+    startTransition(async () => {
+      const result = await setBreakStatusAction(brk.id, next);
+      if (result.error) {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function handleDelete() {
+    startDelete(async () => {
+      const result = await deleteFixtureBreakAction(brk.id);
+      if (result.error) {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <TableRow
+      draggable={draggable}
+      onDragStart={draggable ? onDragStart : undefined}
+      onDragOver={draggable ? onDragOver : undefined}
+      onDrop={draggable ? onDrop : undefined}
+      onDragEnd={draggable ? onDragEnd : undefined}
+      className={cn(
+        "bg-muted/30",
+        status === "scoring" && "bg-podium-gold/10 hover:bg-podium-gold/15",
+        isDragging && "opacity-40",
+      )}
+    >
+      <TableCell className="w-24 py-3">
+        <div className="flex items-center gap-1">
+          <ReorderHandle
+            label={brk.label}
+            draggable={draggable}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+          />
+          <span className="tabular-nums">{serialNumber ?? "—"}</span>
+        </div>
+      </TableCell>
+      <TableCell className="font-medium text-muted-foreground" colSpan={2}>
+        <span className="flex items-center gap-1.5">
+          <Coffee className="size-3.5 shrink-0" aria-hidden="true" />
+          {brk.label}
+        </span>
+      </TableCell>
+      <TableCell className="w-36">
+        <div className="flex items-center gap-1.5">
+          <Select
+            value={status}
+            onValueChange={(value) => handleStatusChange(value as FixtureBreakStatus)}
+            disabled={isPending}
+          >
+            <SelectTrigger aria-label={`Status for ${brk.label}`} className="h-8 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {breakStatuses.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+            aria-label={`Remove ${brk.label}`}
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function AddBreakForm({ stageType }: { stageType: StageType }) {
+  const [label, setLabel] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  function handleAdd() {
+    startTransition(async () => {
+      const result = await createFixtureBreakAction(stageType, label);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      setLabel("");
+      toast.success("Break added to the end of the running order.");
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2 border-b border-border bg-muted/30 p-2">
+      <Input
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder="Break label (e.g. Tea Break, 15 min)"
+        className="h-8"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleAdd();
+          }
+        }}
+      />
+      <Button type="button" size="sm" className="h-8 shrink-0" onClick={handleAdd} disabled={isPending}>
+        <Plus className="size-4" data-icon="inline-start" aria-hidden="true" />
+        {isPending ? "Adding…" : "Add break"}
+      </Button>
+    </div>
+  );
+}
+
 export function FixtureList({
-  programs,
+  entries,
   stageType,
 }: {
-  programs: Program[];
+  entries: FixtureEntry[];
   stageType: StageType;
 }) {
-  const [order, setOrder] = useState(programs);
-  const [syncedPrograms, setSyncedPrograms] = useState(programs);
+  const [order, setOrder] = useState(entries);
+  const [syncedEntries, setSyncedEntries] = useState(entries);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   // Reordering changes the live running order of an in-progress event — staged here
   // and only applied on explicit confirmation, rather than immediately on drag/drop or
@@ -212,58 +415,64 @@ export function FixtureList({
   // fixture.
   const [pendingReorder, setPendingReorder] = useState<{
     description: string;
-    reorderedUpcomingIds: string[];
+    reorderedUpcoming: FixtureEntryRef[];
   } | null>(null);
   const [, startTransition] = useTransition();
 
   // Adjusting state on a prop change during render (not in an Effect) — the pattern
   // React's docs recommend for "reset local state when a prop changes": no flash of
-  // stale data, and no extra render pass. `syncedPrograms` is the guard so this only
+  // stale data, and no extra render pass. `syncedEntries` is the guard so this only
   // fires when the Server Component actually re-fetched, not on every render.
-  if (programs !== syncedPrograms) {
-    setSyncedPrograms(programs);
-    setOrder(programs);
+  if (entries !== syncedEntries) {
+    setSyncedEntries(entries);
+    setOrder(entries);
   }
 
   if (order.length === 0) {
     return (
-      <EmptyState
-        title="No programs on this stage"
-        description="Programs you create with this stage type will appear here to be given a running-order number."
-      />
+      <div className="flex flex-col gap-3">
+        <AddBreakForm stageType={stageType} />
+        <EmptyState
+          title="No programs on this stage"
+          description="Programs you create with this stage type will appear here to be given a running-order number."
+        />
+      </div>
     );
   }
 
-  function applyReorder(reorderedUpcomingIds: string[]) {
+  function applyReorder(reorderedUpcoming: FixtureEntryRef[]) {
     setOrder((current) => {
       // Mirrors reorderUpcoming's own numbering exactly (fixture.service.ts): start
-      // right after the highest serial number a settled program already holds, then
-      // number the new order sequentially — otherwise a swapped-in program keeps
-      // carrying its OLD serial_number until the server round-trip finishes and a
+      // right after the highest serial number a settled entry already holds, then
+      // number the new order sequentially — otherwise a swapped-in entry keeps
+      // carrying its OLD serial number until the server round-trip finishes and a
       // fresh fetch overwrites this state, so the Serial column visibly wouldn't
       // match the new row order for a moment.
       const settledMax = current.reduce(
-        (max, p) => (p.status === "upcoming" ? max : Math.max(max, p.serial_number ?? 0)),
+        (max, e) => (e.status === "upcoming" ? max : Math.max(max, e.serialNumber ?? 0)),
         0,
       );
       let nextSerial = settledMax + 1;
 
-      const byId = new Map(current.map((p) => [p.id, p]));
+      const byId = new Map(current.map((e) => [e.id, e]));
       let cursor = 0;
-      return current.map((p) => {
-        if (p.status !== "upcoming") return p;
-        const id = reorderedUpcomingIds[cursor];
+      return current.map((e) => {
+        if (e.status !== "upcoming") return e;
+        const ref = reorderedUpcoming[cursor];
         cursor += 1;
-        const next = byId.get(id) ?? p;
-        return { ...next, serial_number: nextSerial++ };
+        const next = byId.get(ref.id) ?? e;
+        const serialNumber = nextSerial++;
+        return next.kind === "program"
+          ? { ...next, serialNumber, program: { ...next.program, serial_number: serialNumber } }
+          : { ...next, serialNumber, brk: { ...next.brk, serial_number: serialNumber } };
       });
     });
 
     startTransition(async () => {
-      const result = await reorderUpcomingAction(stageType, reorderedUpcomingIds);
+      const result = await reorderUpcomingAction(stageType, reorderedUpcoming);
       if (result.error) {
         toast.error(result.error);
-        setOrder(programs);
+        setOrder(entries);
       }
     });
   }
@@ -274,55 +483,59 @@ export function FixtureList({
 
     if (!dragged || dragged === targetId) return;
 
-    const upcomingIds = order.filter((p) => p.status === "upcoming").map((p) => p.id);
+    const upcoming = order.filter((e) => e.status === "upcoming");
+    const upcomingIds = upcoming.map((e) => e.id);
     const fromIndex = upcomingIds.indexOf(dragged);
     const toIndex = upcomingIds.indexOf(targetId);
     if (fromIndex === -1 || toIndex === -1) return;
 
-    const reorderedUpcomingIds = [...upcomingIds];
-    reorderedUpcomingIds.splice(fromIndex, 1);
-    reorderedUpcomingIds.splice(toIndex, 0, dragged);
+    const reordered = [...upcoming];
+    const [movedEntry] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, movedEntry);
+    const reorderedUpcoming: FixtureEntryRef[] = reordered.map((e) => ({ id: e.id, kind: e.kind }));
 
-    const draggedName = order.find((p) => p.id === dragged)?.name ?? "This program";
-    const targetName = order.find((p) => p.id === targetId)?.name ?? "this position";
+    const draggedEntry = order.find((e) => e.id === dragged);
+    const targetEntry = order.find((e) => e.id === targetId);
     setPendingReorder({
-      description: `Move "${draggedName}" next to "${targetName}" in the running order?`,
-      reorderedUpcomingIds,
+      description: `Move "${draggedEntry ? entryLabel(draggedEntry) : "This entry"}" next to "${
+        targetEntry ? entryLabel(targetEntry) : "this position"
+      }" in the running order?`,
+      reorderedUpcoming,
     });
   }
 
   // Touch-friendly alternative to drag-and-drop (native HTML5 DnD never fires on
-  // mobile touch browsers) — swaps the program one slot up or down within the
+  // mobile touch browsers) — swaps the entry one slot up or down within the
   // upcoming-only order, same target shape reorderUpcomingAction already expects.
   function handleMove(id: string, direction: "up" | "down") {
-    const upcomingIds = order.filter((p) => p.status === "upcoming").map((p) => p.id);
+    const upcoming = order.filter((e) => e.status === "upcoming");
+    const upcomingIds = upcoming.map((e) => e.id);
     const fromIndex = upcomingIds.indexOf(id);
     if (fromIndex === -1) return;
 
     const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
-    if (toIndex < 0 || toIndex >= upcomingIds.length) return;
+    if (toIndex < 0 || toIndex >= upcoming.length) return;
 
-    const reorderedUpcomingIds = [...upcomingIds];
-    [reorderedUpcomingIds[fromIndex], reorderedUpcomingIds[toIndex]] = [
-      reorderedUpcomingIds[toIndex],
-      reorderedUpcomingIds[fromIndex],
-    ];
+    const reordered = [...upcoming];
+    [reordered[fromIndex], reordered[toIndex]] = [reordered[toIndex], reordered[fromIndex]];
+    const reorderedUpcoming: FixtureEntryRef[] = reordered.map((e) => ({ id: e.id, kind: e.kind }));
 
-    const name = order.find((p) => p.id === id)?.name ?? "This program";
+    const entry = order.find((e) => e.id === id);
     setPendingReorder({
-      description: `Move "${name}" ${direction} in the running order?`,
-      reorderedUpcomingIds,
+      description: `Move "${entry ? entryLabel(entry) : "This entry"}" ${direction} in the running order?`,
+      reorderedUpcoming,
     });
   }
 
   function confirmReorder() {
     if (!pendingReorder) return;
-    applyReorder(pendingReorder.reorderedUpcomingIds);
+    applyReorder(pendingReorder.reorderedUpcoming);
     setPendingReorder(null);
   }
 
   return (
     <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
+      <AddBreakForm stageType={stageType} />
       <Table>
         <TableHeader>
           <TableRow>
@@ -334,28 +547,29 @@ export function FixtureList({
         </TableHeader>
         <TableBody>
           {(() => {
-            const upcomingIds = order
-              .filter((p) => p.status === "upcoming")
-              .map((p) => p.id);
+            const upcomingIds = order.filter((e) => e.status === "upcoming").map((e) => e.id);
 
-            return order.map((program) => {
-              const draggable = program.status === "upcoming";
-              const upcomingIndex = upcomingIds.indexOf(program.id);
-              return (
-                <FixtureRow
-                  key={program.id}
-                  program={program}
-                  draggable={draggable}
-                  isDragging={draggedId === program.id}
-                  onDragStart={() => setDraggedId(program.id)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => handleDrop(program.id)}
-                  onDragEnd={() => setDraggedId(null)}
-                  canMoveUp={draggable && upcomingIndex > 0}
-                  canMoveDown={draggable && upcomingIndex < upcomingIds.length - 1}
-                  onMoveUp={() => handleMove(program.id, "up")}
-                  onMoveDown={() => handleMove(program.id, "down")}
-                />
+            return order.map((entry) => {
+              const draggable = entry.status === "upcoming";
+              const upcomingIndex = upcomingIds.indexOf(entry.id);
+              const sharedProps = {
+                serialNumber: entry.serialNumber,
+                draggable,
+                isDragging: draggedId === entry.id,
+                onDragStart: () => setDraggedId(entry.id),
+                onDragOver: (event: React.DragEvent) => event.preventDefault(),
+                onDrop: () => handleDrop(entry.id),
+                onDragEnd: () => setDraggedId(null),
+                canMoveUp: draggable && upcomingIndex > 0,
+                canMoveDown: draggable && upcomingIndex < upcomingIds.length - 1,
+                onMoveUp: () => handleMove(entry.id, "up"),
+                onMoveDown: () => handleMove(entry.id, "down"),
+              };
+
+              return entry.kind === "program" ? (
+                <FixtureRow key={entry.id} program={entry.program} {...sharedProps} />
+              ) : (
+                <FixtureBreakRow key={entry.id} brk={entry.brk} {...sharedProps} />
               );
             });
           })()}
