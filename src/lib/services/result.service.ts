@@ -158,14 +158,16 @@ export type TiedPositionGroup = { position: number; points: number; participants
  * judge (new "judges can read results for their assigned programs" RLS policy,
  * 20260819050000) as well as admin — finalize_program_results (SQL) already refuses to
  * flip a tied program to 'completed', so this is what actually surfaces the block to
- * whoever's looking.
+ * whoever's looking. A shared average_score of exactly 0 is excluded (same
+ * 20260823000000_ignore_zero_score_ties.sql reasoning as the SQL side): that's a batch
+ * of never-actually-scored participants, not a competitive tie worth flagging.
  */
 export async function listTiedPositions(programId: string): Promise<TiedPositionGroup[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
     .select(
-      "id, position, points, student_id, group_entry_id, students(name), program_group_entries(chest_number, main_groups(name))",
+      "id, position, points, average_score, student_id, group_entry_id, students(name), program_group_entries(chest_number, main_groups(name))",
     )
     .eq("program_id", programId)
     .order("position", { ascending: true });
@@ -182,7 +184,7 @@ export async function listTiedPositions(programId: string): Promise<TiedPosition
   }
 
   return Array.from(byPosition.entries())
-    .filter(([, rows]) => rows.length > 1)
+    .filter(([, rows]) => rows.length > 1 && rows[0].average_score !== 0)
     .map(([position, rows]) => ({
       position,
       points: rows[0].points,
@@ -208,14 +210,15 @@ export type UnresolvedTieProgram = {
  * Every program across the whole festival currently blocked on a tie — the admin
  * dashboard's "needs a decision" panel. Admin-only in practice (full `results` access),
  * scoped to `status = 'scoring'` since a resolved/accepted tie's program has already
- * moved to 'completed' and stops needing attention.
+ * moved to 'completed' and stops needing attention. A shared average_score of exactly 0
+ * is excluded (see listTiedPositions) — not a real competitive tie.
  */
 export async function listUnresolvedTies(): Promise<UnresolvedTieProgram[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("results")
     .select(
-      "id, program_id, position, points, student_id, group_entry_id, programs!inner(name, category, status), students(name), program_group_entries(chest_number, main_groups(name))",
+      "id, program_id, position, points, average_score, student_id, group_entry_id, programs!inner(name, category, status), students(name), program_group_entries(chest_number, main_groups(name))",
     )
     .eq("programs.status", "scoring");
 
@@ -233,7 +236,7 @@ export async function listUnresolvedTies(): Promise<UnresolvedTieProgram[]> {
 
   const byProgram = new Map<string, UnresolvedTieProgram>();
   for (const rows of byProgramPosition.values()) {
-    if (rows.length < 2) continue;
+    if (rows.length < 2 || rows[0].average_score === 0) continue;
 
     const first = rows[0];
     if (!first.programs) continue;

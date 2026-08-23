@@ -112,31 +112,34 @@ function FixtureRow({
         isDragging && "opacity-40",
       )}
     >
-      <TableCell className="w-24">
+      <TableCell className="w-24 py-3">
         <div className="flex items-center gap-1">
           {draggable ? (
             <>
               {/* Native HTML5 drag-and-drop doesn't fire on touch (mouse-events-only
                   API) — these buttons are the reorder path on mobile, and work fine
-                  alongside the drag handle on desktop too. */}
-              <div className="flex flex-col">
+                  alongside the drag handle on desktop too. Each button gets real
+                  padding (not just its bare icon) so its tap target is actually big
+                  enough to hit reliably on a phone — a bare size-3.5 icon with no
+                  padding is well under the ~40px a thumb needs. */}
+              <div className="flex flex-col gap-1">
                 <button
                   type="button"
                   aria-label={`Move ${program.name} up`}
                   disabled={!canMoveUp}
                   onClick={onMoveUp}
-                  className="text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                  className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
                 >
-                  <ChevronUp className="size-3.5" />
+                  <ChevronUp className="size-4" />
                 </button>
                 <button
                   type="button"
                   aria-label={`Move ${program.name} down`}
                   disabled={!canMoveDown}
                   onClick={onMoveDown}
-                  className="text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                  className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
                 >
-                  <ChevronDown className="size-3.5" />
+                  <ChevronDown className="size-4" />
                 </button>
               </div>
               <GripVertical
