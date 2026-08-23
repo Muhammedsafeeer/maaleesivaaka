@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CrescentStar, DomeSilhouette } from "@/features/leaderboard/components/MotifIcons";
 import { TvStage } from "@/features/tv/components/TvStage";
 import { TvHeader } from "@/features/tv/components/TvHeader";
@@ -96,6 +97,7 @@ export function TvSlideshow({
   ].filter((slide): slide is Slide => slide !== null);
 
   const [index, setIndex] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -104,6 +106,20 @@ export function TvSlideshow({
     }, SLIDE_DURATION_MS);
     return () => window.clearInterval(timer);
   }, [slides.length]);
+
+  // Safety net for the unattended kiosk display: the Realtime listeners on this page
+  // (RealtimeProgramsListener etc.) normally call router.refresh() the moment something
+  // changes, but a long-lived browser tab's websocket can silently drop without
+  // reconnecting — when that happens "On Stage Now" would otherwise freeze on whatever
+  // program was scoring when the connection died, even after it's long since completed.
+  // A periodic refresh bounds how stale the display can ever get, independent of
+  // Realtime health.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [router]);
 
   if (slides.length === 0) {
     return (
