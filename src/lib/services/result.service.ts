@@ -1,7 +1,7 @@
 import { createClient, createAnonClient } from "@/lib/supabase/server";
 import { rankResults, type StudentAverage } from "@/lib/services/scoring.service";
 import { getScoreSettings } from "@/lib/services/scoreSettings.service";
-import { CATEGORIES } from "@/constants/programs";
+import { CATEGORIES, type Category } from "@/constants/programs";
 import type { Database } from "@/types/database.types";
 
 const CATEGORY_ORDER = new Map(CATEGORIES.map((c, index) => [c.value, index]));
@@ -776,6 +776,89 @@ export async function listProgramWinners(): Promise<PublicResultRow[]> {
       (CATEGORY_ORDER.get(a.programCategory) ?? 0) - (CATEGORY_ORDER.get(b.programCategory) ?? 0);
     return categoryDiff !== 0 ? categoryDiff : a.programName.localeCompare(b.programName);
   });
+}
+
+export type WinnersReportEntry = {
+  programId: string;
+  programName: string;
+  programCategory: string;
+  position: number;
+  points: number;
+};
+
+export type WinnersReportGroup = {
+  groupId: string;
+  groupName: string;
+  groupMalayalamName: string | null;
+  groupPhotoUrl: string | null;
+  totalPoints: number;
+  entries: WinnersReportEntry[];
+};
+
+/**
+ * Admin-only "Winners Report": every published program's top-3 finish, sectioned by
+ * house rather than by program — the /admin/reports page's data source, exported to
+ * PDF for handing out at a prize-distribution ceremony. Same scope as
+ * listPublishedProgramPodiums (published only, top 3) and the same D-025 group-program
+ * fallback (a team's result has no individual student — it's attributed to its own
+ * house). Houses are ordered by total points, highest first (matching the leaderboard);
+ * within a house, entries are ordered by position then category then program name — a
+ * program with only a 1st and 2nd (e.g. just two scored students/teams) naturally has
+ * no 3rd row here, since there's no `results` row to produce one from.
+ */
+export async function listWinnersReportByGroup(): Promise<WinnersReportGroup[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(
+      "position, points, programs!inner(id, name, category, status), students(main_groups(id, name, malayalam_name, photo_url)), program_group_entries(main_groups(id, name, malayalam_name, photo_url))",
+    )
+    .eq("programs.status", "published")
+    .lte("position", 3);
+
+  if (error) {
+    console.error("listWinnersReportByGroup failed:", error.message);
+    return [];
+  }
+
+  const byGroup = new Map<string, WinnersReportGroup>();
+
+  for (const row of data) {
+    const group = row.students?.main_groups ?? row.program_group_entries?.main_groups;
+    if (!row.programs || !group) continue;
+
+    const entry = byGroup.get(group.id) ?? {
+      groupId: group.id,
+      groupName: group.name,
+      groupMalayalamName: group.malayalam_name,
+      groupPhotoUrl: group.photo_url,
+      totalPoints: 0,
+      entries: [],
+    };
+
+    entry.totalPoints += row.points;
+    entry.entries.push({
+      programId: row.programs.id,
+      programName: row.programs.name,
+      programCategory: row.programs.category,
+      position: row.position,
+      points: row.points,
+    });
+    byGroup.set(group.id, entry);
+  }
+
+  return Array.from(byGroup.values())
+    .map((group) => ({
+      ...group,
+      entries: group.entries.sort((a, b) => {
+        if (a.position !== b.position) return a.position - b.position;
+        const categoryDiff =
+          (CATEGORY_ORDER.get(a.programCategory as Category) ?? 0) -
+          (CATEGORY_ORDER.get(b.programCategory as Category) ?? 0);
+        return categoryDiff !== 0 ? categoryDiff : a.programName.localeCompare(b.programName);
+      }),
+    }))
+    .sort((a, b) => b.totalPoints - a.totalPoints || a.groupName.localeCompare(b.groupName));
 }
 
 export type LatestWinnerStudentRow = {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import { listFixture, listProgramRoster } from "@/lib/services/fixture.service";
 import { FixtureList } from "@/features/programs/components/FixtureList";
+import { FixtureProgramSearch } from "@/features/programs/components/FixtureProgramSearch";
 import { CurrentProgramCard } from "@/features/programs/components/CurrentProgramCard";
 import { ProgramRoster } from "@/features/programs/components/ProgramRoster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,26 +60,30 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
         </div>
       </div>
 
-      <nav className="flex flex-wrap items-center gap-1">
-        {STAGE_TYPES.map((s) => {
-          const isActive = s.value === stageType;
-          return (
-            <Link
-              key={s.value}
-              href={`/admin/fixture?stage=${s.value}`}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-house-green text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-house-green/10 hover:text-house-green",
-              )}
-            >
-              {s.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <nav className="flex flex-wrap items-center gap-1">
+          {STAGE_TYPES.map((s) => {
+            const isActive = s.value === stageType;
+            return (
+              <Link
+                key={s.value}
+                href={`/admin/fixture?stage=${s.value}`}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
+                  isActive
+                    ? "bg-house-green text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-house-green/10 hover:text-house-green",
+                )}
+              >
+                {s.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <FixtureProgramSearch />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">

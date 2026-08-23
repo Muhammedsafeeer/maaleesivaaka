@@ -17,6 +17,7 @@ import {
   SparklesIcon,
   MegaphoneIcon,
   LayoutTemplateIcon,
+  FileTextIcon,
 } from "lucide-react";
 import { NavMain, type NavMainItem } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -40,6 +41,7 @@ const ADMIN_NAV: NavMainItem[] = [
   { title: "Programs", url: "/admin/programs", icon: <ListMusicIcon />, group: "Event" },
   { title: "Fixture", url: "/admin/fixture", icon: <CalendarClockIcon />, group: "Event" },
   { title: "Leaderboard", url: "/admin/leaderboard", icon: <TrophyIcon />, group: "Event" },
+  { title: "Winners Report", url: "/admin/reports", icon: <FileTextIcon />, group: "Event" },
   { title: "Certificates", url: "/admin/certificates", icon: <AwardIcon />, group: "Content" },
   { title: "Results Poster", url: "/admin/results-poster", icon: <ImageIcon />, group: "Content" },
   {

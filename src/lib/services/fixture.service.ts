@@ -684,3 +684,59 @@ export async function listProgramRoster(programId: string, isGroup = false): Pro
 
   return { students, teams: [], totalJudges: totalJudges ?? 0 };
 }
+
+export type ProgramSearchResult = {
+  id: string;
+  name: string;
+  malayalamName: string | null;
+  category: string;
+  stageType: StageType;
+  status: ProgramStatus;
+  serialNumber: number | null;
+};
+
+/**
+ * Fixture page's "find a program" search — deliberately GLOBAL across both stages
+ * (unlike listFixture, which is always scoped to whichever stage tab is currently
+ * selected), so an admin can jump straight to a program without first guessing or
+ * clicking through which stage it's on. Name-only match (ILIKE, either language),
+ * admin-only session, every status included — a program not yet queued (still 'draft')
+ * is still a legitimate thing to search for here.
+ */
+export async function searchPrograms(query: string): Promise<ProgramSearchResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) {
+    return [];
+  }
+
+  // PostgREST's .or() filter string is comma/parenthesis-delimited — strip those out
+  // of the raw search term so a query containing them can't be (mis)parsed as extra
+  // filter clauses instead of literal characters to match.
+  const safe = trimmed.replace(/[,()]/g, " ").trim();
+  if (safe.length < 2) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("programs")
+    .select("id, name, malayalam_name, category, stage_type, status, serial_number")
+    .or(`name.ilike.%${safe}%,malayalam_name.ilike.%${safe}%`)
+    .order("name", { ascending: true })
+    .limit(20);
+
+  if (error) {
+    console.error("searchPrograms failed:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    name: row.name,
+    malayalamName: row.malayalam_name,
+    category: row.category,
+    stageType: row.stage_type,
+    status: row.status,
+    serialNumber: row.serial_number,
+  }));
+}

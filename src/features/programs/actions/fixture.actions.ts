@@ -8,7 +8,9 @@ import {
   createFixtureBreak,
   overrideBreakStatus,
   deleteFixtureBreak,
+  searchPrograms,
   type FixtureEntryRef,
+  type ProgramSearchResult,
 } from "@/lib/services/fixture.service";
 import { assertAdmin } from "@/lib/services/auth.service";
 import type { StageType, ProgramStatus } from "@/constants/programs";
@@ -104,4 +106,16 @@ export async function deleteFixtureBreakAction(breakId: string): Promise<Fixture
 
   revalidatePath("/admin/fixture");
   return {};
+}
+
+/**
+ * Fixture page's "find a program" search — global across both stages (see
+ * fixture.service.ts's searchPrograms). Read-only, but still admin-gated like every
+ * other action here rather than left open to any authenticated session.
+ */
+export async function searchProgramsAction(query: string): Promise<ProgramSearchResult[]> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return [];
+
+  return searchPrograms(query);
 }
