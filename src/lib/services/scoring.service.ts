@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { verifyAdminPassword } from "@/lib/services/auth.service";
+import { getScoreSettings } from "@/lib/services/scoreSettings.service";
 import type { Student } from "@/types/student";
 import type { Program } from "@/types/program";
 import {
@@ -276,7 +277,15 @@ export async function submitScores(
   }
 
   if (program.status !== "scoring") {
-    return { success: false, error: "Scoring isn't open for this program right now." };
+    // Admin-configurable exception (20260823020000_allow_judge_rescore_setting.sql): a
+    // judge can keep revising scores for a 'completed' program — one that auto-flipped
+    // the moment they finished, or that a tie held there — without an admin having to
+    // reopen it first. Never applies once 'published', regardless of the setting.
+    const settings = await getScoreSettings();
+    const canRescore = program.status === "completed" && settings.allowJudgeRescore;
+    if (!canRescore) {
+      return { success: false, error: "Scoring isn't open for this program right now." };
+    }
   }
 
   // Defense in depth (mirrors the status re-check above): don't trust a
@@ -402,7 +411,15 @@ export async function submitTeamScores(
   }
 
   if (program.status !== "scoring") {
-    return { success: false, error: "Scoring isn't open for this program right now." };
+    // Admin-configurable exception (20260823020000_allow_judge_rescore_setting.sql): a
+    // judge can keep revising scores for a 'completed' program — one that auto-flipped
+    // the moment they finished, or that a tie held there — without an admin having to
+    // reopen it first. Never applies once 'published', regardless of the setting.
+    const settings = await getScoreSettings();
+    const canRescore = program.status === "completed" && settings.allowJudgeRescore;
+    if (!canRescore) {
+      return { success: false, error: "Scoring isn't open for this program right now." };
+    }
   }
 
   const { data: criteria } = await supabase

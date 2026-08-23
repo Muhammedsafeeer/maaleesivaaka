@@ -1,11 +1,12 @@
 "use client";
 
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import {
   scoreSettingsFormSchema,
@@ -31,6 +32,7 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<ScoreSettingsFormInput>({
@@ -42,6 +44,7 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
       groupFirstPlacePoints: String(settings.groupFirstPlacePoints),
       groupSecondPlacePoints: String(settings.groupSecondPlacePoints),
       groupThirdPlacePoints: String(settings.groupThirdPlacePoints),
+      allowJudgeRescore: settings.allowJudgeRescore,
     },
   });
 
@@ -54,6 +57,7 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
         groupFirstPlacePoints: Number(values.groupFirstPlacePoints),
         groupSecondPlacePoints: Number(values.groupSecondPlacePoints),
         groupThirdPlacePoints: Number(values.groupThirdPlacePoints),
+        allowJudgeRescore: values.allowJudgeRescore,
       });
       if (result.error) {
         toast.error(result.error);
@@ -118,6 +122,31 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
           ))}
         </div>
       </div>
+
+      <Controller
+        control={control}
+        name="allowJudgeRescore"
+        render={({ field }) => (
+          <label className="flex cursor-pointer items-start gap-2">
+            <Checkbox
+              id="score-settings-allow-judge-rescore"
+              checked={field.value}
+              onCheckedChange={(value) => field.onChange(value === true)}
+            />
+            <span>
+              <span className="block text-sm font-medium">
+                Let judges rescore a completed program
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Normally a judge&apos;s scoring form locks the moment a program is marked
+                completed. Turning this on lets them keep revising their own scores until
+                you publish it — an admin&apos;s authorization is still required to change
+                any score already submitted.
+              </span>
+            </span>
+          </label>
+        )}
+      />
 
       <SubmitButton isPending={isPending} pendingText="Saving…" className="self-start">
         Save points

@@ -195,7 +195,14 @@ export async function overrideProgramStatus(
     return { success: false, error: "Could not find that program." };
   }
 
-  if (existing.status === "published") {
+  // A published program is otherwise locked from this override (it's live for the
+  // audience, not something to nudge via the Fixture page's quick status dropdown) —
+  // except these two admin-requested recovery paths for an accidental publish:
+  // 'scoring' (reopen so a judge can rescore) or 'upcoming' (a full reset). Both are
+  // deliberately only reachable from the program's own detail page (ResultsPanel's
+  // "Unpublish" control), never the Fixture list's inline dropdown, which still hides
+  // published programs entirely (see FixtureRow).
+  if (existing.status === "published" && status !== "scoring" && status !== "upcoming") {
     return {
       success: false,
       error: "This program is already published — manage it from the program page instead.",

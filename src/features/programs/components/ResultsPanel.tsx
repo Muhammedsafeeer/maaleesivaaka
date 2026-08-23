@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   Table,
@@ -13,6 +13,16 @@ import {
 import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/tables/EmptyState";
 import {
   recalculateResultsAction,
@@ -51,6 +61,12 @@ export function ResultsPanel({
   const [isRecalculating, startRecalculate] = useTransition();
   const [isPublishing, startPublish] = useTransition();
   const [isAcceptingTie, startAcceptTie] = useTransition();
+  const [isUnpublishing, startUnpublish] = useTransition();
+  // Which recovery path the confirmation dialog is currently open for — null when
+  // closed. A separate dialog per target rather than one generic one, since "reopen
+  // for rescoring" and "reset to upcoming" have very different consequences worth
+  // spelling out on their own.
+  const [unpublishTarget, setUnpublishTarget] = useState<"scoring" | "upcoming" | null>(null);
 
   // Derived, never stored (D-002 precedent) — the same duplicate-position check
   // finalize_program_results (SQL) already used to decide not to auto-complete this
@@ -85,6 +101,24 @@ export function ResultsPanel({
         return;
       }
       toast.success("Results published — visible to the audience now.");
+    });
+  }
+
+  function handleUnpublish() {
+    if (!unpublishTarget) return;
+    const target = unpublishTarget;
+    startUnpublish(async () => {
+      const result = await setProgramStatusAction(programId, target);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      setUnpublishTarget(null);
+      toast.success(
+        target === "scoring"
+          ? "Reopened for scoring — pulled from the audience view."
+          : "Reset to upcoming — pulled from the audience view.",
+      );
     });
   }
 
@@ -134,8 +168,60 @@ export function ResultsPanel({
               {isPublishing ? "Publishing…" : "Publish results"}
             </Button>
           ) : null}
+          {status === "published" ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUnpublishTarget("scoring")}
+                disabled={isUnpublishing}
+              >
+                Reopen for rescoring
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUnpublishTarget("upcoming")}
+                disabled={isUnpublishing}
+              >
+                Reset to upcoming
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
+
+      <AlertDialog
+        open={unpublishTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setUnpublishTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {unpublishTarget === "scoring" ? "Reopen for rescoring?" : "Reset to upcoming?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {unpublishTarget === "scoring"
+                ? `${programName} will be pulled from the audience view immediately and its judge can revise scores again. Recalculate and publish again once you're ready.`
+                : `${programName} will be pulled from the audience view immediately and moved back to Upcoming, as if it hadn't started — its calculated results stay on record but won't show anywhere until it's finalized and published again.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnpublishing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                handleUnpublish();
+              }}
+              disabled={isUnpublishing}
+            >
+              {isUnpublishing ? "Working…" : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {hasUnresolvedTie ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5">

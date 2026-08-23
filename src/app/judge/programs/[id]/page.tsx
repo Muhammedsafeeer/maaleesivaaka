@@ -5,6 +5,7 @@ import { getProgram } from "@/lib/services/program.service";
 import { listScorableStudents, listScorableTeams } from "@/lib/services/scoring.service";
 import { listScoringCriteria } from "@/lib/services/scoringCriteria.service";
 import { listTiedPositions } from "@/lib/services/result.service";
+import { getScoreSettings } from "@/lib/services/scoreSettings.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/tables/EmptyState";
@@ -46,13 +47,19 @@ export default async function JudgeScoringPage({ params }: JudgeScoringPageProps
 
   const isGroup = program.participation_type === "group";
 
-  const [students, teams, criteria, ties] = await Promise.all([
+  const [students, teams, criteria, ties, scoreSettings] = await Promise.all([
     isGroup ? Promise.resolve([]) : listScorableStudents(id),
     isGroup ? listScorableTeams(id) : Promise.resolve([]),
     listScoringCriteria(id),
     listTiedPositions(id),
+    getScoreSettings(),
   ]);
-  const canEdit = program.status === "scoring";
+  // Matches scoring.service.ts's submitScores/submitTeamScores exactly — a 'completed'
+  // program stays editable only when the admin has turned on rescoring, and never once
+  // 'published' regardless of that setting.
+  const canEdit =
+    program.status === "scoring" ||
+    (program.status === "completed" && scoreSettings.allowJudgeRescore);
   const tiedIds = new Set(
     ties.flatMap((group) =>
       group.participants.flatMap((p) => (isGroup ? (p.groupEntryId ? [p.groupEntryId] : []) : p.studentId ? [p.studentId] : [])),

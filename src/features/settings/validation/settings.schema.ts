@@ -16,6 +16,7 @@ export const scoreSettingsSchema = z.object({
   groupFirstPlacePoints: pointsValueSchema,
   groupSecondPlacePoints: pointsValueSchema,
   groupThirdPlacePoints: pointsValueSchema,
+  allowJudgeRescore: z.boolean(),
 });
 
 export type ScoreSettingsInput = z.infer<typeof scoreSettingsSchema>;
@@ -41,6 +42,7 @@ export const scoreSettingsFormSchema = z.object({
   groupFirstPlacePoints: pointsFieldSchema,
   groupSecondPlacePoints: pointsFieldSchema,
   groupThirdPlacePoints: pointsFieldSchema,
+  allowJudgeRescore: z.boolean(),
 });
 
 export type ScoreSettingsFormInput = z.infer<typeof scoreSettingsFormSchema>;
