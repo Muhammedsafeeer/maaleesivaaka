@@ -94,13 +94,13 @@ async function maxSerialNumber(
   return Math.max(programMax?.serial_number ?? 0, breakMax?.serial_number ?? 0);
 }
 
-/** 'published' sorts first, then 'scoring', then 'completed' — see listFixture. A
+/** 'published' sorts first, then 'completed', then 'scoring' — see listFixture. A
  * break is never 'published', so it only ever falls in the lowest-priority bucket
  * alongside 'upcoming', sorted purely by serial_number. */
 const FIXTURE_STATUS_PRIORITY: Partial<Record<ProgramStatus, number>> = {
   published: 0,
-  scoring: 1,
-  completed: 2,
+  completed: 1,
+  scoring: 2,
 };
 
 function fixtureEntryName(entry: FixtureEntry): string {
@@ -110,8 +110,8 @@ function fixtureEntryName(entry: FixtureEntry): string {
 /**
  * Every program AND break for a stage, merged into one running order (nulls-last on
  * serial_number, then name as a stable tiebreaker) — EXCEPT 'published' programs,
- * which always sort first, 'scoring' right after them (whichever entry is actually on
- * stage right now, program or break), then 'completed' — all three regardless of
+ * which always sort first, 'completed' right after them, then 'scoring' (whichever
+ * entry is actually on stage right now, program or break) — all three regardless of
  * where their serial number falls, so none of them is ever buried mid-list on a long
  * fixture behind a wall of still-upcoming entries. Admin-requested, same priority on
  * both stage tabs. Supabase's `.order()` doesn't support a secondary nullsFirst
