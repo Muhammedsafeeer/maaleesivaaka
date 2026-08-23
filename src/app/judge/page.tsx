@@ -18,7 +18,16 @@ export default async function JudgeDashboardPage() {
   const programs = await listAssignedPrograms();
 
   const completed = programs.filter((p) => isComplete(p.totalStudents, p.scoredCount));
-  const pending = programs.filter((p) => !isComplete(p.totalStudents, p.scoredCount));
+  // Programs actually open for scoring right now surface first — otherwise they sort
+  // alphabetically alongside "upcoming" programs a judge can't do anything with yet,
+  // and the one that actually needs attention can get buried in a long roster.
+  const pending = programs
+    .filter((p) => !isComplete(p.totalStudents, p.scoredCount))
+    .sort((a, b) => {
+      if (a.status === "scoring" && b.status !== "scoring") return -1;
+      if (a.status !== "scoring" && b.status === "scoring") return 1;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="flex flex-col gap-6">
