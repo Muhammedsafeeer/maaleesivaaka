@@ -38,7 +38,10 @@ const DEFAULT_CRITERION: ScoringCriterion = { id: "__default__", name: "Score" }
 /**
  * Team-scoped sibling of ScoringForm (D-025 follow-up): a group program is scored ONCE
  * per team entry, not once per member, so each row is a house + chest number rather
- * than a student's photo/name/roll — there is no per-student score to enter here.
+ * than a student's photo/name/roll — there is no per-student score to enter here. Every
+ * team is submitted on every save (same "score the whole roster, no null left behind"
+ * behavior as ScoringForm) — an input left empty is treated as 0 rather than blocking
+ * the save or being silently dropped.
  */
 export function TeamScoringForm({
   programId,
@@ -79,11 +82,11 @@ export function TeamScoringForm({
           if (!hasCriteria) {
             return {
               criterion_id: criterion.id,
-              value: team.score !== null ? String(team.score) : "",
+              value: team.score !== null ? String(team.score) : "0",
             };
           }
           const existing = team.criteriaScores.find((cs) => cs.criterion_id === criterion.id);
-          return { criterion_id: criterion.id, value: existing ? String(existing.score) : "" };
+          return { criterion_id: criterion.id, value: existing ? String(existing.score) : "0" };
         }),
       })),
     },
@@ -93,20 +96,19 @@ export function TeamScoringForm({
     const scores: TeamScoreInput[] = [];
 
     for (const entry of values.entries) {
-      const allFilled = entry.criteriaScores.every((cs) => cs.value !== "");
-      if (!allFilled) continue;
-
+      // An input a judge never touched already reads "0" (see defaultValues above);
+      // this only catches one deliberately cleared back to empty — treated as 0 too,
+      // rather than silently dropping that team from the save, so a save can never
+      // leave a null score behind.
       if (!hasCriteria) {
-        scores.push({
-          group_entry_id: entry.group_entry_id,
-          score: Number(entry.criteriaScores[0].value),
-        });
+        const raw = entry.criteriaScores[0].value;
+        scores.push({ group_entry_id: entry.group_entry_id, score: raw === "" ? 0 : Number(raw) });
         continue;
       }
 
       const criteria_scores = entry.criteriaScores.map((cs) => ({
         criterion_id: cs.criterion_id,
-        score: Number(cs.value),
+        score: cs.value === "" ? 0 : Number(cs.value),
       }));
       scores.push({
         group_entry_id: entry.group_entry_id,
@@ -140,18 +142,7 @@ export function TeamScoringForm({
   }
 
   function onSubmit(values: TeamScoringFormInput) {
-    const scores = buildScores(values);
-
-    if (scores.length === 0) {
-      toast.error(
-        hasCriteria
-          ? "Fill in every scoring type for at least one team before saving."
-          : "Enter at least one score before saving.",
-      );
-      return;
-    }
-
-    submit(scores);
+    submit(buildScores(values));
   }
 
   function handleAuthorize() {
@@ -231,7 +222,12 @@ export function TeamScoringForm({
       </div>
 
       {canEdit ? (
-        <SubmitButton isPending={isPending} pendingText="Saving…" className="self-start">
+        <SubmitButton
+          isPending={isPending}
+          pendingText="Saving…"
+          size="lg"
+          className="h-14 w-full text-base font-semibold"
+        >
           Save scores
         </SubmitButton>
       ) : null}

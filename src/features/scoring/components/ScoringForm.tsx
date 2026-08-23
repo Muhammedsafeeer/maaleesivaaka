@@ -39,9 +39,10 @@ const DEFAULT_CRITERION: ScoringCriterion = { id: "__default__", name: "Score" }
 /**
  * A row-list, not a Table — components/README.md: "Judges score on phones," and a
  * photo + name + class + score input row is cramped in a table's columns at phone
- * widths even with horizontal scroll. Rows without every criterion filled in are
- * skipped on submit (scoring.service.ts's submitScores expects only the rows actually
- * being set), so a judge can score a few students, save, and come back later.
+ * widths even with horizontal scroll. Every student is submitted on every save (a
+ * judge is expected to score the whole roster in one pass, not skip around) — an
+ * input left empty is treated as 0 rather than blocking the save or being silently
+ * dropped, so a save can never leave a null score behind.
  */
 export function ScoringForm({
   programId,
@@ -85,13 +86,13 @@ export function ScoringForm({
           if (!hasCriteria) {
             return {
               criterion_id: criterion.id,
-              value: student.score !== null ? String(student.score) : "",
+              value: student.score !== null ? String(student.score) : "0",
             };
           }
           const existing = student.criteriaScores.find(
             (cs) => cs.criterion_id === criterion.id,
           );
-          return { criterion_id: criterion.id, value: existing ? String(existing.score) : "" };
+          return { criterion_id: criterion.id, value: existing ? String(existing.score) : "0" };
         }),
       })),
     },
@@ -101,17 +102,19 @@ export function ScoringForm({
     const scores: ScoreInput[] = [];
 
     for (const entry of values.entries) {
-      const allFilled = entry.criteriaScores.every((cs) => cs.value !== "");
-      if (!allFilled) continue;
-
+      // An input a judge never touched already reads "0" (see defaultValues above);
+      // this only catches one deliberately cleared back to empty — treated as 0 too,
+      // rather than silently dropping that student from the save, so a save can never
+      // leave a null score behind.
       if (!hasCriteria) {
-        scores.push({ student_id: entry.student_id, score: Number(entry.criteriaScores[0].value) });
+        const raw = entry.criteriaScores[0].value;
+        scores.push({ student_id: entry.student_id, score: raw === "" ? 0 : Number(raw) });
         continue;
       }
 
       const criteria_scores = entry.criteriaScores.map((cs) => ({
         criterion_id: cs.criterion_id,
-        score: Number(cs.value),
+        score: cs.value === "" ? 0 : Number(cs.value),
       }));
       scores.push({
         student_id: entry.student_id,
@@ -145,18 +148,7 @@ export function ScoringForm({
   }
 
   function onSubmit(values: ScoringFormInput) {
-    const scores = buildScores(values);
-
-    if (scores.length === 0) {
-      toast.error(
-        hasCriteria
-          ? "Fill in every scoring type for at least one student before saving."
-          : "Enter at least one score before saving.",
-      );
-      return;
-    }
-
-    submit(scores);
+    submit(buildScores(values));
   }
 
   function handleAuthorize() {
@@ -237,7 +229,12 @@ export function ScoringForm({
       </div>
 
       {canEdit ? (
-        <SubmitButton isPending={isPending} pendingText="Saving…" className="self-start">
+        <SubmitButton
+          isPending={isPending}
+          pendingText="Saving…"
+          size="lg"
+          className="h-14 w-full text-base font-semibold"
+        >
           Save scores
         </SubmitButton>
       ) : null}
