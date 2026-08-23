@@ -81,12 +81,21 @@ export async function finalizeIfComplete(programId: string): Promise<ServiceResu
     }
   }
 
-  const averages: StudentAverage[] = Array.from(totalsByTarget.entries()).map(
-    ([student_id, { sum, count }]) => ({
+  // A 0 average isn't a competitive result — it's the floor every never-actually-scored
+  // student lands on when a judge leaves their input untouched (ScoringForm/
+  // TeamScoringForm default every roster row to 0 and always submit the full roster,
+  // per 20260823000000_ignore_zero_score_ties.sql's same reasoning). Ranking them
+  // anyway used to dump the whole never-scored batch onto whichever position came
+  // right after the real competitors — often 3rd — so a 2-real-entrant program's
+  // leftover roster would show up as a pile of "3rd place" finishers on the results
+  // poster/winners report/certificates. Excluding them here means a program with only
+  // 2 real scores now correctly produces only a 1st and 2nd place, full stop.
+  const averages: StudentAverage[] = Array.from(totalsByTarget.entries())
+    .map(([student_id, { sum, count }]) => ({
       student_id,
       average_score: Math.round((sum / count) * 100) / 100,
-    }),
-  );
+    }))
+    .filter((a) => a.average_score > 0);
 
   const settings = await getScoreSettings();
   // A group (team) program's podium uses its own admin-configured points, separate
