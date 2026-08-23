@@ -236,13 +236,26 @@ export function FixtureList({
 
   function applyReorder(reorderedUpcomingIds: string[]) {
     setOrder((current) => {
+      // Mirrors reorderUpcoming's own numbering exactly (fixture.service.ts): start
+      // right after the highest serial number a settled program already holds, then
+      // number the new order sequentially — otherwise a swapped-in program keeps
+      // carrying its OLD serial_number until the server round-trip finishes and a
+      // fresh fetch overwrites this state, so the Serial column visibly wouldn't
+      // match the new row order for a moment.
+      const settledMax = current.reduce(
+        (max, p) => (p.status === "upcoming" ? max : Math.max(max, p.serial_number ?? 0)),
+        0,
+      );
+      let nextSerial = settledMax + 1;
+
       const byId = new Map(current.map((p) => [p.id, p]));
       let cursor = 0;
       return current.map((p) => {
         if (p.status !== "upcoming") return p;
         const id = reorderedUpcomingIds[cursor];
         cursor += 1;
-        return byId.get(id) ?? p;
+        const next = byId.get(id) ?? p;
+        return { ...next, serial_number: nextSerial++ };
       });
     });
 
