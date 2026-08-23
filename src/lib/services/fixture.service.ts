@@ -94,12 +94,13 @@ async function maxSerialNumber(
   return Math.max(programMax?.serial_number ?? 0, breakMax?.serial_number ?? 0);
 }
 
-/** 'published' sorts first, 'scoring' right after — see listFixture. A break is never
- * 'published', so it only ever falls in the priority-2 (neither) bucket, sorted purely
- * by serial_number like an 'upcoming'/'completed' program would be. */
+/** 'published' sorts first, then 'scoring', then 'completed' — see listFixture. A
+ * break is never 'published', so it only ever falls in the lowest-priority bucket
+ * alongside 'upcoming', sorted purely by serial_number. */
 const FIXTURE_STATUS_PRIORITY: Partial<Record<ProgramStatus, number>> = {
   published: 0,
   scoring: 1,
+  completed: 2,
 };
 
 function fixtureEntryName(entry: FixtureEntry): string {
@@ -109,13 +110,14 @@ function fixtureEntryName(entry: FixtureEntry): string {
 /**
  * Every program AND break for a stage, merged into one running order (nulls-last on
  * serial_number, then name as a stable tiebreaker) — EXCEPT 'published' programs,
- * which always sort first, and 'scoring' right after them (whichever entry is actually
- * on stage right now, program or break) — both regardless of where their serial number
- * falls, so neither is ever buried mid-list on a long fixture. Admin-requested, same
- * priority on both stage tabs. Supabase's `.order()` doesn't support a secondary
- * nullsFirst independent of the first column's direction across two different columns
- * in one call reliably across all client versions, so this sorts client-side instead
- * of chaining two `.order()`s.
+ * which always sort first, 'scoring' right after them (whichever entry is actually on
+ * stage right now, program or break), then 'completed' — all three regardless of
+ * where their serial number falls, so none of them is ever buried mid-list on a long
+ * fixture behind a wall of still-upcoming entries. Admin-requested, same priority on
+ * both stage tabs. Supabase's `.order()` doesn't support a secondary nullsFirst
+ * independent of the first column's direction across two different columns in one
+ * call reliably across all client versions, so this sorts client-side instead of
+ * chaining two `.order()`s.
  */
 export async function listFixture(stageType: StageType): Promise<FixtureEntry[]> {
   const supabase = await createClient();
@@ -151,8 +153,8 @@ export async function listFixture(stageType: StageType): Promise<FixtureEntry[]>
   ];
 
   return entries.sort((a, b) => {
-    const aPriority = FIXTURE_STATUS_PRIORITY[a.status as ProgramStatus] ?? 2;
-    const bPriority = FIXTURE_STATUS_PRIORITY[b.status as ProgramStatus] ?? 2;
+    const aPriority = FIXTURE_STATUS_PRIORITY[a.status as ProgramStatus] ?? 3;
+    const bPriority = FIXTURE_STATUS_PRIORITY[b.status as ProgramStatus] ?? 3;
     if (aPriority !== bPriority) return aPriority - bPriority;
 
     if (a.serialNumber === b.serialNumber) {
