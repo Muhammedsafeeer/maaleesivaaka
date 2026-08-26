@@ -179,11 +179,13 @@ html, body, #app-root {
   margin: 8px auto 0;
   text-align: center;
   font-size: 0;
+  box-sizing: border-box;
+  padding: 0 12px;
 }
 .tv-podium-card {
   display: block;
-  width: 94%;
-  max-width: 1100px;
+  width: 100%;
+  max-width: 100%;
   margin: 10px auto;
   padding: 0;
   border-radius: 18px;
@@ -194,8 +196,8 @@ html, body, #app-root {
   overflow: hidden;
 }
 .tv-podium-card.is-leader {
-  width: 96%;
-  max-width: 1140px;
+  width: 100%;
+  max-width: 100%;
   background: #452960;
   border: 2px solid rgba(232, 196, 74, 0.45);
 }
@@ -208,37 +210,38 @@ html, body, #app-root {
 .tv-podium-td-name,
 .tv-podium-td-score {
   vertical-align: middle;
-  padding: 14px 16px;
+  padding: 12px 10px;
 }
 .tv-podium-td-media {
-  width: 160px;
+  width: 18%;
   text-align: center;
   white-space: nowrap;
   font-size: 0;
 }
 .tv-podium-td-name {
-  width: auto;
+  width: 42%;
   text-align: left;
+  padding-left: 8px;
 }
 .tv-podium-td-score {
-  width: 220px;
+  width: 40%;
   text-align: right;
-  padding-right: 28px;
+  padding-right: 20px;
 }
 .tv-podium-trophy {
   display: inline-block;
   vertical-align: middle;
-  width: 48px;
+  width: 44px;
   height: auto;
-  margin: 0 10px 0 0;
+  margin: 0 8px 0 0;
 }
-.tv-podium-trophy.is-leader { width: 56px; }
+.tv-podium-trophy.is-leader { width: 52px; }
 .tv-podium-name {
   display: block;
   margin: 0;
   font-family: var(--font-audience-display), Georgia, serif;
-  font-size: 44px;
-  font-size: var(--tv-32);
+  font-size: 36px;
+  font-size: var(--tv-28);
   font-weight: 700;
   color: #f7f3e8;
   line-height: 1.1;
@@ -247,28 +250,29 @@ html, body, #app-root {
   text-overflow: ellipsis;
 }
 .tv-podium-card.is-leader .tv-podium-name {
-  font-size: 52px;
-  font-size: var(--tv-36);
+  font-size: 42px;
+  font-size: var(--tv-32);
 }
+/* Cap score size so 3–4 digits always fit in the score column (PC + hall TV) */
 .tv-podium-points {
   display: block;
   margin: 0;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 72px;
-  font-size: var(--tv-60);
+  font-size: 56px;
+  font-size: 4.2vw;
   font-weight: 800;
   color: #e8c44a;
   line-height: 1;
   white-space: nowrap;
 }
 .tv-podium-card.is-leader .tv-podium-points {
-  font-size: 84px;
-  font-size: var(--tv-64);
+  font-size: 64px;
+  font-size: 4.8vw;
 }
 .tv-podium-label {
   display: block;
   margin: 4px 0 0;
-  font-size: 18px;
+  font-size: 16px;
   font-size: var(--tv-14);
   font-weight: 600;
   letter-spacing: 0.12em;
