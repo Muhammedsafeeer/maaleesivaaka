@@ -5,10 +5,10 @@ import type { GroupLeaderboardRow } from "@/lib/services/leaderboard.service";
 const RANK_TONES = { 1: "gold", 2: "silver", 3: "bronze" } as const;
 
 /**
- * Overall standings — plain `.tv-*` classes from inlined critical CSS (no Tailwind
- * dependency) so fonts/layout survive TV browsers that skip the main CSS bundle.
- * House photos use hard pixel sizes — CSS vars alone were ignored on the hall TV and
- * the intrinsic image filled half the screen (pink house logo blow-up).
+ * Overall standings — horizontal table cards (Panasonic ignores flex).
+ * Name + score sit on one row so hall-TV browser chrome cannot clip the points
+ * the way the old tall vertical cards did. Just Declared already uses this
+ * short-card pattern successfully.
  */
 export function StandingsSlide({ groups }: { groups: GroupLeaderboardRow[] }) {
   const top3 = groups.filter((g) => g.rank <= 3).sort((a, b) => a.rank - b.rank);
@@ -28,22 +28,34 @@ export function StandingsSlide({ groups }: { groups: GroupLeaderboardRow[] }) {
           const isLeader = group.rank === 1;
           return (
             <div key={group.id} className={`tv-podium-card${isLeader ? " is-leader" : ""}`}>
-              <TrophyCup
-                tone={tone}
-                className={`tv-podium-trophy${isLeader ? " is-leader" : ""}`}
-              />
-              {group.photo_url ? (
-                <PhotoThumbnail
-                  url={group.photo_url}
-                  alt={`${group.name} photo`}
-                  className={`tv-photo rounded-full${isLeader ? " is-leader" : ""}`}
-                  sizePx={130}
-                  style={{ borderRadius: "999px" }}
-                />
-              ) : null}
-              <p className="tv-podium-name">{group.name}</p>
-              <p className="tv-podium-points">{group.total_points}</p>
-              <p className="tv-podium-label">Points</p>
+              <table className="tv-podium-table" cellPadding={0} cellSpacing={0}>
+                <tbody>
+                  <tr>
+                    <td className="tv-podium-td-media">
+                      <TrophyCup
+                        tone={tone}
+                        className={`tv-podium-trophy${isLeader ? " is-leader" : ""}`}
+                      />
+                      {group.photo_url ? (
+                        <PhotoThumbnail
+                          url={group.photo_url}
+                          alt={`${group.name} photo`}
+                          className={`tv-photo rounded-full${isLeader ? " is-leader" : ""}`}
+                          sizePx={80}
+                          style={{ borderRadius: "999px" }}
+                        />
+                      ) : null}
+                    </td>
+                    <td className="tv-podium-td-name">
+                      <p className="tv-podium-name">{group.name}</p>
+                      <p className="tv-podium-label">Points</p>
+                    </td>
+                    <td className="tv-podium-td-score">
+                      <p className="tv-podium-points">{group.total_points}</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           );
         })}

@@ -82,7 +82,7 @@ html, body, #app-root {
   display: table;
   width: 100%;
   table-layout: fixed;
-  padding: 10px 16px;
+  padding: 6px 12px;
   box-sizing: border-box;
 }
 .tv-header-brand,
@@ -96,27 +96,27 @@ html, body, #app-root {
 .tv-header-brand .tv-header-icon {
   display: inline-block;
   vertical-align: middle;
-  margin-right: 10px;
-  width: 36px;
-  height: 36px;
+  margin-right: 8px;
+  width: 28px;
+  height: 28px;
 }
 .tv-header-title {
   display: inline-block;
   vertical-align: middle;
   margin: 0;
   font-family: var(--font-audience-display), Georgia, serif;
-  font-size: 36px;
-  font-size: var(--tv-28);
+  font-size: 28px;
+  font-size: var(--tv-20);
   font-weight: 700;
   color: #f7f3e8;
 }
 .tv-header-clock {
   display: inline-block;
   vertical-align: middle;
-  margin: 0 12px 0 0;
+  margin: 0 10px 0 0;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 32px;
-  font-size: var(--tv-24);
+  font-size: 26px;
+  font-size: var(--tv-18);
   font-weight: 600;
   color: #cfc6b0;
 }
@@ -127,28 +127,29 @@ html, body, #app-root {
   background: transparent;
   color: #e8c44a;
   padding: 6px;
-  opacity: 0.45;
+  opacity: 0.55;
 }
-.tv-header-icon { width: 36px; height: 36px; color: #e8c44a; }
+.tv-header-icon { width: 28px; height: 28px; color: #e8c44a; }
 
+/* Leave headroom for address bar + bottom toolbar on hall TVs (no fullscreen) */
 .tv-slide {
   position: absolute;
-  top: 56px;
+  top: 40px;
   left: 0;
   width: 100%;
-  height: 88%;
+  height: 78%;
   display: block;
   box-sizing: border-box;
-  padding: 4px 8px 20px;
+  padding: 2px 8px 8px;
   text-align: center;
   color: #f7f3e8;
   overflow: hidden;
 }
 .tv-slide-kicker {
   display: block;
-  margin: 0 auto 18px;
-  font-size: 42px;
-  font-size: var(--tv-32);
+  margin: 0 auto 10px;
+  font-size: 34px;
+  font-size: var(--tv-24);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -156,18 +157,18 @@ html, body, #app-root {
 }
 .tv-slide-title {
   display: block;
-  margin: 0 auto 12px;
+  margin: 0 auto 8px;
   font-family: var(--font-audience-display), Georgia, serif;
-  font-size: 56px;
-  font-size: var(--tv-40);
+  font-size: 44px;
+  font-size: var(--tv-32);
   font-weight: 700;
   color: #f7f3e8;
 }
 .tv-slide-sub {
   display: block;
-  margin: 8px auto 16px;
-  font-size: 28px;
-  font-size: var(--tv-20);
+  margin: 4px auto 10px;
+  font-size: 24px;
+  font-size: var(--tv-16);
   color: #cfc6b0;
 }
 
@@ -175,77 +176,109 @@ html, body, #app-root {
   display: block;
   width: 100%;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 8px auto 0;
   text-align: center;
   font-size: 0;
 }
 .tv-podium-card {
-  display: inline-block;
-  vertical-align: bottom;
-  width: 38%;
-  min-width: 0;
-  max-width: none;
-  margin: 8px 1.5%;
-  padding: 28px 20px;
-  border-radius: 22px;
+  display: block;
+  width: 94%;
+  max-width: 1100px;
+  margin: 10px auto;
+  padding: 0;
+  border-radius: 18px;
   background: #3a2550;
   box-sizing: border-box;
-  text-align: center;
+  text-align: left;
   font-size: 18px;
+  overflow: hidden;
 }
 .tv-podium-card.is-leader {
-  padding-top: 36px;
-  padding-bottom: 32px;
-  width: 42%;
+  width: 96%;
+  max-width: 1140px;
+  background: #452960;
+  border: 2px solid rgba(232, 196, 74, 0.45);
+}
+.tv-podium-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.tv-podium-td-media,
+.tv-podium-td-name,
+.tv-podium-td-score {
+  vertical-align: middle;
+  padding: 14px 16px;
+}
+.tv-podium-td-media {
+  width: 160px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0;
+}
+.tv-podium-td-name {
+  width: auto;
+  text-align: left;
+}
+.tv-podium-td-score {
+  width: 220px;
+  text-align: right;
+  padding-right: 28px;
 }
 .tv-podium-trophy {
-  display: block;
-  width: 96px;
+  display: inline-block;
+  vertical-align: middle;
+  width: 48px;
   height: auto;
-  margin: 0 auto 12px;
+  margin: 0 10px 0 0;
 }
-.tv-podium-trophy.is-leader { width: 120px; }
+.tv-podium-trophy.is-leader { width: 56px; }
 .tv-podium-name {
   display: block;
-  margin: 10px 0 0;
+  margin: 0;
   font-family: var(--font-audience-display), Georgia, serif;
-  font-size: 48px;
-  font-size: var(--tv-36);
+  font-size: 44px;
+  font-size: var(--tv-32);
   font-weight: 700;
   color: #f7f3e8;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tv-podium-card.is-leader .tv-podium-name {
-  font-size: 56px;
-  font-size: var(--tv-40);
+  font-size: 52px;
+  font-size: var(--tv-36);
 }
 .tv-podium-points {
   display: block;
-  margin: 8px 0 0;
+  margin: 0;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 88px;
-  font-size: var(--tv-72);
+  font-size: 72px;
+  font-size: var(--tv-60);
   font-weight: 800;
   color: #e8c44a;
-  line-height: 1.05;
+  line-height: 1;
+  white-space: nowrap;
 }
 .tv-podium-card.is-leader .tv-podium-points {
-  font-size: 108px;
-  font-size: var(--tv-96);
+  font-size: 84px;
+  font-size: var(--tv-64);
 }
 .tv-podium-label {
   display: block;
   margin: 4px 0 0;
-  font-size: 22px;
-  font-size: var(--tv-16);
+  font-size: 18px;
+  font-size: var(--tv-14);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #cfc6b0;
 }
 .tv-rest {
   display: block;
   width: 100%;
-  margin: 18px auto 0;
+  margin: 12px auto 0;
   text-align: center;
   font-size: 0;
 }
@@ -286,9 +319,9 @@ html, body, #app-root {
   width: 56%;
   min-width: 0;
   max-width: none;
-  margin: 12px 1%;
-  padding: 40px 32px;
-  border-radius: 22px;
+  margin: 8px 1%;
+  padding: 24px 24px;
+  border-radius: 18px;
   background: #3a2550;
   box-sizing: border-box;
   text-align: center;
@@ -384,10 +417,10 @@ html, body, #app-root {
 }
 .tv-status-pct {
   display: block;
-  margin: 0 auto 6px;
+  margin: 0 auto 4px;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 120px;
-  font-size: var(--tv-96);
+  font-size: 88px;
+  font-size: var(--tv-64);
   font-weight: 800;
   color: #e8c44a;
   line-height: 1;
@@ -407,9 +440,9 @@ html, body, #app-root {
   width: 48%;
   min-width: 0;
   max-width: none;
-  margin: 8px 1%;
-  padding: 18px 20px;
-  border-radius: 16px;
+  margin: 5px 1%;
+  padding: 12px 16px;
+  border-radius: 14px;
   background: #3a2550;
   box-sizing: border-box;
   text-align: left;
@@ -487,8 +520,8 @@ html, body, #app-root {
   display: block !important;
   width: 100% !important;
   max-width: none !important;
-  height: 180px !important;
-  max-height: 180px !important;
+  height: 140px !important;
+  max-height: 140px !important;
   border-radius: 0 !important;
 }
 .tv-winner-body { padding: 16px 18px 12px; }
@@ -504,10 +537,10 @@ html, body, #app-root {
 #tv-stage .tv-ad,
 .tv-ad {
   position: absolute;
-  top: 48px;
+  top: 40px;
   left: 0;
   width: 100%;
-  height: 90%;
+  height: 78%;
   text-align: center;
   overflow: hidden;
   background: #1a1028;
@@ -594,8 +627,8 @@ html, body, #app-root {
   display: block !important;
   width: 100% !important;
   max-width: none !important;
-  height: 180px !important;
-  max-height: 180px !important;
+  height: 140px !important;
+  max-height: 140px !important;
   overflow: hidden !important;
   border-radius: 0 !important;
   background: #2a1840;
@@ -616,16 +649,23 @@ html, body, #app-root {
   margin-right: 14px;
 }
 #tv-stage .tv-podium-card .tv-photo {
-  width: 110px !important;
-  height: 110px !important;
-  max-width: 110px !important;
-  max-height: 110px !important;
+  display: inline-block !important;
+  width: 68px !important;
+  height: 68px !important;
+  max-width: 68px !important;
+  max-height: 68px !important;
+  margin: 0;
+  vertical-align: middle;
 }
 #tv-stage .tv-podium-card.is-leader .tv-photo {
-  width: 130px !important;
-  height: 130px !important;
-  max-width: 130px !important;
-  max-height: 130px !important;
+  width: 76px !important;
+  height: 76px !important;
+  max-width: 76px !important;
+  max-height: 76px !important;
+}
+#tv-stage .tv-podium-td-media .tv-photo {
+  display: inline-block !important;
+  vertical-align: middle;
 }
 #tv-stage .tv-ad img,
 #tv-stage .tv-ad video {

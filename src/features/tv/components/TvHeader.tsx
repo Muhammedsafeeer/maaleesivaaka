@@ -8,6 +8,8 @@ import { useFullscreen } from "@/hooks/useFullscreen";
 /**
  * Persistent branding + clock. Uses plain `.tv-header*` classes from inlined
  * critical CSS so the hall TV still lays out when the Tailwind bundle is ignored.
+ * Fullscreen is best-effort — many hall browsers refuse it; slides are sized to
+ * fit with address/toolbar chrome instead.
  */
 export function TvHeader() {
   const [now, setNow] = useState(() => new Date());
@@ -18,17 +20,12 @@ export function TvHeader() {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (document.fullscreenElement || !document.fullscreenEnabled) return;
-    document.documentElement.requestFullscreen().catch(() => {});
-  }, []);
-
   return (
     <div className="tv-header">
       <div className="tv-header-brand">
         <CrescentStar
           className="tv-header-icon"
-          style={{ width: "var(--tv-28)", height: "var(--tv-28)", color: "#e8c44a" }}
+          style={{ width: 28, height: 28, color: "#e8c44a" }}
         />
         <p className="tv-header-title">Maalee Sivaaka</p>
       </div>

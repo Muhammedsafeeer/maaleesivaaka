@@ -28,8 +28,8 @@ export function LatestWinnerSlide({ results }: { results: LatestWinnerStudentRow
               url={result.studentPhotoUrl}
               alt={`${result.studentName} photo`}
               className="tv-photo-hero"
-              sizePx={280}
-              style={{ width: "100%", maxWidth: "100%", height: 180, borderRadius: 0 }}
+              sizePx={220}
+              style={{ width: "100%", maxWidth: "100%", height: 140, borderRadius: 0 }}
             />
             <div className="tv-winner-body">
               <span

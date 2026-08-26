@@ -2,30 +2,70 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-/** Projector/TV mode for the audience view (src/hooks/README.md's Phase 16 plan).
- * Wraps the browser Fullscreen API — `document.fullscreenElement` is the source of
- * truth (not local state alone), since fullscreen can also be exited via Esc or
- * browser chrome outside this hook's control. */
+type DocWithFs = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+  msFullscreenElement?: Element | null;
+  msExitFullscreen?: () => Promise<void> | void;
+};
+
+type ElWithFs = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+  msRequestFullscreen?: () => Promise<void> | void;
+};
+
+function getFullscreenElement(): Element | null {
+  const doc = document as DocWithFs;
+  return (
+    document.fullscreenElement ??
+    doc.webkitFullscreenElement ??
+    doc.msFullscreenElement ??
+    null
+  );
+}
+
+function requestFs(el: HTMLElement) {
+  const target = el as ElWithFs;
+  if (target.requestFullscreen) return target.requestFullscreen();
+  if (target.webkitRequestFullscreen) return Promise.resolve(target.webkitRequestFullscreen());
+  if (target.msRequestFullscreen) return Promise.resolve(target.msRequestFullscreen());
+  return Promise.reject(new Error("Fullscreen API unavailable"));
+}
+
+function exitFs() {
+  const doc = document as DocWithFs;
+  if (document.exitFullscreen) return document.exitFullscreen();
+  if (doc.webkitExitFullscreen) return Promise.resolve(doc.webkitExitFullscreen());
+  if (doc.msExitFullscreen) return Promise.resolve(doc.msExitFullscreen());
+  return Promise.resolve();
+}
+
+/**
+ * Projector/TV mode for the audience view.
+ * Vendor-prefixed Fullscreen API for older embedded browsers; many hall TVs
+ * still refuse fullscreen — layout must fit with browser chrome either way.
+ */
 export function useFullscreen() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     function handleChange() {
-      setIsFullscreen(document.fullscreenElement !== null);
+      setIsFullscreen(getFullscreenElement() !== null);
     }
 
     document.addEventListener("fullscreenchange", handleChange);
-    return () => document.removeEventListener("fullscreenchange", handleChange);
+    document.addEventListener("webkitfullscreenchange", handleChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleChange);
+      document.removeEventListener("webkitfullscreenchange", handleChange);
+    };
   }, []);
 
   const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
+    if (getFullscreenElement()) {
+      void exitFs().catch(() => {});
     } else {
-      document.documentElement.requestFullscreen().catch(() => {
-        // Fullscreen can be denied (e.g. iframe without allow="fullscreen", or a
-        // browser that doesn't support it) — fail silently, the page still works.
-      });
+      void requestFs(document.documentElement).catch(() => {});
     }
   }, []);
 
