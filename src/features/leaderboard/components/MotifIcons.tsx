@@ -5,7 +5,7 @@
  * an embedded asset — see PRODUCT.md's Brand Commitments).
  */
 
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 
 const CUP_TONES = {
   gold: { light: "#fff3c4", mid: "#f0b90b", deep: "#b8790a" },
@@ -88,9 +88,15 @@ export function TrophyCup({
   );
 }
 
-export function CrescentStar({ className }: { className?: string }) {
+export function CrescentStar({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
-    <svg viewBox="0 0 40 40" fill="none" className={className} aria-hidden="true">
+    <svg viewBox="0 0 40 40" fill="none" className={className} style={style} aria-hidden="true">
       <path
         d="M22 6a14 14 0 1 0 0 28 11 11 0 0 1 0-28Z"
         fill="currentColor"
@@ -124,12 +130,19 @@ export function Lantern({ className }: { className?: string }) {
   );
 }
 
-export function DomeSilhouette({ className }: { className?: string }) {
+export function DomeSilhouette({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
     <svg
       viewBox="0 0 200 60"
       fill="none"
       className={className}
+      style={style}
       preserveAspectRatio="xMidYMax slice"
       aria-hidden="true"
     >

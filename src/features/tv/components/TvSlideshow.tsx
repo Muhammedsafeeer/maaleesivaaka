@@ -41,12 +41,39 @@ function slideKey(slide: Slide): string {
 
 function IntermissionSlide() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-(--tv-16) text-center">
-      <CrescentStar className="lantern-glow size-(--tv-64) text-(--stage-spotlight-gold)" />
-      <p className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-36)] font-bold text-(--stage-spotlight-ink)">
+    <div
+      className="flex h-full flex-col items-center justify-center gap-(--tv-16) text-center"
+      style={{
+        display: "flex",
+        height: "100%",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "var(--tv-16)",
+        textAlign: "center",
+        color: "#f7f3e8",
+      }}
+    >
+      <CrescentStar
+        className="lantern-glow size-(--tv-64) text-(--stage-spotlight-gold)"
+        style={{ width: "var(--tv-64)", height: "var(--tv-64)", color: "#e8c44a" }}
+      />
+      <p
+        className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-36)] font-bold text-(--stage-spotlight-ink)"
+        style={{
+          fontFamily: "var(--font-audience-display), serif",
+          fontSize: "var(--tv-36)",
+          fontWeight: 700,
+          color: "#f7f3e8",
+          margin: 0,
+        }}
+      >
         Maalee Sivaaka
       </p>
-      <p className="text-[length:var(--tv-18)] text-(--stage-spotlight-ink-dim)">
+      <p
+        className="text-[length:var(--tv-18)] text-(--stage-spotlight-ink-dim)"
+        style={{ fontSize: "var(--tv-18)", color: "#cfc6b0", margin: 0 }}
+      >
         Live results appear here as the festival gets underway.
       </p>
     </div>
@@ -125,7 +152,19 @@ export function TvSlideshow({
     return (
       <TvStage>
         <TvHeader />
-        <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10" />
+        <DomeSilhouette
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100%",
+            height: "var(--tv-128)",
+            color: "rgba(232, 196, 74, 0.12)",
+            pointerEvents: "none",
+          }}
+        />
         <IntermissionSlide />
       </TvStage>
     );
@@ -145,7 +184,19 @@ export function TvSlideshow({
         <span className="lantern-glow absolute top-[85%] left-[92%] size-(--tv-8) rounded-full bg-(--stage-spotlight-gold) opacity-25 [animation-delay:2.2s]" />
       </span>
 
-      <DomeSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10" />
+      <DomeSilhouette
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "var(--tv-128)",
+          color: "rgba(232, 196, 74, 0.12)",
+          pointerEvents: "none",
+        }}
+      />
 
       <TvHeader />
 

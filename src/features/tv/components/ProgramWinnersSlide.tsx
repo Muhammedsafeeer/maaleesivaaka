@@ -24,7 +24,7 @@ export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] })
         Recently Published
       </p>
 
-      <div className="grid w-[min(92vw,64rem)] grid-cols-2 gap-(--tv-20)">
+      <div className="grid w-[min(92%,64rem)] grid-cols-2 gap-(--tv-20)">
         {recent.map((winner, i) => (
           <div
             key={winner.id}

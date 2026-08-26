@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,6 +50,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        {/*
+          beforeInteractive only works in the root layout. Injects /tv-fit.js into the
+          initial HTML so the TV kiosk gets it even when React hydration fails.
+          The script no-ops on non-/tv pages (no #tv-stage).
+        */}
+        <Script src="/tv-fit.js" strategy="beforeInteractive" />
         <div id="app-root" className="flex min-h-full flex-1 flex-col">
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster />

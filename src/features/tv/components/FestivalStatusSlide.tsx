@@ -38,7 +38,7 @@ export function FestivalStatusSlide({ statuses }: { statuses: CategoryStatus[] }
         </p>
       </div>
 
-      <div className="grid w-[min(90vw,56rem)] grid-cols-3 gap-(--tv-20)">
+      <div className="grid w-[min(90%,56rem)] grid-cols-3 gap-(--tv-20)">
         {statuses
           .filter((status) => status.total > 0)
           .map((status, i) => {

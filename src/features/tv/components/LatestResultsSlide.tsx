@@ -26,7 +26,7 @@ export function LatestResultsSlide({ results }: { results: LatestResultStudentRo
         </p>
       </div>
 
-      <div className="grid w-[min(90vw,56rem)] grid-cols-2 gap-(--tv-20)">
+      <div className="grid w-[min(90%,56rem)] grid-cols-2 gap-(--tv-20)">
         {shown.map((result, i) => (
           <div
             key={result.id}

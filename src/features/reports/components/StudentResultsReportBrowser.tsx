@@ -7,6 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -21,6 +28,8 @@ import {
   type ReportMode,
 } from "@/features/reports/lib/generateStudentResultsReportPdf";
 import type { StudentResultsReportRow } from "@/lib/services/result.service";
+
+const ALL = "all";
 
 const POSITION_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
 const POSITION_BADGE_CLASS: Record<number, string> = {
@@ -145,10 +154,12 @@ function ReportTab({
   mode,
   rows,
   categoryLabels,
+  isFiltered,
 }: {
   mode: ReportMode;
   rows: StudentResultsReportRow[];
   categoryLabels: Record<string, string>;
+  isFiltered: boolean;
 }) {
   const [isExporting, setIsExporting] = useState(false);
   const sections = useMemo(() => buildSections(rows, mode), [rows, mode]);
@@ -163,7 +174,12 @@ function ReportTab({
   }
 
   if (sections.length === 0) {
-    return (
+    return isFiltered ? (
+      <EmptyState
+        title="No results match these filters"
+        description="Try a different position or category, or clear the filters."
+      />
+    ) : (
       <EmptyState
         title="No published results yet"
         description="Students appear here once their program's results are published."
@@ -210,6 +226,12 @@ function ReportTab({
  * the same underlying rows just grouped differently. Each tab has its own "Export to
  * PDF" button (generateStudentResultsReportPdf), same non-DOM-capture approach as
  * WinnersReportBrowser, so the PDF's pagination isn't tied to the page's own layout.
+ *
+ * Position/Category filters narrow `rows` before it ever reaches a tab — plain local
+ * state, not URL params (unlike ProgramFilters), since every row is already loaded
+ * client-side and there's nothing to refetch; filtering is just picking a subset to
+ * display. Both filters apply across all three tabs and to that tab's PDF export, so
+ * e.g. "Category: Kids" + "By Group" exports just the Kids results grouped by house.
  */
 export function StudentResultsReportBrowser({
   rows,
@@ -218,22 +240,91 @@ export function StudentResultsReportBrowser({
   rows: StudentResultsReportRow[];
   categoryLabels: Record<string, string>;
 }) {
+  const [positionFilter, setPositionFilter] = useState(ALL);
+  const [categoryFilter, setCategoryFilter] = useState(ALL);
+
+  const positionOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.position))).sort((a, b) => a - b),
+    [rows],
+  );
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.programCategory))),
+    [rows],
+  );
+
+  const filteredRows = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (positionFilter === ALL || r.position === Number(positionFilter)) &&
+          (categoryFilter === ALL || r.programCategory === categoryFilter),
+      ),
+    [rows, positionFilter, categoryFilter],
+  );
+  const isFiltered = positionFilter !== ALL || categoryFilter !== ALL;
+
   return (
-    <Tabs defaultValue="position">
-      <TabsList>
-        <TabsTrigger value="position">By Position</TabsTrigger>
-        <TabsTrigger value="category">By Category</TabsTrigger>
-        <TabsTrigger value="group">By Group</TabsTrigger>
-      </TabsList>
-      <TabsContent value="position">
-        <ReportTab mode="position" rows={rows} categoryLabels={categoryLabels} />
-      </TabsContent>
-      <TabsContent value="category">
-        <ReportTab mode="category" rows={rows} categoryLabels={categoryLabels} />
-      </TabsContent>
-      <TabsContent value="group">
-        <ReportTab mode="group" rows={rows} categoryLabels={categoryLabels} />
-      </TabsContent>
-    </Tabs>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Select value={positionFilter} onValueChange={setPositionFilter}>
+          <SelectTrigger aria-label="Filter by position" className="sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All positions</SelectItem>
+            {positionOptions.map((position) => (
+              <SelectItem key={position} value={String(position)}>
+                {positionLabel(position)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger aria-label="Filter by category" className="sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All categories</SelectItem>
+            {categoryOptions.map((category) => (
+              <SelectItem key={category} value={category}>
+                {categoryLabels[category] ?? category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {isFiltered ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPositionFilter(ALL);
+              setCategoryFilter(ALL);
+            }}
+          >
+            Clear filters
+          </Button>
+        ) : null}
+      </div>
+
+      <Tabs defaultValue="position">
+        <TabsList>
+          <TabsTrigger value="position">By Position</TabsTrigger>
+          <TabsTrigger value="category">By Category</TabsTrigger>
+          <TabsTrigger value="group">By Group</TabsTrigger>
+        </TabsList>
+        <TabsContent value="position">
+          <ReportTab mode="position" rows={filteredRows} categoryLabels={categoryLabels} isFiltered={isFiltered} />
+        </TabsContent>
+        <TabsContent value="category">
+          <ReportTab mode="category" rows={filteredRows} categoryLabels={categoryLabels} isFiltered={isFiltered} />
+        </TabsContent>
+        <TabsContent value="group">
+          <ReportTab mode="group" rows={filteredRows} categoryLabels={categoryLabels} isFiltered={isFiltered} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
