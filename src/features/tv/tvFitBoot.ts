@@ -184,7 +184,7 @@ html, body, #app-root {
 }
 .tv-podium-card {
   display: block;
-  width: 100%;
+  width: 50%;
   max-width: 100%;
   margin: 10px auto;
   padding: 0;
@@ -196,7 +196,7 @@ html, body, #app-root {
   overflow: hidden;
 }
 .tv-podium-card.is-leader {
-  width: 100%;
+  width: 50%;
   max-width: 100%;
   background: #452960;
   border: 2px solid rgba(232, 196, 74, 0.45);
