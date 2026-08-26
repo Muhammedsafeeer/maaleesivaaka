@@ -1,16 +1,9 @@
-import { Medal } from "lucide-react";
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import type { PublicResultRow } from "@/lib/services/result.service";
 
 const MAX_SHOWN = 8;
 
-/**
- * "Last published program(s)" slide — every published program's 1st-place house,
- * newest first (listProgramWinners() itself sorts by category for the interactive
- * /audience page; re-sorted by recency here since this slide is specifically about
- * what just got published). House-only, same D-017 contract as the rest of this app's
- * public surfaces.
- */
+/** Recently published 1st-place houses — plain `.tv-list*` (no Tailwind on hall TV). */
 export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] }) {
   if (winners.length === 0) return null;
 
@@ -19,36 +12,25 @@ export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] })
     .slice(0, MAX_SHOWN);
 
   return (
-    <div className="tv-slide flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
-      <p className="tv-slide-kicker text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
-        Recently Published
-      </p>
-
-      <div className="grid w-[min(92%,64rem)] grid-cols-2 gap-(--tv-20)">
-        {recent.map((winner, i) => (
-          <div
-            key={winner.id}
-            className="animate-in fade-in slide-in-from-left-4 flex items-center gap-(--tv-16) rounded-2xl bg-(--stage-spotlight-card) px-(--tv-20) py-(--tv-16) fill-mode-both"
-            style={{ animationDelay: `${i * 90}ms`, animationDuration: "500ms" }}
-          >
-            <span className="flex size-(--tv-40) shrink-0 items-center justify-center rounded-xl bg-(--stage-spotlight-gold)/15 text-(--stage-spotlight-gold)">
-              <Medal className="size-(--tv-20)" />
+    <div className="tv-slide">
+      <p className="tv-slide-kicker">Recently Published</p>
+      <div className="tv-list">
+        {recent.map((winner) => (
+          <div key={winner.id} className="tv-list-row">
+            <span className="tv-list-medal" aria-hidden="true">
+              1
             </span>
             <PhotoThumbnail
               url={winner.groupPhotoUrl}
               alt={`${winner.groupName} photo`}
-              className="tv-photo size-(--tv-48) rounded-full"
-              sizePx={48}
+              className="tv-photo"
+              sizePx={64}
               style={{ borderRadius: "999px" }}
             />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[length:var(--tv-18)] font-bold text-(--stage-spotlight-ink)">
-                {winner.groupName}
-              </p>
-              <p className="truncate text-[length:var(--tv-14)] text-(--stage-spotlight-ink-dim)">
-                {winner.programName}
-              </p>
-            </div>
+            <span className="tv-list-body">
+              <span className="tv-list-name">{winner.groupName}</span>
+              <span className="tv-list-meta">{winner.programName}</span>
+            </span>
           </div>
         ))}
       </div>

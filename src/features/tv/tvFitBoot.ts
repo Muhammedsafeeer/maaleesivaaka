@@ -392,6 +392,169 @@ html, body, #app-root {
   margin: 0 4px;
 }
 
+/* Two-column result / winners lists (no CSS grid — old TV WebKits). */
+.tv-list {
+  display: block;
+  width: 94%;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  font-size: 0;
+}
+.tv-list-row {
+  display: inline-block;
+  vertical-align: top;
+  width: 46%;
+  min-width: 260px;
+  max-width: 540px;
+  margin: 10px 1.5%;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #3a2550;
+  box-sizing: border-box;
+  text-align: left;
+  font-size: 16px;
+}
+.tv-list-row .tv-photo {
+  width: 64px !important;
+  height: 64px !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+  margin-right: 14px;
+}
+.tv-list-body {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 58%;
+}
+.tv-list-name {
+  display: block;
+  margin: 0;
+  font-family: var(--font-audience-display), Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-size: var(--tv-24);
+  font-weight: 700;
+  color: #f7f3e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tv-list-meta {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-size: var(--tv-16);
+  color: #cfc6b0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tv-list-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(232, 196, 74, 0.18);
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8c44a;
+  white-space: nowrap;
+}
+.tv-list-medal {
+  display: inline-block;
+  vertical-align: middle;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  margin-right: 10px;
+  border-radius: 12px;
+  background: rgba(232, 196, 74, 0.15);
+  color: #e8c44a;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Just Declared winner cards */
+.tv-winner-card {
+  display: inline-block;
+  vertical-align: top;
+  width: 28%;
+  min-width: 200px;
+  max-width: 300px;
+  margin: 12px;
+  border-radius: 20px;
+  background: #3a2550;
+  overflow: hidden;
+  text-align: left;
+  font-size: 16px;
+}
+.tv-winner-card .tv-photo-hero {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 180px !important;
+  max-height: 180px !important;
+  border-radius: 0 !important;
+}
+.tv-winner-body {
+  padding: 16px 18px 12px;
+}
+.tv-winner-foot {
+  padding: 12px 18px;
+  background: rgba(232, 196, 74, 0.12);
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8c44a;
+}
+
+/* Full-bleed ads — exempt from the 160px thumbnail cap */
+#tv-stage .tv-ad {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  width: 100%;
+  height: 82%;
+  text-align: center;
+  overflow: hidden;
+  background: #1a1028;
+}
+#tv-stage .tv-ad img,
+#tv-stage .tv-ad video {
+  display: inline-block !important;
+  vertical-align: middle;
+  max-width: 94% !important;
+  max-height: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+  border: 0 !important;
+}
+#tv-stage .tv-ad-sizer {
+  display: inline-block;
+  height: 100%;
+  vertical-align: middle;
+  width: 0;
+}
+
+.tv-ad {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  width: 100%;
+  height: 82%;
+  text-align: center;
+  overflow: hidden;
+  background: #1a1028;
+}
+.tv-ad-sizer {
+  display: inline-block;
+  height: 100%;
+  vertical-align: middle;
+  width: 0;
+}
+
 .tv-progress-row {
   position: absolute;
   left: 5%;
@@ -452,10 +615,11 @@ html, body, #app-root {
   object-fit: cover !important;
 }
 #tv-stage .tv-photo-hero {
+  display: block !important;
   width: 100% !important;
-  max-width: 280px !important;
-  height: 200px !important;
-  max-height: 200px !important;
+  max-width: none !important;
+  height: 180px !important;
+  max-height: 180px !important;
   overflow: hidden !important;
   border-radius: 0 !important;
   background: #2a1840;
@@ -467,6 +631,12 @@ html, body, #app-root {
   max-width: none !important;
   max-height: none !important;
   object-fit: cover !important;
+}
+#tv-stage .tv-list-row .tv-photo {
+  width: 64px !important;
+  height: 64px !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
 }
 #tv-stage svg[viewBox="0 0 200 60"] {
   position: absolute !important;
