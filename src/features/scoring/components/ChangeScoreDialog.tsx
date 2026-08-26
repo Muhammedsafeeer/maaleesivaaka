@@ -176,7 +176,12 @@ export function ChangeScoreDialog({
           {triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      {/* flex column capped to the viewport so a long roster scrolls internally instead
+          of the dialog growing past the screen — header/footer stay put, only the
+          middle section scrolls. Widened past DialogContent's own sm:max-w-sm: that's a
+          separate tailwind-merge bucket from a plain max-w-*, so overriding it means
+          setting the same sm: variant here, wide enough for several judge columns. */}
+      <DialogContent className="flex max-h-[85vh] max-w-[calc(100%-2rem)] flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{programName} — scores</DialogTitle>
           <DialogDescription>
@@ -186,115 +191,120 @@ export function ChangeScoreDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
-        ) : loadError ? (
-          <p className="py-6 text-center text-sm text-destructive">{loadError}</p>
-        ) : matrix ? (
-          matrix.rows.length === 0 || matrix.judges.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Nothing to score yet.
-            </p>
-          ) : matrix.hasCriteria ? (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap gap-2">
-                {matrix.judges.map((judge) => (
-                  <Button
-                    key={judge.id}
-                    type="button"
-                    size="sm"
-                    variant={selectedJudgeId === judge.id ? "default" : "outline"}
-                    onClick={() => selectJudge(judge.id)}
-                  >
-                    {judge.label} · {judge.name}
-                  </Button>
-                ))}
-              </div>
+        <div className="-mx-4 min-h-0 flex-1 overflow-y-auto px-4">
+          {loading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+          ) : loadError ? (
+            <p className="py-6 text-center text-sm text-destructive">{loadError}</p>
+          ) : matrix ? (
+            matrix.rows.length === 0 || matrix.judges.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nothing to score yet.
+              </p>
+            ) : matrix.hasCriteria ? (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap gap-2">
+                  {matrix.judges.map((judge) => (
+                    <Button
+                      key={judge.id}
+                      type="button"
+                      size="sm"
+                      variant={selectedJudgeId === judge.id ? "default" : "outline"}
+                      onClick={() => selectJudge(judge.id)}
+                    >
+                      {judge.label} · {judge.name}
+                    </Button>
+                  ))}
+                </div>
 
-              {loadingJudge ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
-              ) : selectedJudgeId && judgeScorable ? (
-                judgeScorable.isGroup ? (
-                  <TeamScoringForm
-                    key={selectedJudgeId}
-                    programId={programId}
-                    teams={judgeScorable.teams}
-                    criteria={judgeScorable.criteria}
-                    canEdit
-                    tiedIds={tiedIds}
-                    adminJudgeId={selectedJudgeId}
-                    sortTiedFirst
-                  />
-                ) : (
-                  <ScoringForm
-                    key={selectedJudgeId}
-                    programId={programId}
-                    students={judgeScorable.students}
-                    criteria={judgeScorable.criteria}
-                    canEdit
-                    tiedIds={tiedIds}
-                    adminJudgeId={selectedJudgeId}
-                    sortTiedFirst
-                  />
-                )
-              ) : null}
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    {matrix.judges.map((judge) => (
-                      <TableHead key={judge.id} className="w-20 text-center">
-                        {judge.label}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orderedRows.map((row) => (
-                    <TableRow key={row.id} className={cn(row.tied && "bg-destructive/5")}>
-                      <TableCell>
-                        <p className="text-sm font-medium">
-                          {row.name}
-                          {row.tied ? (
-                            <Badge variant="destructive" className="ml-1.5 align-middle text-[0.65rem]">
-                              Tied
-                            </Badge>
-                          ) : null}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{row.secondary}</p>
-                      </TableCell>
+                {loadingJudge ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+                ) : selectedJudgeId && judgeScorable ? (
+                  judgeScorable.isGroup ? (
+                    <TeamScoringForm
+                      key={selectedJudgeId}
+                      programId={programId}
+                      teams={judgeScorable.teams}
+                      criteria={judgeScorable.criteria}
+                      canEdit
+                      tiedIds={tiedIds}
+                      adminJudgeId={selectedJudgeId}
+                      sortTiedFirst
+                    />
+                  ) : (
+                    <ScoringForm
+                      key={selectedJudgeId}
+                      programId={programId}
+                      students={judgeScorable.students}
+                      criteria={judgeScorable.criteria}
+                      canEdit
+                      tiedIds={tiedIds}
+                      adminJudgeId={selectedJudgeId}
+                      sortTiedFirst
+                    />
+                  )
+                ) : null}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
                       {matrix.judges.map((judge) => (
-                        <TableCell key={judge.id} className="text-center">
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            min={CRITERION_SCORE_MIN}
-                            max={CRITERION_SCORE_MAX}
-                            step={1}
-                            className="mx-auto h-8 w-16 text-center"
-                            value={values[judge.id]?.[row.id] ?? "0"}
-                            onChange={(event) => {
-                              clampScoreInput(event);
-                              const next = event.target.value;
-                              setValues((current) => ({
-                                ...current,
-                                [judge.id]: { ...current[judge.id], [row.id]: next },
-                              }));
-                            }}
-                            disabled={saving}
-                          />
-                        </TableCell>
+                        <TableHead key={judge.id} className="w-20 text-center">
+                          {judge.label}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )
-        ) : null}
+                  </TableHeader>
+                  <TableBody>
+                    {orderedRows.map((row) => (
+                      <TableRow key={row.id} className={cn(row.tied && "bg-destructive/5")}>
+                        <TableCell>
+                          <p className="text-sm font-medium">
+                            {row.name}
+                            {row.tied ? (
+                              <Badge
+                                variant="destructive"
+                                className="ml-1.5 align-middle text-[0.65rem]"
+                              >
+                                Tied
+                              </Badge>
+                            ) : null}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{row.secondary}</p>
+                        </TableCell>
+                        {matrix.judges.map((judge) => (
+                          <TableCell key={judge.id} className="text-center">
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={CRITERION_SCORE_MIN}
+                              max={CRITERION_SCORE_MAX}
+                              step={1}
+                              className="mx-auto h-8 w-16 text-center"
+                              value={values[judge.id]?.[row.id] ?? "0"}
+                              onChange={(event) => {
+                                clampScoreInput(event);
+                                const next = event.target.value;
+                                setValues((current) => ({
+                                  ...current,
+                                  [judge.id]: { ...current[judge.id], [row.id]: next },
+                                }));
+                              }}
+                              disabled={saving}
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          ) : null}
+        </div>
 
         {canEditHere ? (
           <DialogFooter>
