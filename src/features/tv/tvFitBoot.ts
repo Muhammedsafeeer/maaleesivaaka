@@ -184,7 +184,8 @@ html, body, #app-root {
 }
 .tv-podium-card {
   display: block;
-  width: 50%;
+  width:100%;
+  height: 50%;
   max-width: 100%;
   margin: 10px auto;
   padding: 0;
@@ -196,8 +197,9 @@ html, body, #app-root {
   overflow: hidden;
 }
 .tv-podium-card.is-leader {
-  width: 50%;
+  width: 100%;
   max-width: 100%;
+height: 50%;
   background: #452960;
   border: 2px solid rgba(232, 196, 74, 0.45);
 }
@@ -226,7 +228,7 @@ html, body, #app-root {
 .tv-podium-td-score {
   width: 40%;
   text-align: right;
-  padding-right: 20px;
+  padding-right: 50px;
 }
 .tv-podium-trophy {
   display: inline-block;

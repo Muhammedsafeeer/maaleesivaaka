@@ -1,16 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Student } from "@/types/student";
+import type { Student, StudentWithGroup } from "@/types/student";
 import type { Profile } from "@/types/profile";
 
 export type ServiceResult<T> = { success: true; data: T } | { success: false; error: string };
 
 /** Students currently assigned to a program, joined for display — a raw program_students
- * row (just two foreign keys) means nothing on its own in a table. */
-export async function listAssignedStudents(programId: string): Promise<Student[]> {
+ * row (just two foreign keys) means nothing on its own in a table. Includes house name
+ * so the roster can show "Name (House)" in brackets. */
+export async function listAssignedStudents(programId: string): Promise<StudentWithGroup[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("program_students")
-    .select("students(*, student_categories(category))")
+    .select("students(*, student_categories(category), main_groups(name))")
     .eq("program_id", programId)
     .order("created_at", { ascending: true });
 
@@ -20,8 +21,14 @@ export async function listAssignedStudents(programId: string): Promise<Student[]
 
   return data.flatMap((row) => {
     if (!row.students) return [];
-    const { student_categories, ...student } = row.students;
-    return [{ ...student, categories: student_categories.map((c) => c.category) }];
+    const { student_categories, main_groups, ...student } = row.students;
+    return [
+      {
+        ...student,
+        categories: student_categories.map((c) => c.category),
+        group_name: main_groups?.name ?? null,
+      },
+    ];
   });
 }
 
@@ -65,7 +72,7 @@ export async function listAssignedGroupMembers(programId: string): Promise<Assig
  * simpler and plenty fast at this project's scale (D-002's own reasoning: hundreds of
  * students, a few dozen programs).
  */
-export async function listAssignableStudents(programId: string): Promise<Student[]> {
+export async function listAssignableStudents(programId: string): Promise<StudentWithGroup[]> {
   const supabase = await createClient();
 
   const { data: program, error: programError } = await supabase
@@ -100,7 +107,7 @@ export async function listAssignableStudents(programId: string): Promise<Student
 
   const { data: candidates, error: candidatesError } = await supabase
     .from("students")
-    .select("*, student_categories(category)")
+    .select("*, student_categories(category), main_groups(name)")
     .in("id", candidateIds)
     .order("name", { ascending: true });
 
@@ -110,9 +117,10 @@ export async function listAssignableStudents(programId: string): Promise<Student
 
   return candidates
     .filter((student) => !assignedIds.has(student.id))
-    .map(({ student_categories, ...student }) => ({
+    .map(({ student_categories, main_groups, ...student }) => ({
       ...student,
       categories: student_categories.map((row) => row.category),
+      group_name: main_groups?.name ?? null,
     }));
 }
 
@@ -125,7 +133,7 @@ export async function listAssignableStudents(programId: string): Promise<Student
 export async function listAssignableStudentsForGroupEntry(
   programId: string,
   groupId: string,
-): Promise<Student[]> {
+): Promise<StudentWithGroup[]> {
   const candidates = await listAssignableStudents(programId);
   return candidates.filter((student) => student.group_id === groupId);
 }

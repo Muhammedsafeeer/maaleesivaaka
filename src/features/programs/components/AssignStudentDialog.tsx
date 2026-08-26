@@ -28,14 +28,14 @@ import {
   type AssignStudentInput,
 } from "@/features/programs/validation/assignment.schema";
 import { assignStudentAction } from "@/features/programs/actions/assignment.actions";
-import type { Student } from "@/types/student";
+import type { StudentWithGroup } from "@/types/student";
 
 export function AssignStudentDialog({
   programId,
   assignableStudents,
 }: {
   programId: string;
-  assignableStudents: Student[];
+  assignableStudents: StudentWithGroup[];
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -97,7 +97,9 @@ export function AssignStudentDialog({
                     <SelectContent>
                       {assignableStudents.map((student) => (
                         <SelectItem key={student.id} value={student.id}>
-                          {student.name} ({student.roll_number})
+                          {student.name}
+                          {student.group_name ? ` (${student.group_name})` : ""} ·{" "}
+                          {student.roll_number}
                         </SelectItem>
                       ))}
                     </SelectContent>

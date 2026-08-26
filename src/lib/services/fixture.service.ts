@@ -15,6 +15,7 @@ export type RosterStudent = {
   name: string;
   roll_number: string;
   photo_url: string | null;
+  groupName: string | null;
   scoredJudgeCount: number;
 };
 
@@ -662,7 +663,7 @@ export async function listProgramRoster(programId: string, isGroup = false): Pro
 
   const { data: assigned, error: assignedError } = await supabase
     .from("program_students")
-    .select("students(id, name, roll_number, photo_url)")
+    .select("students(id, name, roll_number, photo_url, main_groups(name))")
     .eq("program_id", programId)
     .order("created_at", { ascending: true });
 
@@ -678,7 +679,16 @@ export async function listProgramRoster(programId: string, isGroup = false): Pro
 
   const students = assigned.flatMap((row) =>
     row.students
-      ? [{ ...row.students, scoredJudgeCount: scoredCountByStudent.get(row.students.id) ?? 0 }]
+      ? [
+          {
+            id: row.students.id,
+            name: row.students.name,
+            roll_number: row.students.roll_number,
+            photo_url: row.students.photo_url,
+            groupName: row.students.main_groups?.name ?? null,
+            scoredJudgeCount: scoredCountByStudent.get(row.students.id) ?? 0,
+          },
+        ]
       : [],
   );
 

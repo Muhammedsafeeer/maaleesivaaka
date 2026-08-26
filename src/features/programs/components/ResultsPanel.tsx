@@ -282,9 +282,14 @@ export function ResultsPanel({
                   <TableCell className="font-medium">
                     {result.students ? (
                       <>
-                        {result.students.name}{" "}
+                        {result.students.name}
+                        {result.students.main_groups?.name ? (
+                          <span className="ml-1 font-normal text-muted-foreground">
+                            ({result.students.main_groups.name})
+                          </span>
+                        ) : null}{" "}
                         <span className="text-muted-foreground tabular-nums">
-                          (Chest {result.students.roll_number})
+                          · Chest {result.students.roll_number}
                         </span>
                       </>
                     ) : result.program_group_entries ? (

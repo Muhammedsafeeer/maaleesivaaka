@@ -24,9 +24,9 @@ import {
 import { EmptyState } from "@/components/tables/EmptyState";
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import { unassignStudentAction } from "@/features/programs/actions/assignment.actions";
-import type { Student } from "@/types/student";
+import type { StudentWithGroup } from "@/types/student";
 
-function RemoveButton({ programId, student }: { programId: string; student: Student }) {
+function RemoveButton({ programId, student }: { programId: string; student: StudentWithGroup }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -79,7 +79,7 @@ export function RosterTable({
   students,
 }: {
   programId: string;
-  students: Student[];
+  students: StudentWithGroup[];
 }) {
   if (students.length === 0) {
     return (
@@ -112,7 +112,14 @@ export function RosterTable({
               <PhotoThumbnail url={student.photo_url} alt={`${student.name} photo`} />
             </TableCell>
             <TableCell className="tabular-nums">{student.roll_number}</TableCell>
-            <TableCell className="font-medium">{student.name}</TableCell>
+            <TableCell className="font-medium">
+              {student.name}
+              {student.group_name ? (
+                <span className="ml-1 font-normal text-muted-foreground">
+                  ({student.group_name})
+                </span>
+              ) : null}
+            </TableCell>
             <TableCell>{student.class}</TableCell>
             <TableCell>
               <RemoveButton programId={programId} student={student} />

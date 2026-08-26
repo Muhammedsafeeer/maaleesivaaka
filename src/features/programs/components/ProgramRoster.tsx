@@ -92,7 +92,14 @@ export function ProgramRoster({ roster }: { roster: ProgramRosterData }) {
             </span>
             <PhotoThumbnail url={student.photo_url} alt={`${student.name} photo`} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{student.name}</p>
+              <p className="truncate text-sm font-medium">
+                {student.name}
+                {student.groupName ? (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    ({student.groupName})
+                  </span>
+                ) : null}
+              </p>
               <p className="truncate text-xs text-muted-foreground">
                 Roll {student.roll_number}
               </p>

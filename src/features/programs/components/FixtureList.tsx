@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,10 +197,10 @@ function FixtureRow({
       <TableCell className="font-medium">
         <Link href={`/admin/programs/${program.id}`} className="hover:underline">
           {program.name}
+          <span className="ml-1 font-normal text-muted-foreground">
+            ({categoryLabels[program.category]})
+          </span>
         </Link>
-      </TableCell>
-      <TableCell>
-        <Badge variant="outline">{categoryLabels[program.category]}</Badge>
       </TableCell>
       <TableCell className="w-36">
         {program.status === "published" ? (
@@ -320,7 +319,7 @@ function FixtureBreakRow({
           <span className="tabular-nums">{serialNumber ?? "—"}</span>
         </div>
       </TableCell>
-      <TableCell className="font-medium text-muted-foreground" colSpan={2}>
+      <TableCell className="font-medium text-muted-foreground" colSpan={1}>
         <span className="flex items-center gap-1.5">
           <Coffee className="size-3.5 shrink-0" aria-hidden="true" />
           {brk.label}
@@ -541,7 +540,6 @@ export function FixtureList({
           <TableRow>
             <TableHead>Serial</TableHead>
             <TableHead>Name</TableHead>
-            <TableHead>Category</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>

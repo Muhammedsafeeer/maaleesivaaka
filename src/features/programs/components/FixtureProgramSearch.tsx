@@ -83,9 +83,13 @@ function SearchResultRow({
         onClick={onNavigate}
         className="min-w-0 flex-1 hover:underline"
       >
-        <p className="truncate font-medium">{program.name}</p>
+        <p className="truncate font-medium">
+          {program.name}{" "}
+          <span className="font-normal text-muted-foreground">
+            ({categoryLabels[program.category] ?? program.category})
+          </span>
+        </p>
         <p className="truncate text-xs text-muted-foreground">
-          {categoryLabels[program.category] ?? program.category} ·{" "}
           {stageLabels[program.stageType] ?? program.stageType}
           {program.serialNumber !== null ? ` · #${program.serialNumber}` : ""}
         </p>
