@@ -21,7 +21,7 @@ export function LatestResultsSlide({ results }: { results: LatestResultStudentRo
               url={result.studentPhotoUrl}
               alt={`${result.studentName} photo`}
               className="tv-photo"
-              sizePx={64}
+              sizePx={72}
               style={{ borderRadius: "999px" }}
             />
             <span className="tv-list-body">

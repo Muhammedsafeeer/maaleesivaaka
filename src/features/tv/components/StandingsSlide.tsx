@@ -37,7 +37,7 @@ export function StandingsSlide({ groups }: { groups: GroupLeaderboardRow[] }) {
                   url={group.photo_url}
                   alt={`${group.name} photo`}
                   className={`tv-photo rounded-full${isLeader ? " is-leader" : ""}`}
-                  sizePx={isLeader ? 120 : 96}
+                  sizePx={130}
                   style={{ borderRadius: "999px" }}
                 />
               ) : null}

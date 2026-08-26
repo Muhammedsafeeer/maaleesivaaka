@@ -43,7 +43,8 @@ function buildSlides(input: {
   return [
     input.standings.length > 0 ? { kind: "standings" as const } : null,
     input.latestWinner.length > 0 ? { kind: "latestWinner" as const } : null,
-    input.nowPerforming.length > 0 || input.currentBreaks.length > 0
+    input.nowPerforming.some((p) => p.stage_type === "on_stage") ||
+    input.currentBreaks.some((b) => b.stage_type === "on_stage")
       ? { kind: "nowPerforming" as const }
       : null,
     input.latestResults.length > 0 ? { kind: "latestResults" as const } : null,
@@ -78,10 +79,11 @@ function Dome() {
         right: 0,
         bottom: 0,
         width: "100%",
-        height: 120,
-        maxHeight: 120,
-        color: "rgba(232, 196, 74, 0.12)",
+        height: 48,
+        maxHeight: 48,
+        color: "rgba(232, 196, 74, 0.08)",
         pointerEvents: "none",
+        zIndex: 0,
       }}
     />
   );

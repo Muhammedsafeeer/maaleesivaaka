@@ -21,14 +21,17 @@ export function NowPerformingSlide({
   currentBreaks: FixtureBreak[];
   housesByProgram: Record<string, GroupLeaderboardRow[]>;
 }) {
-  if (programs.length === 0 && currentBreaks.length === 0) return null;
+  // Hall TV: only the live on-stage program(s) / breaks — off-stage scoring stays off this slide.
+  const onStagePrograms = programs.filter((p) => p.stage_type === "on_stage");
+  const onStageBreaks = currentBreaks.filter((b) => b.stage_type === "on_stage");
+  if (onStagePrograms.length === 0 && onStageBreaks.length === 0) return null;
 
   return (
     <div className="tv-slide">
       <p className="tv-slide-kicker">On Stage Now</p>
 
       <div className="tv-card-row">
-        {programs.map((program) => {
+        {onStagePrograms.map((program) => {
           const houses = housesByProgram[program.id] ?? [];
           return (
             <div key={program.id} className="tv-card">
@@ -40,14 +43,14 @@ export function NowPerformingSlide({
                       url={house.photo_url}
                       alt={`${house.name} photo`}
                       className="tv-photo rounded-full"
-                      sizePx={64}
+                      sizePx={72}
                       style={{ borderRadius: "999px", marginLeft: -8 }}
                     />
                   ))}
                 </div>
               ) : (
                 <span className="tv-card-icon">
-                  <Mic2 style={{ width: 32, height: 32 }} />
+                  <Mic2 style={{ width: 48, height: 48 }} />
                 </span>
               )}
 
@@ -61,10 +64,10 @@ export function NowPerformingSlide({
           );
         })}
 
-        {currentBreaks.map((brk) => (
+        {onStageBreaks.map((brk) => (
           <div key={brk.id} className="tv-card">
             <span className="tv-card-icon">
-              <Coffee style={{ width: 32, height: 32 }} />
+              <Coffee style={{ width: 48, height: 48 }} />
             </span>
             <span className="tv-card-badge">{stageLabels[brk.stage_type]}</span>
             <p className="tv-card-title">{brk.label}</p>

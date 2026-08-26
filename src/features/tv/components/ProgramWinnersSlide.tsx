@@ -24,7 +24,7 @@ export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] })
               url={winner.groupPhotoUrl}
               alt={`${winner.groupName} photo`}
               className="tv-photo"
-              sizePx={64}
+              sizePx={72}
               style={{ borderRadius: "999px" }}
             />
             <span className="tv-list-body">
