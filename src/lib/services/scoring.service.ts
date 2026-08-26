@@ -8,6 +8,10 @@ import {
   POINTS_FOR_UNPLACED,
   type ScoringPosition,
 } from "@/constants/scoring";
+import type { ProgramJudgeScoreBoard } from "@/lib/scoring/judgeScoreBoard";
+
+export type { ProgramJudgeScoreBoard } from "@/lib/scoring/judgeScoreBoard";
+export { formatParticipantJudgeScores } from "@/lib/scoring/judgeScoreBoard";
 
 /** Sentinel error returned by submitScores when a submission would change an
  * already-saved score and no (or no valid) admin override was supplied — scoring.actions.ts
@@ -221,6 +225,95 @@ export async function listScorableTeams(programId: string): Promise<ScorableTeam
   });
 }
 
+/**
+ * Admin-only sibling of listScorableStudents — loads an explicit judge's scores rather
+ * than the caller's own, for the admin rescore panel (fixing a held tie without waiting
+ * for that judge to be back at their device). Caller is verified admin by
+ * scoring.actions.ts before this runs; RLS's "admin has full access to judge_scores"
+ * policy is what actually permits reading another judge's rows.
+ */
+export async function listScorableStudentsForJudge(
+  programId: string,
+  judgeId: string,
+): Promise<ScorableStudent[]> {
+  const supabase = await createClient();
+
+  const { data: assigned, error } = await supabase
+    .from("program_students")
+    .select("students(*, student_categories(category))")
+    .eq("program_id", programId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("listScorableStudentsForJudge failed:", error.message);
+    return [];
+  }
+
+  const students = assigned.flatMap((row) => {
+    if (!row.students) return [];
+    const { student_categories, ...student } = row.students;
+    return [{ ...student, categories: student_categories.map((c) => c.category) }];
+  });
+
+  const { data: scores } = await supabase
+    .from("judge_scores")
+    .select("student_id, score, criteria_scores")
+    .eq("program_id", programId)
+    .eq("judge_id", judgeId);
+
+  const scoreByStudent = new Map((scores ?? []).map((row) => [row.student_id, row]));
+
+  return students.map((student) => {
+    const row = scoreByStudent.get(student.id);
+    return {
+      ...student,
+      score: row?.score ?? null,
+      criteriaScores: (row?.criteria_scores as CriterionScore[] | null) ?? [],
+    };
+  });
+}
+
+/** Admin-only sibling of listScorableTeams — see listScorableStudentsForJudge. */
+export async function listScorableTeamsForJudge(
+  programId: string,
+  judgeId: string,
+): Promise<ScorableTeam[]> {
+  const supabase = await createClient();
+
+  const { data: entries, error } = await supabase
+    .from("program_group_entries")
+    .select("id, group_id, chest_number, main_groups(name)")
+    .eq("program_id", programId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("listScorableTeamsForJudge failed:", error.message);
+    return [];
+  }
+
+  const { data: scores } = await supabase
+    .from("judge_scores")
+    .select("group_entry_id, score, criteria_scores")
+    .eq("program_id", programId)
+    .eq("judge_id", judgeId);
+
+  const scoreByEntry = new Map(
+    (scores ?? []).flatMap((row) => (row.group_entry_id ? [[row.group_entry_id, row] as const] : [])),
+  );
+
+  return entries.map((entry) => {
+    const row = scoreByEntry.get(entry.id);
+    return {
+      id: entry.id,
+      groupId: entry.group_id,
+      groupName: entry.main_groups?.name ?? "Unknown house",
+      chestNumber: entry.chest_number,
+      score: row?.score ?? null,
+      criteriaScores: (row?.criteria_scores as CriterionScore[] | null) ?? [],
+    };
+  });
+}
+
 export type ScoreInput = {
   student_id: string;
   score: number;
@@ -264,6 +357,58 @@ async function isJudgesMostRecentProgram(
 }
 
 /**
+ * Competitive (non-zero) position ties already written to `results` — the admin/judge
+ * UI asks a judge to revise a score to break them. That revision must not require an
+ * admin password, or the held-tie flow is a dead end.
+ */
+async function programHasCompetitiveTie(
+  supabase: SupabaseServerClient,
+  programId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("results")
+    .select("position, average_score")
+    .eq("program_id", programId)
+    .neq("average_score", 0);
+
+  if (error || !data || data.length === 0) {
+    return false;
+  }
+
+  const counts = new Map<number, number>();
+  for (const row of data) {
+    counts.set(row.position, (counts.get(row.position) ?? 0) + 1);
+  }
+  return Array.from(counts.values()).some((n) => n > 1);
+}
+
+async function mayReviseExistingScoreWithoutAdmin(
+  supabase: SupabaseServerClient,
+  judgeId: string,
+  programId: string,
+  programStatus: string,
+): Promise<boolean> {
+  const settings = await getScoreSettings();
+  if (
+    settings.allowLastProgramRescoreWithoutAuth &&
+    (await isJudgesMostRecentProgram(supabase, judgeId, programId))
+  ) {
+    return true;
+  }
+  // Held-tie escape: status stays 'scoring' until the tie is accepted or broken —
+  // matching ResultsPanel / TiesReviewPanel copy ("Ask the judge to revise a score").
+  if (programStatus === "scoring" && (await programHasCompetitiveTie(supabase, programId))) {
+    return true;
+  }
+  // allowJudgeRescore already gated the submit for 'completed' programs — requiring an
+  // admin password on top of that setting made every revision a dead end in practice.
+  if (programStatus === "completed" && settings.allowJudgeRescore) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Bulk upsert on the (program_id, student_id, judge_id) unique constraint (Phase 5) —
  * one statement, atomic, matches the RLS insert/update policies exactly (Phase 7).
  * Partial submissions are expected: a judge may score a few students, save, and finish
@@ -273,9 +418,9 @@ async function isJudgesMostRecentProgram(
  * time) requires a verified `adminOverride`, even while the program is still
  * 'scoring' — a judge shouldn't be able to unilaterally revise a submitted score
  * without an admin present to authorize it — UNLESS allowLastProgramRescoreWithoutAuth
- * is on and this is that judge's own most recently scored program (see
- * isJudgesMostRecentProgram). Determined from the DB's current state, not a
- * client-sent flag, so a stale or hand-crafted request can't skip the check.
+ * is on and this is that judge's own most recently scored program, OR the program is
+ * held on a competitive tie (see mayReviseExistingScoreWithoutAdmin). Determined from
+ * the DB's current state, not a client-sent flag.
  */
 export async function submitScores(
   programId: string,
@@ -390,10 +535,12 @@ export async function submitScores(
   });
 
   if (changesExistingScore) {
-    const settings = await getScoreSettings();
-    const skipAuth =
-      settings.allowLastProgramRescoreWithoutAuth &&
-      (await isJudgesMostRecentProgram(supabase, user.id, programId));
+    const skipAuth = await mayReviseExistingScoreWithoutAdmin(
+      supabase,
+      user.id,
+      programId,
+      program.status,
+    );
 
     if (!skipAuth) {
       const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
@@ -525,16 +672,211 @@ export async function submitTeamScores(
   });
 
   if (changesExistingScore) {
-    const settings = await getScoreSettings();
-    const skipAuth =
-      settings.allowLastProgramRescoreWithoutAuth &&
-      (await isJudgesMostRecentProgram(supabase, user.id, programId));
+    const skipAuth = await mayReviseExistingScoreWithoutAdmin(
+      supabase,
+      user.id,
+      programId,
+      program.status,
+    );
 
     if (!skipAuth) {
       const authorized = adminOverride && (await verifyAdminPassword(adminOverride.password));
       if (!authorized) {
         return { success: false, error: ADMIN_OVERRIDE_REQUIRED };
       }
+    }
+  }
+
+  const { error } = await supabase
+    .from("judge_scores")
+    .upsert(rows, { onConflict: "program_id,group_entry_id,judge_id" });
+
+  if (error) {
+    return { success: false, error: "Could not save scores. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+/**
+ * Admin-only sibling of submitScores — writes under an explicit `judgeId` instead of
+ * the caller's own id, so an admin can fix a judge's score directly (typically to break
+ * a held tie) without that judge being at their device. Caller identity is verified by
+ * assertAdmin() in scoring.actions.ts, not here; RLS's "admin has full access to
+ * judge_scores" policy is what actually allows writing a row under someone else's
+ * judge_id. Deliberately skips the changesExistingScore admin-password prompt that
+ * submitScores has — the caller here already IS the admin that prompt exists to bring
+ * in, so requiring it again would be a dead-end confirmation of itself.
+ */
+export async function adminSubmitScores(
+  programId: string,
+  judgeId: string,
+  scores: ScoreInput[],
+): Promise<ServiceResult<null>> {
+  const supabase = await createClient();
+
+  const { data: program, error: programError } = await supabase
+    .from("programs")
+    .select("status")
+    .eq("id", programId)
+    .single();
+
+  if (programError || !program) {
+    return { success: false, error: "This program isn't available for scoring." };
+  }
+
+  if (program.status !== "scoring" && program.status !== "completed") {
+    return { success: false, error: "Scoring isn't open for this program right now." };
+  }
+
+  const { data: assignment } = await supabase
+    .from("program_judges")
+    .select("judge_id")
+    .eq("program_id", programId)
+    .eq("judge_id", judgeId)
+    .maybeSingle();
+
+  if (!assignment) {
+    return { success: false, error: "That judge isn't assigned to this program." };
+  }
+
+  const { data: criteria } = await supabase
+    .from("scoring_criteria")
+    .select("id")
+    .eq("program_id", programId);
+
+  const validCriterionIds = new Set((criteria ?? []).map((c) => c.id));
+
+  const rows: {
+    program_id: string;
+    student_id: string;
+    judge_id: string;
+    score: number;
+    criteria_scores: CriterionScore[];
+  }[] = [];
+
+  for (const s of scores) {
+    if (validCriterionIds.size > 0) {
+      const submitted = s.criteria_scores ?? [];
+      const submittedIds = submitted.map((cs) => cs.criterion_id);
+      const idsMatch =
+        submittedIds.length === validCriterionIds.size &&
+        submittedIds.every((id) => validCriterionIds.has(id));
+
+      if (!idsMatch) {
+        return {
+          success: false,
+          error: "Scoring types have changed — please refresh and try again.",
+        };
+      }
+
+      rows.push({
+        program_id: programId,
+        student_id: s.student_id,
+        judge_id: judgeId,
+        score: submitted.reduce((sum, cs) => sum + cs.score, 0),
+        criteria_scores: submitted,
+      });
+    } else {
+      rows.push({
+        program_id: programId,
+        student_id: s.student_id,
+        judge_id: judgeId,
+        score: s.score,
+        criteria_scores: [],
+      });
+    }
+  }
+
+  const { error } = await supabase
+    .from("judge_scores")
+    .upsert(rows, { onConflict: "program_id,student_id,judge_id" });
+
+  if (error) {
+    return { success: false, error: "Could not save scores. Please try again." };
+  }
+
+  return { success: true, data: null };
+}
+
+/** Team-scoped sibling of adminSubmitScores — see its docstring. */
+export async function adminSubmitTeamScores(
+  programId: string,
+  judgeId: string,
+  scores: TeamScoreInput[],
+): Promise<ServiceResult<null>> {
+  const supabase = await createClient();
+
+  const { data: program, error: programError } = await supabase
+    .from("programs")
+    .select("status")
+    .eq("id", programId)
+    .single();
+
+  if (programError || !program) {
+    return { success: false, error: "This program isn't available for scoring." };
+  }
+
+  if (program.status !== "scoring" && program.status !== "completed") {
+    return { success: false, error: "Scoring isn't open for this program right now." };
+  }
+
+  const { data: assignment } = await supabase
+    .from("program_judges")
+    .select("judge_id")
+    .eq("program_id", programId)
+    .eq("judge_id", judgeId)
+    .maybeSingle();
+
+  if (!assignment) {
+    return { success: false, error: "That judge isn't assigned to this program." };
+  }
+
+  const { data: criteria } = await supabase
+    .from("scoring_criteria")
+    .select("id")
+    .eq("program_id", programId);
+
+  const validCriterionIds = new Set((criteria ?? []).map((c) => c.id));
+
+  const rows: {
+    program_id: string;
+    group_entry_id: string;
+    judge_id: string;
+    score: number;
+    criteria_scores: CriterionScore[];
+  }[] = [];
+
+  for (const s of scores) {
+    if (validCriterionIds.size > 0) {
+      const submitted = s.criteria_scores ?? [];
+      const submittedIds = submitted.map((cs) => cs.criterion_id);
+      const idsMatch =
+        submittedIds.length === validCriterionIds.size &&
+        submittedIds.every((id) => validCriterionIds.has(id));
+
+      if (!idsMatch) {
+        return {
+          success: false,
+          error: "Scoring types have changed — please refresh and try again.",
+        };
+      }
+
+      rows.push({
+        program_id: programId,
+        group_entry_id: s.group_entry_id,
+        judge_id: judgeId,
+        score: submitted.reduce((sum, cs) => sum + cs.score, 0),
+        criteria_scores: submitted,
+      });
+    } else {
+      rows.push({
+        program_id: programId,
+        group_entry_id: s.group_entry_id,
+        judge_id: judgeId,
+        score: s.score,
+        criteria_scores: [],
+      });
     }
   }
 
@@ -590,4 +932,45 @@ export function rankResults(
   }
 
   return results;
+}
+
+/** Admin program page — per-judge totals for each student / team, labeled J1, J2… in
+ * assignment order so the roster can show `J1:10, J2:5` on each row. */
+export async function listProgramJudgeScoreBoard(
+  programId: string,
+): Promise<ProgramJudgeScoreBoard> {
+  const supabase = await createClient();
+
+  const [{ data: judges }, { data: scores }] = await Promise.all([
+    supabase
+      .from("program_judges")
+      .select("judge_id")
+      .eq("program_id", programId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("judge_scores")
+      .select("judge_id, student_id, group_entry_id, score")
+      .eq("program_id", programId),
+  ]);
+
+  const boardJudges = (judges ?? []).map((row, index) => ({
+    id: row.judge_id,
+    label: `J${index + 1}`,
+  }));
+
+  const studentScores: Record<string, Record<string, number>> = {};
+  const teamScores: Record<string, Record<string, number>> = {};
+
+  for (const row of scores ?? []) {
+    if (row.student_id) {
+      const bucket = studentScores[row.student_id] ?? (studentScores[row.student_id] = {});
+      bucket[row.judge_id] = row.score;
+    }
+    if (row.group_entry_id) {
+      const bucket = teamScores[row.group_entry_id] ?? (teamScores[row.group_entry_id] = {});
+      bucket[row.judge_id] = row.score;
+    }
+  }
+
+  return { judges: boardJudges, studentScores, teamScores };
 }

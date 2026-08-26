@@ -46,6 +46,10 @@ import { EmptyState } from "@/components/tables/EmptyState";
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import {
+  formatParticipantJudgeScores,
+  type ProgramJudgeScoreBoard,
+} from "@/lib/scoring/judgeScoreBoard";
+import {
   createGroupEntrySchema,
   groupEntryChestNumberSchema,
   type CreateGroupEntryInput,
@@ -470,18 +474,27 @@ function TeamCard({
   members,
   assignableStudents,
   maxTeamSize,
+  judgeScoreBoard,
 }: {
   programId: string;
   entry: ProgramGroupEntryWithGroup;
   members: Student[];
   assignableStudents: Student[];
   maxTeamSize: number | null;
+  judgeScoreBoard: ProgramJudgeScoreBoard;
 }) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const houseAssignable = assignableStudents.filter((s) => s.group_id === entry.group_id);
   const remainingSlots = maxTeamSize !== null ? Math.max(maxTeamSize - members.length, 0) : null;
   const atCap = remainingSlots === 0;
+  const judgeScores =
+    judgeScoreBoard.judges.length > 0
+      ? formatParticipantJudgeScores(
+          judgeScoreBoard.judges,
+          judgeScoreBoard.teamScores[entry.id],
+        )
+      : "";
 
   return (
     <Card>
@@ -494,6 +507,11 @@ function TeamCard({
               {maxTeamSize !== null ? ` / ${maxTeamSize}` : ""}{" "}
               {members.length === 1 ? "member" : "members"}
             </p>
+            {judgeScores ? (
+              <p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">
+                {judgeScores}
+              </p>
+            ) : null}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -577,6 +595,7 @@ export function GroupRosterPanel({
   assignedStudents,
   assignableStudents,
   maxTeamSize,
+  judgeScoreBoard,
 }: {
   programId: string;
   entries: ProgramGroupEntryWithGroup[];
@@ -584,6 +603,7 @@ export function GroupRosterPanel({
   assignedStudents: AssignedGroupMember[];
   assignableStudents: Student[];
   maxTeamSize: number | null;
+  judgeScoreBoard: ProgramJudgeScoreBoard;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -614,6 +634,7 @@ export function GroupRosterPanel({
               members={assignedStudents.filter((s) => s.group_entry_id === entry.id)}
               assignableStudents={assignableStudents}
               maxTeamSize={maxTeamSize}
+              judgeScoreBoard={judgeScoreBoard}
             />
           ))}
         </div>

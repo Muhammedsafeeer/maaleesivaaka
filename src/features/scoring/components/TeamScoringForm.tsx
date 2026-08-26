@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   useForm,
   useWatch,
@@ -27,7 +28,11 @@ import {
   teamScoringFormSchema,
   type TeamScoringFormInput,
 } from "@/features/scoring/validation/score.schema";
-import { submitTeamScoresAction } from "@/features/scoring/actions/scoring.actions";
+import {
+  submitTeamScoresAction,
+  adminSubmitTeamScoresAction,
+  type ScoringActionResult,
+} from "@/features/scoring/actions/scoring.actions";
 import type { ScorableTeam, TeamScoreInput } from "@/lib/services/scoring.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
 import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore, clampScoreInput } from "@/constants/scoring";
@@ -49,6 +54,8 @@ export function TeamScoringForm({
   criteria,
   canEdit,
   tiedIds,
+  adminJudgeId,
+  sortTiedFirst,
 }: {
   programId: string;
   teams: ScorableTeam[];
@@ -57,10 +64,25 @@ export function TeamScoringForm({
   /** group_entry_ids currently tied with another team (TiedPositionsBanner above
    * already names them) — highlighted here so they're easy to find. */
   tiedIds?: Set<string>;
+  /** Set only by the admin rescore panel: this submission edits `adminJudgeId`'s scores
+   * directly (adminSubmitTeamScoresAction) rather than the signed-in user's own
+   * (submitTeamScoresAction) — the caller is already a verified admin, so no override
+   * password is ever needed here. */
+  adminJudgeId?: string;
+  /** Admin rescore panel only: pins tied teams to the top of the list instead of just
+   * highlighting them in place — see ScoringForm's identical prop for why the judge's
+   * own scoring page never sets this. */
+  sortTiedFirst?: boolean;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const hasCriteria = criteria.length > 0;
   const effectiveCriteria = hasCriteria ? criteria : [DEFAULT_CRITERION];
+
+  const orderedTeams =
+    sortTiedFirst && tiedIds
+      ? [...teams].sort((a, b) => Number(tiedIds.has(b.id)) - Number(tiedIds.has(a.id)))
+      : teams;
 
   const [pendingScores, setPendingScores] = useState<TeamScoreInput[] | null>(null);
   const [overrideError, setOverrideError] = useState<string | null>(null);
@@ -74,7 +96,7 @@ export function TeamScoringForm({
   } = useForm<TeamScoringFormInput>({
     resolver: zodResolver(teamScoringFormSchema),
     defaultValues: {
-      entries: teams.map((team) => ({
+      entries: orderedTeams.map((team) => ({
         group_entry_id: team.id,
         group_name: team.groupName,
         chest_number: team.chestNumber,
@@ -122,9 +144,17 @@ export function TeamScoringForm({
 
   function submit(scores: TeamScoreInput[], adminOverride?: { password: string }) {
     startTransition(async () => {
-      const result = await submitTeamScoresAction(programId, { scores }, adminOverride);
+      let result: ScoringActionResult;
+      if (adminJudgeId) {
+        result = await adminSubmitTeamScoresAction(programId, adminJudgeId, { scores });
+      } else {
+        result = await submitTeamScoresAction(programId, { scores }, adminOverride);
+      }
 
-      if (result.error) {
+      // `!== undefined`, not truthy: `error` is typed as plain `string`, which
+      // technically includes "" — a truthy check alone leaves TS unable to prove that
+      // branch is fully excluded afterward, so `result.warning` below wouldn't narrow.
+      if (result.error !== undefined) {
         if (result.requiresAdminOverride) {
           setPendingScores(scores);
           setOverrideError(adminOverride ? result.error : null);
@@ -137,7 +167,12 @@ export function TeamScoringForm({
       setPendingScores(null);
       setOverrideError(null);
       setAdminPassword("");
-      toast.success("Scores saved.");
+      if (result.warning) {
+        toast.warning(result.warning);
+      } else {
+        toast.success("Scores saved.");
+      }
+      router.refresh();
     });
   }
 
@@ -159,7 +194,7 @@ export function TeamScoringForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-        {teams.map((team, index) => (
+        {orderedTeams.map((team, index) => (
           <div
             key={team.id}
             className={cn(

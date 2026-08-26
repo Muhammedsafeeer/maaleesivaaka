@@ -24,6 +24,10 @@ import {
 import { EmptyState } from "@/components/tables/EmptyState";
 import { PhotoThumbnail } from "@/components/tables/PhotoThumbnail";
 import { unassignStudentAction } from "@/features/programs/actions/assignment.actions";
+import {
+  formatParticipantJudgeScores,
+  type ProgramJudgeScoreBoard,
+} from "@/lib/scoring/judgeScoreBoard";
 import type { StudentWithGroup } from "@/types/student";
 
 function RemoveButton({ programId, student }: { programId: string; student: StudentWithGroup }) {
@@ -77,9 +81,11 @@ function RemoveButton({ programId, student }: { programId: string; student: Stud
 export function RosterTable({
   programId,
   students,
+  judgeScoreBoard,
 }: {
   programId: string;
   students: StudentWithGroup[];
+  judgeScoreBoard: ProgramJudgeScoreBoard;
 }) {
   if (students.length === 0) {
     return (
@@ -89,6 +95,8 @@ export function RosterTable({
       />
     );
   }
+
+  const showScores = judgeScoreBoard.judges.length > 0;
 
   return (
     <Table>
@@ -100,6 +108,7 @@ export function RosterTable({
           <TableHead>Roll no.</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Class</TableHead>
+          {showScores ? <TableHead>Judge scores</TableHead> : null}
           <TableHead className="w-px">
             <span className="sr-only">Actions</span>
           </TableHead>
@@ -121,6 +130,14 @@ export function RosterTable({
               ) : null}
             </TableCell>
             <TableCell>{student.class}</TableCell>
+            {showScores ? (
+              <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                {formatParticipantJudgeScores(
+                  judgeScoreBoard.judges,
+                  judgeScoreBoard.studentScores[student.id],
+                )}
+              </TableCell>
+            ) : null}
             <TableCell>
               <RemoveButton programId={programId} student={student} />
             </TableCell>

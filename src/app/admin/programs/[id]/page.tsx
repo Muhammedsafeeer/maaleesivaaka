@@ -18,8 +18,10 @@ import { ConvertToGroupButton } from "@/features/programs/components/ConvertToGr
 import { JudgeRosterTable } from "@/features/programs/components/JudgeRosterTable";
 import { AssignJudgeDialog } from "@/features/programs/components/AssignJudgeDialog";
 import { ResultsPanel } from "@/features/programs/components/ResultsPanel";
+import { ChangeScoreDialog } from "@/features/scoring/components/ChangeScoreDialog";
 import { listResults, listProgramPodiumForCertificates } from "@/lib/services/result.service";
 import { listScoringCriteria, hasSubmittedScores } from "@/lib/services/scoringCriteria.service";
+import { listProgramJudgeScoreBoard } from "@/lib/services/scoring.service";
 import { getCertificateSettings } from "@/lib/services/certificateSettings.service";
 import { listGroupEntries } from "@/lib/services/groupEntry.service";
 import { listGroups } from "@/lib/services/group.service";
@@ -62,6 +64,7 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     groupEntries,
     groups,
     scored,
+    judgeScoreBoard,
   ] = await Promise.all([
     program.participation_type === "group" ? Promise.resolve([]) : listAssignedStudents(id),
     program.participation_type === "group" ? listAssignedGroupMembers(id) : Promise.resolve([]),
@@ -75,7 +78,15 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
     program.participation_type === "group" ? listGroupEntries(id) : Promise.resolve([]),
     program.participation_type === "group" ? listGroups() : Promise.resolve([]),
     program.participation_type === "individual" ? hasSubmittedScores(id) : Promise.resolve(false),
+    listProgramJudgeScoreBoard(id),
   ]);
+
+  // Rescoring only makes sense once judges have something to score and the program is
+  // still open for it — matches submitScores/adminSubmitScores' own status check
+  // ('scoring' or 'completed', never 'published'/'upcoming'/'draft').
+  const canRescore =
+    (program.status === "scoring" || program.status === "completed") &&
+    judgeScoreBoard.judges.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,6 +118,7 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
           assignedStudents={groupMembers}
           assignableStudents={assignableStudents}
           maxTeamSize={program.max_team_size}
+          judgeScoreBoard={judgeScoreBoard}
         />
       ) : (
         <div className="flex flex-col gap-4">
@@ -121,7 +133,11 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
             <AssignStudentDialog programId={id} assignableStudents={assignableStudents} />
           </div>
 
-          <RosterTable programId={id} students={assignedStudents} />
+          <RosterTable
+            programId={id}
+            students={assignedStudents}
+            judgeScoreBoard={judgeScoreBoard}
+          />
         </div>
       )}
 
@@ -134,7 +150,17 @@ export default async function ProgramDetailPage({ params }: ProgramDetailPagePro
               assigned.
             </p>
           </div>
-          <AssignJudgeDialog programId={id} assignableJudges={assignableJudges} />
+          <div className="flex items-center gap-2">
+            {canRescore ? (
+              <ChangeScoreDialog
+                programId={id}
+                programName={program.name}
+                triggerLabel="Rescore"
+                triggerVariant="outline"
+              />
+            ) : null}
+            <AssignJudgeDialog programId={id} assignableJudges={assignableJudges} />
+          </div>
         </div>
 
         <JudgeRosterTable programId={id} judges={assignedJudges} />

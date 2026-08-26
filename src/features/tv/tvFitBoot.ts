@@ -182,10 +182,19 @@ html, body, #app-root {
   box-sizing: border-box;
   padding: 0 12px;
 }
+/* Two equal full-height house rows — fills the slide under the kicker */
+.tv-slide-standings.is-pair .tv-podium {
+  position: absolute;
+  top: 52px;
+  left: 2%;
+  right: 2%;
+  bottom: 18px;
+  margin: 0;
+  padding: 0;
+}
 .tv-podium-card {
   display: block;
-  width:100%;
-  height: 50%;
+  width: 100%;
   max-width: 100%;
   margin: 10px auto;
   padding: 0;
@@ -196,15 +205,31 @@ html, body, #app-root {
   font-size: 18px;
   overflow: hidden;
 }
+.tv-slide-standings.is-pair .tv-podium-card {
+  position: absolute;
+  left: 0;
+  width: 60%;
+  right: auto;
+  height: 47%;
+  margin: 0;
+  margin-right: 40%;
+}
+.tv-slide-standings.is-pair .tv-podium-card:first-child {
+  top: 0;
+}
+.tv-slide-standings.is-pair .tv-podium-card:last-child {
+  bottom: 0;
+  top: auto;
+}
 .tv-podium-card.is-leader {
   width: 100%;
   max-width: 100%;
-height: 50%;
   background: #452960;
-  border: 2px solid rgba(232, 196, 74, 0.45);
+  border: 3px solid rgba(232, 196, 74, 0.55);
 }
 .tv-podium-table {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -212,38 +237,38 @@ height: 50%;
 .tv-podium-td-name,
 .tv-podium-td-score {
   vertical-align: middle;
-  padding: 12px 10px;
+  padding: 18px 16px;
 }
 .tv-podium-td-media {
-  width: 18%;
+  width: 22%;
   text-align: center;
   white-space: nowrap;
   font-size: 0;
 }
 .tv-podium-td-name {
-  width: 42%;
+  width: 38%;
   text-align: left;
   padding-left: 8px;
 }
 .tv-podium-td-score {
   width: 40%;
   text-align: right;
-  padding-right: 50px;
+  padding-right: 36px;
 }
 .tv-podium-trophy {
   display: inline-block;
   vertical-align: middle;
-  width: 44px;
+  width: 72px;
   height: auto;
-  margin: 0 8px 0 0;
+  margin: 0 12px 0 0;
 }
-.tv-podium-trophy.is-leader { width: 52px; }
+.tv-podium-trophy.is-leader { width: 72px; }
 .tv-podium-name {
   display: block;
   margin: 0;
   font-family: var(--font-audience-display), Georgia, serif;
-  font-size: 36px;
-  font-size: var(--tv-28);
+  font-size: 52px;
+  font-size: 4vw;
   font-weight: 700;
   color: #f7f3e8;
   line-height: 1.1;
@@ -252,30 +277,30 @@ height: 50%;
   text-overflow: ellipsis;
 }
 .tv-podium-card.is-leader .tv-podium-name {
-  font-size: 42px;
-  font-size: var(--tv-32);
+  font-size: 52px;
+  font-size: 4vw;
 }
-/* Cap score size so 3–4 digits always fit in the score column (PC + hall TV) */
+/* Equal score size for both houses; cap so digits stay inside the card */
 .tv-podium-points {
   display: block;
   margin: 0;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 56px;
-  font-size: 4.2vw;
+  font-size: 72px;
+  font-size: 5.5vw;
   font-weight: 800;
   color: #e8c44a;
   line-height: 1;
   white-space: nowrap;
 }
 .tv-podium-card.is-leader .tv-podium-points {
-  font-size: 64px;
-  font-size: 4.8vw;
+  font-size: 72px;
+  font-size: 5.5vw;
 }
 .tv-podium-label {
   display: block;
-  margin: 4px 0 0;
-  font-size: 16px;
-  font-size: var(--tv-14);
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-size: 1.4vw;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -656,18 +681,18 @@ height: 50%;
 }
 #tv-stage .tv-podium-card .tv-photo {
   display: inline-block !important;
-  width: 68px !important;
-  height: 68px !important;
-  max-width: 68px !important;
-  max-height: 68px !important;
+  width: 110px !important;
+  height: 110px !important;
+  max-width: 110px !important;
+  max-height: 110px !important;
   margin: 0;
   vertical-align: middle;
 }
 #tv-stage .tv-podium-card.is-leader .tv-photo {
-  width: 76px !important;
-  height: 76px !important;
-  max-width: 76px !important;
-  max-height: 76px !important;
+  width: 110px !important;
+  height: 110px !important;
+  max-width: 110px !important;
+  max-height: 110px !important;
 }
 #tv-stage .tv-podium-td-media .tv-photo {
   display: inline-block !important;

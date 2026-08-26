@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   useForm,
   useWatch,
@@ -27,7 +28,11 @@ import {
   scoringFormSchema,
   type ScoringFormInput,
 } from "@/features/scoring/validation/score.schema";
-import { submitScoresAction } from "@/features/scoring/actions/scoring.actions";
+import {
+  submitScoresAction,
+  adminSubmitScoresAction,
+  type ScoringActionResult,
+} from "@/features/scoring/actions/scoring.actions";
 import type { ScorableStudent, ScoreInput } from "@/lib/services/scoring.service";
 import type { ScoringCriterion } from "@/lib/services/scoringCriteria.service";
 import { CRITERION_SCORE_MIN, CRITERION_SCORE_MAX, getMaxTotalScore, clampScoreInput } from "@/constants/scoring";
@@ -50,6 +55,8 @@ export function ScoringForm({
   criteria,
   canEdit,
   tiedIds,
+  adminJudgeId,
+  sortTiedFirst,
 }: {
   programId: string;
   students: ScorableStudent[];
@@ -58,10 +65,28 @@ export function ScoringForm({
   /** student ids currently tied with someone else (TiedPositionsBanner above already
    * names them) — highlighted here so they're easy to find in a long roster. */
   tiedIds?: Set<string>;
+  /** Set only by the admin rescore panel: this submission edits `adminJudgeId`'s scores
+   * directly (adminSubmitScoresAction) rather than the signed-in user's own
+   * (submitScoresAction) — the caller is already a verified admin, so no override
+   * password is ever needed here. */
+  adminJudgeId?: string;
+  /** Admin rescore panel only: pins tied students to the top of the list instead of
+   * just highlighting them in place, since that panel's whole point is finding them
+   * fast. The judge's own scoring page never sets this — reordering a roster the judge
+   * already knows by position would only be disorienting there. */
+  sortTiedFirst?: boolean;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const hasCriteria = criteria.length > 0;
   const effectiveCriteria = hasCriteria ? criteria : [DEFAULT_CRITERION];
+
+  // Computed once (not memoized): defaultValues below is only read at mount anyway, so
+  // this only needs to match the render order below it, not stay referentially stable.
+  const orderedStudents =
+    sortTiedFirst && tiedIds
+      ? [...students].sort((a, b) => Number(tiedIds.has(b.id)) - Number(tiedIds.has(a.id)))
+      : students;
 
   // Set when a submission comes back needing an admin's OK — the judge is changing a
   // score already saved for that student, not setting one for the first time (see
@@ -79,7 +104,7 @@ export function ScoringForm({
   } = useForm<ScoringFormInput>({
     resolver: zodResolver(scoringFormSchema),
     defaultValues: {
-      entries: students.map((student) => ({
+      entries: orderedStudents.map((student) => ({
         student_id: student.id,
         student_name: student.name,
         criteriaScores: effectiveCriteria.map((criterion) => {
@@ -128,9 +153,17 @@ export function ScoringForm({
 
   function submit(scores: ScoreInput[], adminOverride?: { password: string }) {
     startTransition(async () => {
-      const result = await submitScoresAction(programId, { scores }, adminOverride);
+      let result: ScoringActionResult;
+      if (adminJudgeId) {
+        result = await adminSubmitScoresAction(programId, adminJudgeId, { scores });
+      } else {
+        result = await submitScoresAction(programId, { scores }, adminOverride);
+      }
 
-      if (result.error) {
+      // `!== undefined`, not truthy: `error` is typed as plain `string`, which
+      // technically includes "" — a truthy check alone leaves TS unable to prove that
+      // branch is fully excluded afterward, so `result.warning` below wouldn't narrow.
+      if (result.error !== undefined) {
         if (result.requiresAdminOverride) {
           setPendingScores(scores);
           setOverrideError(adminOverride ? result.error : null);
@@ -143,7 +176,12 @@ export function ScoringForm({
       setPendingScores(null);
       setOverrideError(null);
       setAdminPassword("");
-      toast.success("Scores saved.");
+      if (result.warning) {
+        toast.warning(result.warning);
+      } else {
+        toast.success("Scores saved.");
+      }
+      router.refresh();
     });
   }
 
@@ -165,7 +203,7 @@ export function ScoringForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-        {students.map((student, index) => (
+        {orderedStudents.map((student, index) => (
           <div
             key={student.id}
             className={cn(

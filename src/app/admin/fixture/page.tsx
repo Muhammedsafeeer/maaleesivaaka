@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import { listFixture, listProgramRoster } from "@/lib/services/fixture.service";
+import { listUnresolvedTies } from "@/lib/services/result.service";
 import { FixtureList } from "@/features/programs/components/FixtureList";
 import { FixtureProgramSearch } from "@/features/programs/components/FixtureProgramSearch";
 import { CurrentProgramCard } from "@/features/programs/components/CurrentProgramCard";
@@ -27,7 +28,8 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
   const stageType: StageType =
     params.stage === "off_stage" ? "off_stage" : "on_stage";
 
-  const entries = await listFixture(stageType);
+  const [entries, ties] = await Promise.all([listFixture(stageType), listUnresolvedTies()]);
+  const tiedProgramIds = new Set(ties.map((tie) => tie.programId));
   const current = entries.find((e) => CURRENT_STATUSES.includes(e.status)) ?? null;
   const next = entries.find((e) => e.status === "upcoming" && e.serialNumber !== null) ?? null;
   const currentProgram = current?.kind === "program" ? current.program : null;
@@ -87,7 +89,7 @@ export default async function FixturePage({ searchParams }: FixturePageProps) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <FixtureList entries={entries} stageType={stageType} />
+          <FixtureList entries={entries} stageType={stageType} tiedProgramIds={tiedProgramIds} />
         </div>
         <div className="flex flex-col gap-6">
           <CurrentProgramCard stageType={stageType} current={current} next={next} />

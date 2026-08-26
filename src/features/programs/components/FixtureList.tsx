@@ -32,7 +32,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/tables/EmptyState";
+import { Badge } from "@/components/ui/badge";
 import { ProgramStatusBadge } from "@/features/programs/components/ProgramStatusBadge";
+import { ChangeScoreDialog } from "@/features/scoring/components/ChangeScoreDialog";
 import {
   setProgramStatusAction,
   reorderUpcomingAction,
@@ -130,6 +132,7 @@ function FixtureRow({
   canMoveDown,
   onMoveUp,
   onMoveDown,
+  isTied,
 }: {
   program: Program;
   serialNumber: number | null;
@@ -143,6 +146,10 @@ function FixtureRow({
   canMoveDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  /** Held on a competitive tie right now (listUnresolvedTies, scoped to
+   * status='scoring') — flagged red here so it can't get buried in a long running
+   * order, with a one-click way to fix it without leaving the Fixture page. */
+  isTied: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [isPublishing, startPublish] = useTransition();
@@ -178,6 +185,7 @@ function FixtureRow({
       onDragEnd={draggable ? onDragEnd : undefined}
       className={cn(
         CURRENT_STATUSES.includes(program.status) && "bg-podium-gold/10 hover:bg-podium-gold/15",
+        isTied && "bg-destructive/10 hover:bg-destructive/15",
         isDragging && "opacity-40",
       )}
     >
@@ -201,6 +209,14 @@ function FixtureRow({
             ({categoryLabels[program.category]})
           </span>
         </Link>
+        {isTied ? (
+          <div className="mt-1 flex items-center gap-1.5">
+            <Badge variant="destructive" className="text-[0.65rem]">
+              Tied
+            </Badge>
+            <ChangeScoreDialog programId={program.id} programName={program.name} />
+          </div>
+        ) : null}
       </TableCell>
       <TableCell className="w-36">
         {program.status === "published" ? (
@@ -401,9 +417,14 @@ function AddBreakForm({ stageType }: { stageType: StageType }) {
 export function FixtureList({
   entries,
   stageType,
+  tiedProgramIds,
 }: {
   entries: FixtureEntry[];
   stageType: StageType;
+  /** Programs currently held on a competitive tie (listUnresolvedTies) — a program not
+   * on this stage simply won't match any row here, so callers can pass the
+   * festival-wide set without filtering it by stage first. */
+  tiedProgramIds?: Set<string>;
 }) {
   const [order, setOrder] = useState(entries);
   const [syncedEntries, setSyncedEntries] = useState(entries);
@@ -565,7 +586,12 @@ export function FixtureList({
               };
 
               return entry.kind === "program" ? (
-                <FixtureRow key={entry.id} program={entry.program} {...sharedProps} />
+                <FixtureRow
+                  key={entry.id}
+                  program={entry.program}
+                  isTied={tiedProgramIds?.has(entry.program.id) ?? false}
+                  {...sharedProps}
+                />
               ) : (
                 <FixtureBreakRow key={entry.id} brk={entry.brk} {...sharedProps} />
               );
