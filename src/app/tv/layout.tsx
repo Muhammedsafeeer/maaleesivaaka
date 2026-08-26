@@ -29,7 +29,7 @@ export default function TvLayout({ children }: { children: React.ReactNode }) {
     >
       <style dangerouslySetInnerHTML={{ __html: TV_CRITICAL_CSS }} />
       <div id="tv-boot-debug" suppressHydrationWarning>
-        tv boot…
+        tv · meta refresh…
       </div>
       {children}
     </div>

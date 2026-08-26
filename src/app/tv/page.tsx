@@ -12,24 +12,32 @@ import { listTvAds } from "@/lib/services/ad.service";
 import { RealtimeLeaderboardListener } from "@/components/dashboard/RealtimeLeaderboardListener";
 import { RealtimeProgramsListener } from "@/components/dashboard/RealtimeProgramsListener";
 import { RealtimeAdsListener } from "@/components/dashboard/RealtimeAdsListener";
-import { TvSlideshow } from "@/features/tv/components/TvSlideshow";
+import {
+  TvSlideshow,
+  TV_SLIDE_DURATION_MS,
+  countTvSlides,
+} from "@/features/tv/components/TvSlideshow";
 
 export const metadata: Metadata = {
   title: "Live TV",
 };
 
+/** Always serve fresh data — each meta-refresh navigation must hit the server. */
+export const dynamic = "force-dynamic";
+
 /**
- * Unattended big-screen display for the school hall/lobby — public, no login, same
- * anon-RLS contract as /audience (D-017: house-only except the already-consented D-018
- * "Latest Winner" / D-020 "Latest Results" exceptions, reused here unchanged).
- * Deliberately not the interactive /audience page reformatted: no search box, no login
- * link, nothing scrollable — a slideshow that rotates on its own, meant to be glanced
- * at from across a room. Freshness comes from three Realtime listeners (results +
- * programs + ads tables -> router.refresh(), D-016) rather than polling — an
- * unattended display never navigates on its own, so without these an admin's "Push to
- * TV" toggle would need someone to manually refresh the TV's browser to show up.
+ * Unattended big-screen display. Slide rotation + data refresh use
+ * `<meta http-equiv="refresh">` (no JavaScript) because the hall Panasonic browser
+ * does not run our client bundles or `/tv-fit.js`. Each tick navigates to `/tv?s=N`,
+ * which re-fetches standings and advances the slide.
  */
-export default async function TvPage() {
+export default async function TvPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ s?: string }>;
+}) {
+  const params = await searchParams;
+
   const [
     standings,
     latestWinner,
@@ -50,10 +58,6 @@ export default async function TvPage() {
     listTvAds(),
   ]);
 
-  // For a group program currently on stage, its competing houses are already public
-  // (their team entries exist before scoring starts) — cross-referenced against
-  // `standings` (already fetched, carries name/photo/points per house) rather than a
-  // second query per house.
   const groupProgramsOnStage = nowPerforming.filter((p) => p.participation_type === "group");
   const entriesByProgram = await Promise.all(
     groupProgramsOnStage.map((program) => listGroupEntries(program.id)),
@@ -64,13 +68,35 @@ export default async function TvPage() {
     housesByProgram[program.id] = standings.filter((house) => groupIds.has(house.id));
   });
 
+  const slideCount = countTvSlides({
+    standings,
+    latestWinner,
+    nowPerforming,
+    currentBreaks,
+    latestResults,
+    programWinners,
+    festivalStatus,
+    ads,
+  });
+
+  const raw = Number.parseInt(params.s ?? "0", 10);
+  const activeIndex =
+    slideCount === 0 ? 0 : ((Number.isFinite(raw) ? raw : 0) % slideCount + slideCount) % slideCount;
+  const nextIndex = slideCount <= 1 ? 0 : (activeIndex + 1) % slideCount;
+  const refreshSeconds = Math.max(1, Math.round(TV_SLIDE_DURATION_MS / 1000));
+  // Relative URL — works on LAN IP and localhost without hardcoding the host.
+  const refreshUrl = slideCount <= 1 ? "/tv" : `/tv?s=${nextIndex}`;
+
   return (
     <>
-    
+      {/* No-JS slideshow: Panasonic ignores our scripts; meta refresh still works. */}
+      <meta httpEquiv="refresh" content={`${refreshSeconds};url=${refreshUrl}`} />
       <RealtimeLeaderboardListener />
       <RealtimeProgramsListener />
       <RealtimeAdsListener />
       <TvSlideshow
+        activeIndex={activeIndex}
+        slideCount={slideCount}
         standings={standings}
         latestWinner={latestWinner}
         nowPerforming={nowPerforming}

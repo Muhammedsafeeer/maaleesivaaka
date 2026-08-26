@@ -1,43 +1,27 @@
-/* Reports panel size on /tv. Scaling is CSS (vmin) — this file must not transform the stage. */
+/* /tv debug only — slideshow uses <meta http-equiv="refresh"> (no JS required). */
 (function () {
   function paint() {
     var el = document.getElementById("tv-boot-debug");
-    var stage = document.getElementById("tv-stage");
-    var viewport = document.getElementById("tv-viewport");
     if (!el) return;
-    if (!stage && !viewport) {
-      el.textContent = "tv-fit loaded · waiting for stage…";
-      return;
-    }
-    var w =
-      (viewport && viewport.clientWidth) ||
-      document.documentElement.clientWidth ||
-      window.innerWidth ||
-      0;
-    var h =
-      (viewport && viewport.clientHeight) ||
-      document.documentElement.clientHeight ||
-      window.innerHeight ||
-      0;
-    var sr = stage ? stage.getBoundingClientRect() : null;
+    var root = document.getElementById("tv-slides");
+    var count = root ? root.getAttribute("data-tv-slide-count") : "?";
+    var active = root ? root.getAttribute("data-tv-slide-active") : "?";
+    var meta = document.querySelector('meta[http-equiv="refresh"]');
     el.textContent =
-      "tv ok · panel " +
-      Math.round(w) +
-      "x" +
-      Math.round(h) +
-      " · stage " +
-      (sr ? Math.round(sr.width) + "x" + Math.round(sr.height) : "n/a") +
-      " · dpr " +
-      (window.devicePixelRatio || 1) +
+      "tv · slide " +
+      active +
+      "/" +
+      count +
+      " · meta " +
+      (meta ? meta.getAttribute("content") : "MISSING") +
       " · " +
-      String(navigator.userAgent || "").slice(0, 56);
+      String(navigator.userAgent || "").slice(0, 40);
   }
 
   function boot() {
     paint();
-    setTimeout(paint, 100);
-    setTimeout(paint, 500);
-    setTimeout(paint, 2000);
+    setTimeout(paint, 200);
+    setTimeout(paint, 1000);
   }
 
   if (document.readyState === "loading") {
@@ -45,6 +29,4 @@
   } else {
     boot();
   }
-  window.addEventListener("resize", paint);
-  window.__tvFit = paint;
 })();

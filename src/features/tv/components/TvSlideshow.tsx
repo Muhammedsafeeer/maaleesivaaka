@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CrescentStar, DomeSilhouette } from "@/features/leaderboard/components/MotifIcons";
 import { TvStage } from "@/features/tv/components/TvStage";
 import { TvHeader } from "@/features/tv/components/TvHeader";
@@ -22,7 +18,8 @@ import type { CategoryStatus } from "@/lib/services/program.service";
 import type { Program, FixtureBreak } from "@/types/program";
 import type { AdWithMedia } from "@/types/ad";
 
-const SLIDE_DURATION_MS = 5_000;
+/** Seconds between meta-refresh navigations (page.tsx). */
+export const TV_SLIDE_DURATION_MS = 5_000;
 
 type Slide =
   | { kind: "standings" }
@@ -33,66 +30,70 @@ type Slide =
   | { kind: "festivalStatus" }
   | { kind: "ad"; ad: AdWithMedia };
 
-/** A stable identity per slide entry — plain `kind` collides for ads, since more than
- * one can be pushed at once. */
-function slideKey(slide: Slide): string {
-  return slide.kind === "ad" ? `ad-${slide.ad.id}` : slide.kind;
+function buildSlides(input: {
+  standings: GroupLeaderboardRow[];
+  latestWinner: LatestWinnerStudentRow[];
+  nowPerforming: Program[];
+  currentBreaks: FixtureBreak[];
+  latestResults: LatestResultStudentRow[];
+  programWinners: PublicResultRow[];
+  festivalStatus: CategoryStatus[];
+  ads: AdWithMedia[];
+}): Slide[] {
+  return [
+    input.standings.length > 0 ? { kind: "standings" as const } : null,
+    input.latestWinner.length > 0 ? { kind: "latestWinner" as const } : null,
+    input.nowPerforming.length > 0 || input.currentBreaks.length > 0
+      ? { kind: "nowPerforming" as const }
+      : null,
+    input.latestResults.length > 0 ? { kind: "latestResults" as const } : null,
+    input.programWinners.length > 0 ? { kind: "programWinners" as const } : null,
+    input.festivalStatus.some((s) => s.total > 0) ? { kind: "festivalStatus" as const } : null,
+    ...input.ads.map((ad) => (ad.media.length > 0 ? { kind: "ad" as const, ad } : null)),
+  ].filter((slide): slide is Slide => slide !== null);
+}
+
+/** Shared with page.tsx so meta-refresh `?s=` matches the rendered slide list. */
+export function countTvSlides(input: Parameters<typeof buildSlides>[0]): number {
+  return buildSlides(input).length;
 }
 
 function IntermissionSlide() {
   return (
-    <div
-      className="flex h-full flex-col items-center justify-center gap-(--tv-16) text-center"
-      style={{
-        display: "flex",
-        height: "100%",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "var(--tv-16)",
-        textAlign: "center",
-        color: "#f7f3e8",
-      }}
-    >
-      <CrescentStar
-        className="lantern-glow size-(--tv-64) text-(--stage-spotlight-gold)"
-        style={{ width: "var(--tv-64)", height: "var(--tv-64)", color: "#e8c44a" }}
-      />
-      <p
-        className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-36)] font-bold text-(--stage-spotlight-ink)"
-        style={{
-          fontFamily: "var(--font-audience-display), serif",
-          fontSize: "var(--tv-36)",
-          fontWeight: 700,
-          color: "#f7f3e8",
-          margin: 0,
-        }}
-      >
-        Maalee Sivaaka
-      </p>
-      <p
-        className="text-[length:var(--tv-18)] text-(--stage-spotlight-ink-dim)"
-        style={{ fontSize: "var(--tv-18)", color: "#cfc6b0", margin: 0 }}
-      >
-        Live results appear here as the festival gets underway.
-      </p>
+    <div className="tv-slide">
+      <CrescentStar style={{ width: 64, height: 64, color: "#e8c44a", marginBottom: 16 }} />
+      <p className="tv-slide-title">Maalee Sivaaka</p>
+      <p className="tv-slide-sub">Live results appear here as the festival gets underway.</p>
     </div>
   );
 }
 
+function Dome() {
+  return (
+    <DomeSilhouette
+      className="pointer-events-none"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100%",
+        height: 120,
+        maxHeight: 120,
+        color: "rgba(232, 196, 74, 0.12)",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 /**
- * Rotates through whichever slides currently have data — a slide with nothing to show
- * (no one "now performing", no standings yet, ...) just skips rather than showing
- * empty. Each ad pushed to TV (/admin/ads "Push to TV") gets its own slot in the same
- * rotation, one slide per ad, in `position` order. `index` is plain client state on a
- * setInterval timer, decoupled from the data refreshes the Realtime listeners on the
- * page trigger (D-016): a score coming in mid-rotation doesn't reset or jump the
- * slideshow, it just updates whichever slide's props change next time that slide is on
- * screen. TvHeader (branding + clock) and the progress bar render outside the
- * per-slide fade so they never flicker across rotations — only the slide content
- * itself cross-fades.
+ * Renders the active slide only. Advancement is server-driven via
+ * `<meta http-equiv="refresh" content="5;url=/tv?s=N">` on the page — no client JS.
  */
 export function TvSlideshow({
+  activeIndex,
+  slideCount,
   standings,
   latestWinner,
   nowPerforming,
@@ -103,6 +104,8 @@ export function TvSlideshow({
   festivalStatus,
   ads,
 }: {
+  activeIndex: number;
+  slideCount: number;
   standings: GroupLeaderboardRow[];
   latestWinner: LatestWinnerStudentRow[];
   nowPerforming: Program[];
@@ -113,96 +116,40 @@ export function TvSlideshow({
   festivalStatus: CategoryStatus[];
   ads: AdWithMedia[];
 }) {
-  const slides: Slide[] = [
-    standings.length > 0 ? { kind: "standings" as const } : null,
-    latestWinner.length > 0 ? { kind: "latestWinner" as const } : null,
-    nowPerforming.length > 0 || currentBreaks.length > 0 ? { kind: "nowPerforming" as const } : null,
-    latestResults.length > 0 ? { kind: "latestResults" as const } : null,
-    programWinners.length > 0 ? { kind: "programWinners" as const } : null,
-    festivalStatus.some((s) => s.total > 0) ? { kind: "festivalStatus" as const } : null,
-    ...ads.map((ad) => (ad.media.length > 0 ? { kind: "ad" as const, ad } : null)),
-  ].filter((slide): slide is Slide => slide !== null);
-
-  const [index, setIndex] = useState(0);
-  const router = useRouter();
-
-  useEffect(() => {
-    if (slides.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setIndex((i) => i + 1);
-    }, SLIDE_DURATION_MS);
-    return () => window.clearInterval(timer);
-  }, [slides.length]);
-
-  // Safety net for the unattended kiosk display: the Realtime listeners on this page
-  // (RealtimeProgramsListener etc.) normally call router.refresh() the moment something
-  // changes, but a long-lived browser tab's websocket can silently drop without
-  // reconnecting — when that happens "On Stage Now" would otherwise freeze on whatever
-  // program was scoring when the connection died, even after it's long since completed.
-  // A periodic refresh bounds how stale the display can ever get, independent of
-  // Realtime health.
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      router.refresh();
-    }, 30_000);
-    return () => window.clearInterval(timer);
-  }, [router]);
+  const slides = buildSlides({
+    standings,
+    latestWinner,
+    nowPerforming,
+    currentBreaks,
+    latestResults,
+    programWinners,
+    festivalStatus,
+    ads,
+  });
 
   if (slides.length === 0) {
     return (
       <TvStage>
         <TvHeader />
-        <DomeSilhouette
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10"
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: "100%",
-            height: "var(--tv-128)",
-            color: "rgba(232, 196, 74, 0.12)",
-            pointerEvents: "none",
-          }}
-        />
+        <Dome />
         <IntermissionSlide />
       </TvStage>
     );
   }
 
-  const activeIndex = index % slides.length;
-  const active = slides[activeIndex];
+  const index = ((activeIndex % slides.length) + slides.length) % slides.length;
+  const active = slides[index];
 
   return (
     <TvStage>
-      {/* Soft ambient sparkle, matching OrnateFrame's "spotlight" surface treatment —
-          keeps the background feeling alive during a long-running unattended display. */}
-      <span aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <span className="lantern-glow absolute top-[10%] left-[8%] size-(--tv-8) rounded-full bg-(--stage-spotlight-gold) opacity-30" />
-        <span className="lantern-glow absolute top-[20%] left-[88%] size-(--tv-6) rounded-full bg-(--stage-spotlight-gold) opacity-40 [animation-delay:0.8s]" />
-        <span className="lantern-glow absolute top-[75%] left-[5%] size-(--tv-6) rounded-full bg-(--stage-spotlight-gold) opacity-30 [animation-delay:1.6s]" />
-        <span className="lantern-glow absolute top-[85%] left-[92%] size-(--tv-8) rounded-full bg-(--stage-spotlight-gold) opacity-25 [animation-delay:2.2s]" />
-      </span>
-
-      <DomeSilhouette
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-(--tv-128) w-full text-(--stage-spotlight-gold)/10"
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: "100%",
-          height: "var(--tv-128)",
-          color: "rgba(232, 196, 74, 0.12)",
-          pointerEvents: "none",
-        }}
-      />
-
+      <Dome />
       <TvHeader />
 
       <div
-        key={`${slideKey(active)}-${activeIndex}`}
-        className="animate-in fade-in absolute inset-0 duration-1000"
+        id="tv-slides"
+        data-tv-slide-count={slideCount || slides.length}
+        data-tv-slide-active={index}
+        style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
       >
         {active.kind === "standings" ? <StandingsSlide groups={standings} /> : null}
         {active.kind === "latestWinner" ? <LatestWinnerSlide results={latestWinner} /> : null}
@@ -220,21 +167,10 @@ export function TvSlideshow({
       </div>
 
       {slides.length > 1 ? (
-        <div className="absolute inset-x-0 bottom-(--tv-24) flex justify-center gap-(--tv-8) px-(--tv-64)">
+        <div className="tv-progress-row">
           {slides.map((slide, i) => (
-            <div
-              key={slideKey(slide)}
-              className="h-(--tv-6) max-w-(--tv-96) flex-1 overflow-hidden rounded-full bg-(--stage-spotlight-gold)/20"
-            >
-              {i === activeIndex ? (
-                <div
-                  key={activeIndex}
-                  className="tv-slide-progress h-full rounded-full bg-(--stage-spotlight-gold)"
-                  style={{ animationDuration: `${SLIDE_DURATION_MS}ms` }}
-                />
-              ) : i < activeIndex ? (
-                <div className="h-full w-full rounded-full bg-(--stage-spotlight-gold)/50" />
-              ) : null}
+            <div key={`${slide.kind}-${i}`} className="tv-progress-seg">
+              <div className="tv-progress-fill" style={{ width: i <= index ? "100%" : "0%" }} />
             </div>
           ))}
         </div>

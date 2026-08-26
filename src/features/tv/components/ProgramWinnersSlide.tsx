@@ -19,8 +19,8 @@ export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] })
     .slice(0, MAX_SHOWN);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
-      <p className="text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
+    <div className="tv-slide flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
+      <p className="tv-slide-kicker text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
         Recently Published
       </p>
 
@@ -37,7 +37,9 @@ export function ProgramWinnersSlide({ winners }: { winners: PublicResultRow[] })
             <PhotoThumbnail
               url={winner.groupPhotoUrl}
               alt={`${winner.groupName} photo`}
-              className="size-(--tv-48) rounded-full"
+              className="tv-photo size-(--tv-48) rounded-full"
+              sizePx={48}
+              style={{ borderRadius: "999px" }}
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[length:var(--tv-18)] font-bold text-(--stage-spotlight-ink)">

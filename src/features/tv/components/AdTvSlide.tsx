@@ -29,7 +29,16 @@ function AdMediaFrame({
   return (
     <div
       className="absolute inset-0 flex items-center justify-center"
-      style={{ opacity: isCurrent ? 1 : 0, transition: `opacity ${transitionMs}ms ease-out` }}
+      style={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        textAlign: "center",
+        opacity: isCurrent ? 1 : 0,
+        transition: `opacity ${transitionMs}ms ease-out`,
+      }}
     >
       {item.media_type === "video" ? (
         <video

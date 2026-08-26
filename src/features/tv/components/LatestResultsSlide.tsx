@@ -18,10 +18,10 @@ export function LatestResultsSlide({ results }: { results: LatestResultStudentRo
   const shown = results.slice(0, MAX_SHOWN);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
+    <div className="tv-slide flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
       <div className="flex items-center gap-(--tv-12)">
-        <Sparkles className="size-(--tv-28) text-(--stage-spotlight-gold)" aria-hidden="true" />
-        <p className="text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
+        <Sparkles className="size-(--tv-28) text-(--stage-spotlight-gold)" aria-hidden="true" style={{ width: 32, height: 32, color: "#e8c44a" }} />
+        <p className="tv-slide-kicker text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
           Latest Results
         </p>
       </div>
@@ -36,7 +36,9 @@ export function LatestResultsSlide({ results }: { results: LatestResultStudentRo
             <PhotoThumbnail
               url={result.studentPhotoUrl}
               alt={`${result.studentName} photo`}
-              className="size-(--tv-56) shrink-0 rounded-full"
+              className="tv-photo size-(--tv-56) shrink-0 rounded-full"
+              sizePx={56}
+              style={{ borderRadius: "999px" }}
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[length:var(--tv-18)] font-bold text-(--stage-spotlight-ink)">

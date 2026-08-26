@@ -22,12 +22,12 @@ export function LatestWinnerSlide({ results }: { results: LatestWinnerStudentRow
   const programName = results[0].programName;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
+    <div className="tv-slide flex h-full flex-col items-center justify-center gap-(--tv-40) px-(--tv-64) py-(--tv-48)">
       <div className="flex flex-col items-center gap-(--tv-8) text-center">
-        <p className="text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
+        <p className="tv-slide-kicker text-[length:var(--tv-24)] font-bold tracking-[0.3em] text-(--stage-spotlight-gold) uppercase">
           Just Declared
         </p>
-        <p className="font-[family-name:var(--font-audience-display)] text-[length:var(--tv-30)] font-bold text-(--stage-spotlight-ink)">
+        <p className="tv-slide-title font-[family-name:var(--font-audience-display)] text-[length:var(--tv-30)] font-bold text-(--stage-spotlight-ink)">
           {programName}
         </p>
       </div>
@@ -42,7 +42,9 @@ export function LatestWinnerSlide({ results }: { results: LatestWinnerStudentRow
             <PhotoThumbnail
               url={result.studentPhotoUrl}
               alt={`${result.studentName} photo`}
-              className="h-(--tv-256) w-full rounded-none"
+              className="tv-photo-hero h-(--tv-256) w-full rounded-none"
+              sizePx={200}
+              style={{ width: "100%", maxWidth: 280, height: 200, borderRadius: 0 }}
             />
             <div className="flex flex-1 flex-col gap-(--tv-8) p-(--tv-20)">
               <span

@@ -238,13 +238,12 @@
 }
 
 /*
- * TV token defaults on `.tv-shell`. Geometry is inlined in tv/layout (tvFitBoot.ts)
- * as a full-bleed stage with vmin tokens — do not reintroduce a 1920 transform canvas.
+ * TV tokens on `.tv-shell` — geometry/layout live in inlined critical CSS
+ * (tvFitBoot.ts). Prefer px then vw (vmin is missing on some TV browsers).
  */
 .tv-shell {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  font-size: 16px;
 
   --stage-cream: #ffffff;
   --stage-cream-deep: #ebe3cf;
@@ -260,32 +259,32 @@
   --stage-spotlight-ink-dim: #cfc6b0;
   --stage-spotlight-gold: #e8c44a;
 
-  --tv-4: 0.37vmin;
-  --tv-6: 0.556vmin;
-  --tv-8: 0.741vmin;
-  --tv-10: 0.926vmin;
-  --tv-12: 1.111vmin;
-  --tv-14: 1.296vmin;
-  --tv-16: 1.481vmin;
-  --tv-18: 1.667vmin;
-  --tv-20: 1.852vmin;
-  --tv-24: 2.222vmin;
-  --tv-28: 2.593vmin;
-  --tv-30: 2.778vmin;
-  --tv-32: 2.963vmin;
-  --tv-36: 3.333vmin;
-  --tv-40: 3.704vmin;
-  --tv-48: 4.444vmin;
-  --tv-56: 5.185vmin;
-  --tv-60: 5.556vmin;
-  --tv-64: 5.926vmin;
-  --tv-72: 6.667vmin;
-  --tv-80: 7.407vmin;
-  --tv-96: 8.889vmin;
-  --tv-128: 11.852vmin;
-  --tv-256: 23.704vmin;
-  --tv-288: 26.667vmin;
-  --tv-384: 35.556vmin;
+  --tv-4: 4px; --tv-4: 0.21vw;
+  --tv-6: 6px; --tv-6: 0.31vw;
+  --tv-8: 8px; --tv-8: 0.42vw;
+  --tv-10: 10px; --tv-10: 0.52vw;
+  --tv-12: 12px; --tv-12: 0.63vw;
+  --tv-14: 14px; --tv-14: 0.73vw;
+  --tv-16: 16px; --tv-16: 0.83vw;
+  --tv-18: 18px; --tv-18: 0.94vw;
+  --tv-20: 20px; --tv-20: 1.04vw;
+  --tv-24: 24px; --tv-24: 1.25vw;
+  --tv-28: 28px; --tv-28: 1.46vw;
+  --tv-30: 30px; --tv-30: 1.56vw;
+  --tv-32: 32px; --tv-32: 1.67vw;
+  --tv-36: 36px; --tv-36: 1.88vw;
+  --tv-40: 40px; --tv-40: 2.08vw;
+  --tv-48: 48px; --tv-48: 2.5vw;
+  --tv-56: 56px; --tv-56: 2.92vw;
+  --tv-60: 60px; --tv-60: 3.13vw;
+  --tv-64: 64px; --tv-64: 3.33vw;
+  --tv-72: 72px; --tv-72: 3.75vw;
+  --tv-80: 80px; --tv-80: 4.17vw;
+  --tv-96: 96px; --tv-96: 5vw;
+  --tv-128: 128px; --tv-128: 6.67vw;
+  --tv-256: 256px; --tv-256: 13.33vw;
+  --tv-288: 288px; --tv-288: 15vw;
+  --tv-384: 384px; --tv-384: 20vw;
 }
 /*
  * Admin/judge dashboard theme — scoped to `.dashboard-shell` (src/app/admin/layout.tsx,
