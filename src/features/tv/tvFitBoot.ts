@@ -407,6 +407,41 @@ html, body, #app-root {
   color: #e8c44a;
   text-align: center;
 }
+/* Full-slide break announcement (NowPerformingSlide) — table/table-cell for vertical
+   centering since Panasonic's TV browser ignores flexbox (see file header). */
+.tv-break {
+  display: table;
+  width: 100%;
+  height: 100%;
+}
+.tv-break-cell {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: center;
+}
+.tv-break-icon {
+  display: inline-block;
+  width: 140px;
+  height: 140px;
+  line-height: 140px;
+  margin-bottom: 24px;
+  border-radius: 28px;
+  background: rgba(232, 196, 74, 0.15);
+  color: #e8c44a;
+  text-align: center;
+}
+.tv-break-title {
+  display: block;
+  margin: 0 auto;
+  padding: 0 4%;
+  font-family: var(--font-audience-display), Georgia, serif;
+  font-size: 148px;
+  font-size: var(--tv-72);
+  font-weight: 700;
+  color: #f7f3e8;
+  line-height: 1.1;
+}
+
 .tv-house-row {
   display: block;
   text-align: center;

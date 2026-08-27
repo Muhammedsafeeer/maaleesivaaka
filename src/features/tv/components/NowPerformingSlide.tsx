@@ -26,6 +26,26 @@ export function NowPerformingSlide({
   const onStageBreaks = currentBreaks.filter((b) => b.stage_type === "on_stage");
   if (onStagePrograms.length === 0 && onStageBreaks.length === 0) return null;
 
+  // A break takes the whole slide in large type rather than sharing a small card with
+  // a performing program — the fixture only ever runs one "current" entry per
+  // stage_type at a time, so a break showing here never actually has an on-stage
+  // program to pair with anyway.
+  if (onStagePrograms.length === 0) {
+    return (
+      <div className="tv-slide">
+        <div className="tv-break">
+          <div className="tv-break-cell">
+            <span className="tv-break-icon">
+              <Coffee style={{ width: 96, height: 96 }} />
+            </span>
+            <p className="tv-slide-kicker">Break</p>
+            <p className="tv-break-title">{onStageBreaks[0].label}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="tv-slide">
       <p className="tv-slide-kicker">On Stage Now</p>
@@ -63,17 +83,6 @@ export function NowPerformingSlide({
             </div>
           );
         })}
-
-        {onStageBreaks.map((brk) => (
-          <div key={brk.id} className="tv-card">
-            <span className="tv-card-icon">
-              <Coffee style={{ width: 48, height: 48 }} />
-            </span>
-            <span className="tv-card-badge">{stageLabels[brk.stage_type]}</span>
-            <p className="tv-card-title">{brk.label}</p>
-            <p className="tv-card-sub">Break</p>
-          </div>
-        ))}
       </div>
     </div>
   );
